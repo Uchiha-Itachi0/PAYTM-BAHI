@@ -23,6 +23,7 @@ from typing import Any
 
 from bahi.munshi import prompt, tools
 from bahi.service import ledger
+from bahi.service.errors import Conflict
 from bahi.store import munshi as store
 from bahi.store.db import Conn
 from bahi.store.munshi import Draft
@@ -202,3 +203,38 @@ def _answer(
     ):
         out.draft, out.finished = latest, True
     return out
+
+
+def edit(
+    con: Conn,
+    shop_id: str,
+    conversation_id: str,
+    draft_id: str,
+    now: datetime,
+    *,
+    amount_rupees: int | None = None,
+    new_name: str | None = None,
+    new_tag: str | None = None,
+) -> Outcome:
+    """He fixed the waiting card on screen. No model is asked: the card changes
+    and the conversation records what he changed, so the munshi knows next turn.
+    Nothing is written until his yes."""
+    d, problem = tools.edit_card(
+        con,
+        shop_id,
+        draft_id,
+        now,
+        amount_rupees=amount_rupees,
+        new_name=new_name,
+        new_tag=new_tag,
+    )
+    if d is None:
+        raise Conflict(problem or "that card can't be changed")
+    parts = []
+    if d.new_name:
+        parts.append(d.new_name + (f", {d.new_tag}" if d.new_tag else ""))
+    if d.amount_paise is not None:
+        parts.append(f"₹{d.amount_paise // 100}")
+    said = "(कार्ड पर खुद बदला: " + " · ".join(parts) + ")"
+    store.add_turn(con, conversation_id, {"role": "user", "content": said}, now)
+    return Outcome(conversation_id, draft=d, done=["You changed the card"])

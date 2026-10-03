@@ -274,6 +274,15 @@ class MunshiIn(BaseModel):
     text: str = Field(min_length=1, max_length=400)
 
 
+class CardEditIn(BaseModel):
+    """He fixed the waiting card on screen. Anything left out stays as it is."""
+
+    amount_rupees: int | None = Field(default=None, gt=0, le=1_00_000)
+    #: Only for someone new to the book.
+    new_name: str | None = Field(default=None, min_length=1, max_length=40)
+    new_tag: str | None = Field(default=None, max_length=40)
+
+
 class CardOut(BaseModel):
     """The entry the munshi proposed, as the card shows it. The amount is the one
     stored on the draft, never the munshi's sentence."""

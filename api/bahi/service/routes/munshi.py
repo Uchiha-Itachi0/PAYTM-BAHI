@@ -18,7 +18,7 @@ from bahi import clock, voice
 from bahi.munshi import brain
 from bahi.service import ledger
 from bahi.service.deps import Con
-from bahi.service.models import CardOut, MunshiIn, MunshiOut
+from bahi.service.models import CardEditIn, CardOut, MunshiIn, MunshiOut
 from bahi.service.routes.voice import _read
 from bahi.store import customers, entries
 from bahi.store import munshi as store
@@ -153,6 +153,31 @@ def card_yes(shop_id: str, conversation_id: UUID, draft_id: UUID, con: Con) -> M
 def card_no(shop_id: str, conversation_id: UUID, draft_id: UUID, con: Con) -> MunshiOut:
     """He tapped नहीं: the card goes, nothing is written."""
     return _tap(con, shop_id, conversation_id, draft_id, False)
+
+
+@router.post("/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/edit")
+def card_edit(
+    shop_id: str, conversation_id: UUID, draft_id: UUID, body: CardEditIn, con: Con
+) -> MunshiOut:
+    """He fixed the waiting card on screen: the amount, or someone new's name and
+    where they live. No model is asked, so this works with voice down too."""
+    ledger.shop(con, shop_id)
+    cid = _conversation(con, shop_id, conversation_id)
+    assert cid is not None
+    d = store.draft(con, str(draft_id))
+    if d is None or d.conversation_id != cid:
+        raise HTTPException(404, f"no card {draft_id} in this conversation")
+    o = brain.edit(
+        con,
+        shop_id,
+        cid,
+        str(draft_id),
+        clock.now(),
+        amount_rupees=body.amount_rupees,
+        new_name=body.new_name,
+        new_tag=body.new_tag,
+    )
+    return _out(con, shop_id, o, None, "tap")
 
 
 @router.get(

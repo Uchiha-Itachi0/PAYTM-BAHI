@@ -220,3 +220,25 @@ def claim(con: Conn, draft_id: str) -> Draft | None:
         return cur.execute(
             DRAFT + " WHERE id = %s AND status = 'shown' FOR UPDATE", (draft_id,)
         ).fetchone()
+
+
+def edit(
+    con: Conn,
+    draft_id: str,
+    kind: str,
+    amount_paise: int | None,
+    new_name: str | None,
+    new_tag: str | None,
+    reasons: list[str],
+) -> Draft | None:
+    """He fixed the waiting card himself, on screen. None if it isn't waiting."""
+    with con.cursor(row_factory=class_row(Draft)) as cur:
+        return cur.execute(
+            f"""
+            UPDATE drafts SET kind = %s, amount_paise = %s, new_name = %s,
+                              new_tag = %s, reasons = %s
+            WHERE id = %s AND status = 'shown'
+            RETURNING {COLUMNS}
+            """,
+            (kind, amount_paise, new_name, new_tag, reasons, draft_id),
+        ).fetchone()

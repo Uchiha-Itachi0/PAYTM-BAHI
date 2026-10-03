@@ -425,6 +425,83 @@ def test_a_wrong_amount_he_never_wrote_is_asked_about(
     assert [e["amount"] for e in seen["open_entries"]] == ["दो सौ रुपये"]
 
 
+# ── he fixes the card on screen ─────────────────────────────────────────────
+
+
+def edit(api: TestClient, out: dict[str, Any], **body: Any) -> Any:
+    card = out["card"]
+    return api.post(
+        f"/shops/{SHOP}/munshi/{out['conversation_id']}/cards/{card['draft_id']}/edit",
+        json=body,
+    )
+
+
+def test_he_fixes_the_amount_on_the_card_and_his_tap_writes_that(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    before = sharmas_entries(tx)
+    model.then(*shows_sharma(200))
+    out = say(api, "शर्मा जी को दो सौ")
+    r = edit(api, out, amount_rupees=250)
+    assert r.status_code == 200, r.text
+    assert (r.json()["card"]["amount_paise"], model.calls) == (250_00, 3), "no model"
+    model.then(reply("लिख दिया।"))
+    tap(api, out)
+    assert sharmas_entries(tx) == [*before, 250_00]
+
+
+def test_he_names_someone_new_on_the_card_and_adds_their_udhaar(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    model.then(
+        tool("find_customer", {"name": "श्रेया"}),
+        tool(
+            "propose_new_customer", {"name": "Shreya", "description": "Room 4 A wing C"}
+        ),
+        reply("श्रेया को जोड़ दूँ?"),
+    )
+    out = say(api, "श्रेया को पाँच सौ रुपये, रूम नंबर चार विंग सी")
+    assert out["card"]["kind"] == "customer"
+    card = edit(api, out, amount_rupees=500, new_tag="Room 4, C wing").json()["card"]
+    assert (card["kind"], card["amount_paise"], card["tag"]) == (
+        "udhaar",
+        500_00,
+        "Room 4, C wing",
+    )
+    model.then(reply("जोड़ दिया और लिख दिया।"))
+    tap(api, out)
+    (shreya,) = added(tx, "Shreya")
+    assert shreya.tag == "Room 4, C wing"
+    assert [e.amount_paise for e in entries.of_customer(tx, shreya.id)] == [500_00]
+
+
+def test_a_card_is_fixed_within_the_same_limits(api: TestClient, model: Script) -> None:
+    model.then(*shows_sharma(100, "paid_back"))
+    out = say(api, "शर्मा जी ने सौ दिए")
+    r = edit(api, out, amount_rupees=5000)
+    assert r.status_code == 409 and "owe only" in r.json()["detail"]
+
+
+def test_a_decided_card_is_not_changed(api: TestClient, model: Script) -> None:
+    model.then(*shows_sharma(200), reply("लिख दिया।"))
+    out = say(api, "शर्मा जी को दो सौ")
+    tap(api, out)
+    assert edit(api, out, amount_rupees=300).status_code == 409
+
+
+def test_out_of_credits_says_so_plainly(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from bahi.voice import sarvam
+
+    def broke(*_: Any, **__: Any) -> Any:
+        raise sarvam.OutOfCredits("Sarvam said 402: No credits available.")
+
+    monkeypatch.setattr(route, "chat", lambda: broke)
+    r = api.post(f"/shops/{SHOP}/munshi", json={"text": "शर्मा जी को दो सौ"})
+    assert r.status_code == 503 and "no credits" in r.json()["detail"]
+
+
 # ── money back, oldest first ─────────────────────────────────────────────────
 
 

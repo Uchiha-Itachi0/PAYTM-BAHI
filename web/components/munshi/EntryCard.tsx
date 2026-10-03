@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useState } from "react";
 
 import type { MunshiCard } from "@/lib/api/types";
 import { formatPaise } from "@/lib/money";
@@ -16,7 +17,17 @@ import { formatPaise } from "@/lib/money";
  * Someone not in the book yet is on the card as "New": his yes adds them by name
  * only, then writes their first udhaar if there is one. A correction shows the
  * old amount struck through beside the right one.
+ *
+ * Edit fixes the card on screen, no voice needed: the amount, and for someone
+ * new, their name and where they live. The same checks apply, and his tap is
+ * still what writes it.
  */
+
+export interface CardEdit {
+  amount_rupees?: number;
+  new_name?: string;
+  new_tag?: string;
+}
 
 const KIND = {
   udhaar: "उधार",
@@ -33,12 +44,91 @@ const REASON: Record<MunshiCard["reasons"][number], string> = {
   correction: "A new entry replaces the old one; they confirm it",
 };
 
+function Editor({
+  card,
+  busy,
+  onSave,
+  onClose,
+}: {
+  card: MunshiCard;
+  busy: boolean;
+  onSave: (edit: CardEdit) => void;
+  onClose: () => void;
+}): React.ReactElement {
+  const [rupees, setRupees] = useState(card.amount_paise ? String(card.amount_paise / 100) : "");
+  const [name, setName] = useState(card.display_name);
+  const [tag, setTag] = useState(card.tag ?? "");
+  const input =
+    "mt-1 block w-full rounded-[10px] bg-white px-3 py-2 text-[15px] font-bold text-ink outline-none";
+  return (
+    <form
+      className="mt-3 flex flex-col gap-2.5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const edit: CardEdit = {};
+        const n = Number(rupees);
+        if (rupees && n * 100 !== card.amount_paise) edit.amount_rupees = n;
+        if (card.new) {
+          if (name.trim() !== card.display_name) edit.new_name = name.trim();
+          if (tag.trim() !== (card.tag ?? "")) edit.new_tag = tag.trim();
+        }
+        onSave(edit);
+      }}
+    >
+      {card.new ? (
+        <>
+          <label className="text-[12px] font-bold opacity-80">
+            Name
+            <input value={name} onChange={(e) => setName(e.target.value)} className={input} />
+          </label>
+          <label className="text-[12px] font-bold opacity-80">
+            Where they live or work
+            <input
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              placeholder="Room 4, C wing"
+              className={input}
+            />
+          </label>
+        </>
+      ) : null}
+      <label className="text-[12px] font-bold opacity-80">
+        {card.kind === "customer" ? "Their first udhaar, in rupees (optional)" : "Amount, in rupees"}
+        <input
+          value={rupees}
+          onChange={(e) => setRupees(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          inputMode="numeric"
+          className={input}
+        />
+      </label>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={busy || (card.new && !name.trim())}
+          className="flex-1 rounded-pill bg-cyan p-[10px] text-[14px] font-extrabold text-white disabled:opacity-40"
+        >
+          Save the card
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-pill px-4 text-[13px] font-bold opacity-80"
+        >
+          Back
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function EntryCard({
   card,
   counting,
   busy,
   onYes,
   onNo,
+  onEdit,
+  onEditing,
 }: {
   card: MunshiCard;
   /** The three-second countdown is running. */
@@ -46,7 +136,12 @@ export function EntryCard({
   busy: boolean;
   onYes: () => void;
   onNo: () => void;
+  /** He fixed the card on screen. */
+  onEdit?: (edit: CardEdit) => Promise<void>;
+  /** He opened the editor: whatever countdown there was stops. */
+  onEditing?: () => void;
 }): React.ReactElement {
+  const [editing, setEditing] = useState(false);
   const saved = card.status === "saved";
   const gone = card.status === "cancelled" || card.status === "replaced";
   return (
@@ -93,7 +188,16 @@ export function EntryCard({
         </ul>
       ) : null}
 
-      {card.status === "shown" ? (
+      {card.status === "shown" && editing && onEdit ? (
+        <Editor
+          card={card}
+          busy={busy}
+          onSave={(edit) => void onEdit(edit).then(() => setEditing(false))}
+          onClose={() => setEditing(false)}
+        />
+      ) : null}
+
+      {card.status === "shown" && !editing ? (
         <>
           {counting ? (
             <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/20">
@@ -123,6 +227,19 @@ export function EntryCard({
               {counting ? "Cancel" : "नहीं"}
             </button>
           </div>
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={() => {
+                onEditing?.();
+                setEditing(true);
+              }}
+              disabled={busy}
+              className="mt-2 w-full text-center text-[12.5px] font-extrabold opacity-80"
+            >
+              Something wrong? Edit the card
+            </button>
+          ) : null}
         </>
       ) : null}
 

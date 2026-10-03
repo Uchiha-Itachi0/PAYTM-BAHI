@@ -1521,6 +1521,79 @@
         }
       }
     },
+    "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/edit": {
+      "post": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "Card Edit",
+        "description": "He fixed the waiting card on screen: the amount, or someone new's name and\nwhere they live. No model is asked, so this works with voice down too.",
+        "operationId": "card_edit_shops__shop_id__munshi__conversation_id__cards__draft_id__edit_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardEditIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MunshiOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/shops/{shop_id}/munshi/{conversation_id}/say/{turn_id}.wav": {
       "get": {
         "tags": [
@@ -2863,6 +2936,51 @@
           "lines"
         ],
         "title": "BookOut"
+      },
+      "CardEditIn": {
+        "properties": {
+          "amount_rupees": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Rupees"
+          },
+          "new_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Name"
+          },
+          "new_tag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Tag"
+          }
+        },
+        "type": "object",
+        "title": "CardEditIn",
+        "description": "He fixed the waiting card on screen. Anything left out stays as it is."
       },
       "CardOut": {
         "properties": {

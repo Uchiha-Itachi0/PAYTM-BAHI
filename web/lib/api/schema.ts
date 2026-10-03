@@ -610,6 +610,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Card Edit
+         * @description He fixed the waiting card on screen: the amount, or someone new's name and
+         *     where they live. No model is asked, so this works with voice down too.
+         */
+        post: operations["card_edit_shops__shop_id__munshi__conversation_id__cards__draft_id__edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shop_id}/munshi/{conversation_id}/say/{turn_id}.wav": {
         parameters: {
             query?: never;
@@ -1139,6 +1160,18 @@ export interface components {
             outstanding_paise: number;
             /** Lines */
             lines: components["schemas"]["LineOut"][];
+        };
+        /**
+         * CardEditIn
+         * @description He fixed the waiting card on screen. Anything left out stays as it is.
+         */
+        CardEditIn: {
+            /** Amount Rupees */
+            amount_rupees?: number | null;
+            /** New Name */
+            new_name?: string | null;
+            /** New Tag */
+            new_tag?: string | null;
         };
         /**
          * CardOut
@@ -3028,6 +3061,43 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MunshiOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    card_edit_shops__shop_id__munshi__conversation_id__cards__draft_id__edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                conversation_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardEditIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

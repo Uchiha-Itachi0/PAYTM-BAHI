@@ -39,6 +39,7 @@ from bahi import voice
 from bahi.domain import book as book_domain
 from bahi.domain import limitation
 from bahi.domain.find import Found, find
+from bahi.domain.money import rupees
 from bahi.domain.who import Person
 from bahi.service import ledger
 from bahi.service import tonight as tonight_service
@@ -184,12 +185,16 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "description": {
                         "type": "string",
-                        "description": "Where they live or what they do, in the "
-                        "book's words, e.g. 'Chawl 7'. Empty if he didn't say.",
+                        "description": "Where they live or what they do, written "
+                        "the way the book writes descriptions, e.g. 'Room 4, C wing' "
+                        "for रूम नंबर चार विंग सी, or 'Chawl 7'. Empty if he didn't "
+                        "say.",
                     },
                     "amount_rupees": {
                         "type": "number",
-                        "description": "Their first udhaar, if he gave one.",
+                        "description": "The udhaar he asked to write for them, if "
+                        "he said one anywhere in this conversation (श्रेया को पाँच "
+                        "सौ → 500). The card then adds them and writes it in one yes.",
                     },
                 },
                 "required": ["name"],
@@ -633,9 +638,16 @@ class Desk:
             "ok": True,
             "card": what,
             "needs_clear_yes": True,
-            "next": "The card is waiting for his yes. Say you'll add them by name only"
-            + (" and write the udhaar" if paise is not None else "")
-            + ", and ask पक्का?",
+            "next": "The card is waiting for his yes. Read it back: the name, where "
+            "they live"
+            + (", and the udhaar" if paise is not None else "")
+            + ", and ask पक्का?"
+            + (
+                ""
+                if paise is not None
+                else " If he asked for an amount for them earlier, call "
+                "propose_new_customer again with amount_rupees first."
+            ),
         }
 
     def tonight(self) -> dict[str, Any]:
@@ -805,3 +817,51 @@ def _paise(amount_rupees: Any) -> tuple[int, str | None]:
     if paise > MOST_PAISE:
         return 0, "that is too large to take by voice; ask him to check"
     return paise, None
+
+
+def edit_card(
+    con: Conn,
+    shop_id: str,
+    draft_id: str,
+    now: datetime,
+    *,
+    amount_rupees: int | None = None,
+    new_name: str | None = None,
+    new_tag: str | None = None,
+) -> tuple[store.Draft | None, str | None]:
+    """The shopkeeper fixed the waiting card on screen: the amount, and for
+    someone new, their name and where they live. The same checks as a card the
+    munshi makes; his own tap is still what writes it. Returns the card, or why
+    not."""
+    d = store.draft(con, draft_id)
+    if d is None or d.status != "shown":
+        return None, "that card is no longer waiting"
+    kind, paise = d.kind, d.amount_paise
+    if amount_rupees is not None:
+        paise, problem = _paise(amount_rupees)
+        if problem is not None:
+            return None, problem
+        if kind == "customer":
+            kind = "udhaar"  # an amount on an add-only card makes it their first udhaar
+        if kind == "payment" and d.customer_id:
+            owed = ledger.balance(con, shop_id, d.customer_id, now.date())
+            if paise > owed:
+                return None, f"they owe only {rupees(owed)}"
+    name, tag = d.new_name, d.new_tag
+    if d.new_name is not None:
+        name = (new_name if new_name is not None else d.new_name).strip()
+        if not name or len(name) > 40:
+            return None, "a name is needed"
+        tag = (new_tag if new_tag is not None else (d.new_tag or "")).strip() or None
+    reasons = [r for r in d.reasons if r not in ("large", "unusual")]
+    if paise is not None and paise >= LARGE_PAISE:
+        reasons.append("large")
+    if kind == "udhaar" and d.customer_id and paise is not None:
+        past = [e.amount_paise for e in entries.of_customer(con, d.customer_id)]
+        if len(past) >= USUAL_FROM and paise >= UNUSUAL_TIMES * statistics.median(past):
+            reasons.append("unusual")
+    if kind == "correction" and d.corrects_entry_id:
+        wrong = entries.get(con, d.corrects_entry_id)
+        if wrong is not None and wrong.amount_paise == paise:
+            return None, "that is what the entry already says"
+    return store.edit(con, d.id, kind, paise, name, tag, reasons), None
