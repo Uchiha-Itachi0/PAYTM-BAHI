@@ -4,7 +4,7 @@
 # them on a tool that changed its output overnight.
 
 .PHONY: help db db-migrate db-check rhythm decide expire voice voice-list \
-        api web check lint typecheck test
+        api web web-check check lint typecheck test
 
 help:
 	@echo "db           drop, migrate and seed. one shop, 60 udhaar customers, 6 months"
@@ -22,6 +22,7 @@ help:
 	@echo "voice-list   what is already in the offline cache"
 	@echo ""
 	@echo "check        ruff, ruff format, mypy strict, pytest"
+	@echo "web-check    tsc, eslint, vitest"
 
 # ---------------------------------------------------------------------------
 # Database
@@ -69,6 +70,11 @@ api:
 
 web:
 	npm --prefix web run dev
+
+# Types, lint, and the tests that hold the UI to its rules: no amount typed
+# into a screen, no shaming words, no colour outside globals.css.
+web-check:
+	npm --prefix web run check
 
 # ---------------------------------------------------------------------------
 # Voice

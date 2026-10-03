@@ -92,6 +92,7 @@ stored. Money is `bigint` paise. We store no phone numbers.
 make db        create, migrate and seed; writes contract/shop.json
 make db-check  read the seed back: the book, the cast, everyone's usual gap
 make check     ruff, ruff format, mypy strict, pytest
+make web-check tsc, eslint, vitest: no typed amounts, no shaming words, one palette
 make api       the service on :8000
 make web       the surfaces on :3000
 ```

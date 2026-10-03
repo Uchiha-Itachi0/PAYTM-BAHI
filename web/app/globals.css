@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BAHI — Paytm's own app language, read off the real app.
+
+   Every colour, radius and typeface the screens use is defined here and nowhere
+   else. A screen is assembled from components/ui; if a screen needs a colour
+   that is not in this block, the answer is to add it here, not to write it
+   inline.
+
+   Three rules.
+
+   1. Sky ground, white cards floating on it, no borders. Navy only for filled
+      tiles and primary buttons. Cyan for actions and marks.
+
+   2. Cyan #00B9F1 scores about 2.0:1 on white, so it is never text. Cyan that
+      has to be read uses --color-cyan-text (#0077A8, about 4.7:1).
+
+   3. There is no red. Not "we avoid it": there is no red token, so no screen
+      can colour a customer as a defaulter.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* Ground: the sky band at the top of every Paytm screen, fading down. */
+  --color-sky-top: #a9daf2;
+  --color-sky: #c8e8f8;
+  --color-sky-low: #e4f4fc;
+
+  --color-card: #ffffff;
+  --color-tile: #f4f5f7;
+  --color-hair: #eceef1;
+  --color-line: #d4d8de;
+
+  --color-ink: #1c1c1c;
+  --color-sub: #6e7278;
+
+  --color-navy: #0f2e7e;
+  --color-navy-ink: #002970;
+  --color-cyan: #00b9f1;
+  --color-cyan-text: #0077a8;
+
+  /* Money that arrived. */
+  --color-paid: #00a550;
+
+  /* Status chips: a tint and the ink that reads on it. */
+  --color-ok: #1e7e34;
+  --color-ok-bg: #e8f5e9;
+  --color-warn: #a8620a;
+  --color-warn-bg: #fdf3e3;
+  --color-quiet: #79808c;
+  --color-quiet-bg: #eff1f4;
+
+  /* Avatar tints, assigned by name so a customer keeps his colour. */
+  --color-av-blue: #dceffa;
+  --color-av-blue-ink: #1367a0;
+  --color-av-yellow: #fcf0d2;
+  --color-av-yellow-ink: #9a7412;
+  --color-av-pink: #fbe0e6;
+  --color-av-pink-ink: #a93b58;
+  --color-av-mint: #dcf3e7;
+  --color-av-mint-ink: #1c7a4e;
+  --color-av-lilac: #e9e3fa;
+  --color-av-lilac-ink: #5b46a8;
+  /* The account avatar in the top bar. */
+  --color-av-self: #f3ddf5;
+  --color-av-self-ink: #8a3d96;
+
+  --radius-card: 16px;
+  --radius-tile: 13px;
+  --radius-pill: 24px;
+
+  --font-sans: var(--ff-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-pill: 0 6px 18px rgb(15 46 126 / 0.35);
+}
+
+/* The sky band behind every screen. */
+@utility paytm-ground {
+  background: linear-gradient(
+    180deg,
+    var(--color-sky-top) 0,
+    var(--color-sky) 130px,
+    var(--color-sky-low) 420px,
+    var(--color-sky-low) 100%
+  );
+}
+
+html {
+  color-scheme: light;
+  /* Around the phone column on a laptop screen. */
+  background: var(--color-tile);
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
