@@ -210,7 +210,9 @@ can't show:
   seconds later Sarvam has read it as a promise for the 6th, kept with his own
   words and the message it came from.
 - **A nickname.** A card he confirmed for Raju after calling him "पप्पू": next
-  time "पप्पू" finds Raju, as a hint, and the card waits for a clear हाँ.
+  time "पप्पू" finds Raju, as a hint, and the card waits for a clear हाँ. When a
+  name finds nobody and he then names someone ("चिंटू" … "डिसूज़ा"), the card isn't
+  shown until the munshi has said whether that was their name; the card shows it.
 - **What else they say.** Each customer message is read once for anything worth
   remembering: a complaint ("तेल का दाम ज़्यादा लगा, शिकायत की"), a hardship, a
   request. A dispute's reason is his own message, so it is read too.

@@ -878,6 +878,76 @@ def test_a_nickname_he_confirmed_finds_them_again_only_as_a_hint(
     assert card["reasons"] == ["weak_match"]  # a hint: his clear yes decides
 
 
+def test_a_name_that_found_nobody_then_someone_is_decided_before_the_card(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    # "चिंटू को सौ" finds nobody; asked who, he says "शर्मा". The card waits until
+    # the model says whether चिंटू was Sharma: a turn later it forgot to (live,
+    # 3 Oct), and the nickname was lost.
+    from bahi.store import memories
+
+    model.then(tool("find_customer", {"name": "चिंटू"}), reply("कौन चिंटू?"))
+    first = say(api, "चिंटू को सौ")
+    results: list[Any] = []
+    sharma = {"customer_id": "", "kind": "udhaar", "amount_rupees": 100}
+
+    def to_sharma(found: Any) -> dict[str, Any]:
+        results.append(found)
+        sharma["customer_id"] = first_found(found)
+        return sharma
+
+    def as_chintu(refused: Any) -> dict[str, Any]:
+        results.append(refused)
+        return {**sharma, "called": "चिंटू"}
+
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool("propose_entry", to_sharma),
+        tool("propose_entry", as_chintu),
+        tool("counter", keeping(results, {})),
+        reply("शर्मा जी, जिन्हें आप चिंटू कहते हैं, सौ रुपये उधार, पक्का?"),
+        reply("लिख दिया।"),
+    )
+    out = say(api, "शर्मा जी", first["conversation_id"])
+    found, refused, shown = results
+    assert "चिंटू" in found["he_said_earlier"]
+    assert refused["ok"] is False and "called 'चिंटू'" in refused["problem"]
+    assert shown["ok"] is True and shown["he_calls_them"] == "चिंटू"
+    assert out["card"]["called"] == "चिंटू"
+
+    saved = tap(api, out)
+    assert "Remembered: you call Sharma चिंटू" in saved["done"]
+    nicks = [m.body for m in memories.of_customer(tx, SHARMA) if m.kind == "nickname"]
+    assert nicks == ["चिंटू"]
+
+
+def test_he_can_say_the_name_that_found_nobody_was_someone_else(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    from bahi.store import memories
+
+    model.then(tool("find_customer", {"name": "चिंटू"}), reply("कौन चिंटू?"))
+    first = say(api, "चिंटू को सौ")
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_entry",
+            lambda found: {
+                "customer_id": first_found(found),
+                "kind": "udhaar",
+                "amount_rupees": 100,
+                "called": "",
+            },
+        ),
+        reply("शर्मा जी, सौ रुपये उधार, पक्का?"),
+        reply("लिख दिया।"),
+    )
+    out = say(api, "नहीं, शर्मा जी को", first["conversation_id"])
+    assert out["card"]["called"] is None
+    tap(api, out)
+    assert not [m for m in memories.of_customer(tx, SHARMA) if m.kind == "nickname"]
+
+
 # ── money back, oldest first ─────────────────────────────────────────────────
 
 

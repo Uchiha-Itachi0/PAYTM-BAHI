@@ -170,7 +170,8 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": "The name he used for them, only if it isn't "
                         "the book's name for them (a nickname, e.g. 'पप्पू'). His yes "
-                        "to the card remembers it.",
+                        "to the card remembers it. '' when a name he said earlier, "
+                        "that nobody in the book has, was not this person.",
                     },
                 },
                 "required": ["customer_id", "kind", "amount_rupees"],
@@ -358,6 +359,9 @@ class Desk:
     #: Customers some search, or the counter, gave back alone. Anyone else on a
     #: card was picked from several, by the model, and waits for a clear yes.
     alone: set[str] = field(default_factory=set)
+    #: Names he used in this conversation that nobody in the book has, oldest
+    #: first: maybe what he calls someone ("चिंटू" for D'Souza).
+    unfound: list[str] = field(default_factory=list)
     #: What happened, for the screen: "Looked for 'B wing': 8".
     done: list[str] = field(default_factory=list)
 
@@ -399,6 +403,8 @@ class Desk:
         if "looked_for" in result:
             self.searched = True
             asked = result["looked_for"] or {}
+            if result.get("count") == 0:
+                self._unfound(asked.get("name"))
             if before and "customers" not in result and result.get("count", 0) >= 3:
                 self.told.add(self._who(asked.get("name"), asked.get("description")))
         rows = result.get("customers", []) or []
@@ -409,6 +415,11 @@ class Desk:
                 self.seen[cid] = self.seen.get(cid, True) and weak
                 if len(rows) == 1 and result.get("count") == 1:
                     self.alone.add(cid)
+
+    def _unfound(self, name: Any) -> None:
+        name = str(name or "").strip()
+        if name and name not in self.unfound:
+            self.unfound.append(name)
 
     def _who(self, name: str | None, description: str | None) -> frozenset[str]:
         return frozenset(f.person.ref for f in find(self.people, name, description).found)
@@ -483,6 +494,7 @@ class Desk:
             if called is not None:
                 self.done.append(f"Looked for {looked}: a name you've used before")
                 return called
+            self._unfound(name)
         asked = read_names is True or str(read_names).lower() == "true"
         who = frozenset(f.person.ref for f in found)
         if len(found) >= 3 and not (asked and who in self.told):
@@ -539,6 +551,13 @@ class Desk:
             out["more"] = left
         if search.note:
             out["note"] = search.note
+        earlier = self._earlier_name(found[0].person.ref) if len(found) == 1 else None
+        if earlier:
+            out["he_said_earlier"] = (
+                f"{earlier}, a name nobody in the book has. If he meant this person "
+                f"by it, it is what he calls them: pass called '{earlier}' on the "
+                "card, and his yes remembers it."
+            )
         if len(found) == 1 and not found[0].strong:
             out["next"] = (
                 "Only a weak match: say his name and place back and ask if that's "
@@ -641,6 +660,18 @@ class Desk:
         paise, problem = _paise(amount_rupees)
         if problem is not None:
             return {"ok": False, "problem": problem}
+        earlier = self._earlier_name(cid) if called is None else None
+        if earlier:
+            # A name that found nobody, then this person: most often what he
+            # calls them. The model decides, with the whole conversation in front
+            # of it; the card is not shown until it has.
+            return {
+                "ok": False,
+                "problem": f"Earlier he said {earlier}, a name nobody in the book "
+                f"has. If that was this person, propose again with called "
+                f"'{earlier}': his yes to the card remembers it. If he meant someone "
+                "else by it, propose again with called ''.",
+            }
         owed, _ = self._owes(cid)
         if kind_en == "payment" and paise > owed:
             words = amount_words(owed) if owed else "कुछ नहीं"
@@ -671,17 +702,25 @@ class Desk:
             called=self._nickname(cid, called),
         )
         said, about = self._say(cid)
+        nick = self._nickname(cid, called)
         self.done.append(
             f"Showed a card: {self.refs[cid].display_name} ₹{paise // 100} "
             f"{KIND_HI[kind_en]}"
         )
-        return {
+        out: dict[str, Any] = {
             "ok": True,
             "card": f"{said}, {about}, {amount_words(paise)} {KIND_HI[kind_en]}",
             "needs_clear_yes": bool(reasons),
             "next": "The card is waiting for his yes. Read it back in one short "
             "sentence and ask पक्का?",
         }
+        if nick:
+            out["he_calls_them"] = nick
+            out["next"] = (
+                "The card is waiting for his yes. Read it back in one short sentence, "
+                f"saying it is the one he calls {nick}, and ask पक्का?"
+            )
+        return out
 
     def propose_correction(
         self,
@@ -1036,6 +1075,22 @@ class Desk:
             "he means.",
         }
 
+    def _earlier_name(self, cid: str) -> str | None:
+        """The latest name he said in this conversation that found nobody, unless
+        it sounds like this person's own name (a mishearing, not a nickname) or
+        is already what he calls them."""
+        me = [p for p in self.people if p.ref == cid]
+        known = {
+            m.body.casefold()
+            for m in memories.of_customer(self.con, cid)
+            if m.kind == "nickname"
+        }
+        for name in reversed(self.unfound):
+            if name.casefold() in known or find(me, name, None).found:
+                continue
+            return self._nickname(cid, name)
+        return None
+
     def _nickname(self, cid: str, called: str | None) -> str | None:
         """The name he used, if it is a name the book doesn't already have."""
         called = (called or "").strip()
@@ -1084,19 +1139,22 @@ def _remembered(m: Memory) -> dict[str, Any]:
 
 def _keep_nickname(
     con: Conn, shop_id: str, customer_id: str, called: str, now: datetime
-) -> None:
-    """His yes to a card made out to what he calls them: remembered, once."""
+) -> bool:
+    """His yes to a card made out to what he calls them: remembered, once. True
+    when it is newly remembered."""
     known = {
         m.body.casefold()
         for m in memories.of_customer(con, customer_id)
         if m.kind == "nickname"
     }
     if called.casefold() in known:
-        return
+        return False
     try:
         keeping.keep(con, shop_id, customer_id, "nickname", called, "shop", now)
     except (Conflict, NotFound) as e:
         log.info("nickname not kept: %s", e)
+        return False
+    return True
 
 
 def save(
@@ -1168,8 +1226,10 @@ def save(
     except Conflict as e:
         return {"ok": False, "problem": f"the book refused it: {e}"}
     store.decide(con, d.id, "saved", now, entry_id, customer_id=c.id)
-    if d.called:
-        _keep_nickname(con, shop_id, c.id, d.called, now)
+    nick = None
+    if d.called and _keep_nickname(con, shop_id, c.id, d.called, now):
+        nick = d.called
+        done.append(f"Remembered: you call {c.display_name} {nick}")
     if added:
         done.append(f"Added {c.display_name} to the book, by name only")
     if d.amount_paise is None:
@@ -1189,6 +1249,7 @@ def save(
         "kind": KIND_HI[d.kind],
         "amount": amount_words(d.amount_paise),
         "sent_to_customer_phone": sent,
+        "remembered": f"he calls them {nick}" if nick else None,
         "why_not_sent": None
         if sent
         else "just added by name only, with no phone to send to; invite them from "

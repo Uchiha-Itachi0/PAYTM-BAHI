@@ -1252,6 +1252,8 @@ export interface components {
             reasons: ("weak_match" | "one_of_several" | "large" | "unusual" | "new_customer" | "correction")[];
             /** Spoken Text */
             spoken_text: string | null;
+            /** Called */
+            called?: string | null;
             /** Entry Id */
             entry_id: string | null;
             /** On Bahi */

@@ -22,7 +22,7 @@ from typing import Any
 
 from bahi import clock, voice
 from bahi.munshi import brain
-from bahi.store import customers, db
+from bahi.store import customers, db, memories
 from bahi.store import munshi as store
 from bahi.voice import sarvam
 from data.world import HOME, uid
@@ -52,6 +52,8 @@ class Scenario:
     #: Names that must not be in the munshi's first reply: with three or more
     #: fitting, it says how many and asks before reading any out.
     unread: tuple[str, ...] = ()
+    #: What he calls them, which his yes must leave remembered.
+    nickname: str | None = None
 
 
 B_WING = ("शर्मा", "आशा", "कामत", "राहुल", "रिजवान")
@@ -111,6 +113,14 @@ SCENARIOS = [
         "If the munshi says Ramesh is not in the book, say: नया ग्राहक है, चॉल सात वाले।",
     ),
     Scenario(
+        "nickname",
+        "चिंटू को दो सौ रुपये का उधार।",
+        "udhaar ₹200 for D'Souza of Chapel lane, whom you call चिंटू.",
+        ("D'Souza", "udhaar", 200),
+        "If the munshi says there is no चिंटू, or asks who that is, say: डिसूज़ा।",
+        nickname="चिंटू",
+    ),
+    Scenario(
         "correction",
         "मिश्रा जी को चार सौ लिख दो।",
         "udhaar for Mishra ji (Room 9, B wing). You first said ₹400, but it was really "
@@ -152,7 +162,7 @@ def run(s: Scenario, key: str) -> dict[str, Any]:
     with db.connect() as con:
         conversation: str | None = None
         said: list[tuple[str, str]] = []
-        line, seconds, written = s.first, [], None
+        line, seconds, written, called = s.first, [], None, None
         for _ in range(MOST_TURNS):
             said.append(("shop", line))
             if "रहने दो" in line:
@@ -173,14 +183,17 @@ def run(s: Scenario, key: str) -> dict[str, Any]:
                 d.kind,
                 (d.amount_paise or 0) // 100,
             )
+            nicks = memories.of_customer(con, d.customer_id)
+            called = next((m.body for m in nicks if m.kind == "nickname"), None)
         con.rollback()
     first = next((text for who, text in said if who == "munshi"), "")
     early = [n for n in s.unread if n in first]
     return {
         "id": s.id,
-        "ok": written == s.expect and not early,
+        "ok": written == s.expect and not early and called == s.nickname,
         "early": early,
         "written": written,
+        "called": called,
         "said": said,
         "s": seconds,
     }
@@ -197,7 +210,11 @@ def main() -> None:
     ]
     for r in results:
         early = f"  read before asking: {', '.join(r['early'])}" if r["early"] else ""
-        print(f"\n{'✓' if r['ok'] else '✗'} {r['id']}  written: {r['written']}{early}")
+        called = f"  remembered: {r['called']}" if r["called"] else ""
+        print(
+            f"\n{'✓' if r['ok'] else '✗'} {r['id']}  written: {r['written']}"
+            f"{called}{early}"
+        )
         for who, text in r["said"]:
             print(f"   {'दुकानदार' if who == 'shop' else 'मुंशी'}: {text}")
     per = Counter(r["id"] for r in results if r["ok"])

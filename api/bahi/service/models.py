@@ -316,6 +316,8 @@ class CardOut(BaseModel):
     ]
     #: What he said, shown under the amount.
     spoken_text: str | None
+    #: The name he used for them, not the book's: his yes remembers it.
+    called: str | None = None
     entry_id: UUID | None
     #: The customer has BAHI on his phone, so a saved entry reaches it.
     on_bahi: bool

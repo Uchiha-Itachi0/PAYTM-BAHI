@@ -3196,6 +3196,17 @@
             ],
             "title": "Spoken Text"
           },
+          "called": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Called"
+          },
           "entry_id": {
             "anyOf": [
               {
