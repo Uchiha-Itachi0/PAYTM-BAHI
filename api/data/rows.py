@@ -49,6 +49,7 @@ class EntryRow:
     note: str | None = None
     spoken_text: str | None = None
     corrects_entry_id: UUID | None = None
+    disputed_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)

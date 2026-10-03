@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { Chip } from "@/lib/chip";
 import { formatPaise } from "@/lib/money";
 
@@ -60,6 +62,7 @@ export function Row({
   chip,
   selected,
   onSelect,
+  href,
 }: {
   name: string;
   sub?: string;
@@ -67,6 +70,8 @@ export function Row({
   chip?: Chip;
   selected?: boolean;
   onSelect?: () => void;
+  /** The row opens something: his thread. */
+  href?: string;
 }): React.ReactElement {
   const body = (
     <>
@@ -92,6 +97,12 @@ export function Row({
   );
   const cls =
     "flex w-full items-center gap-[11px] border-b border-hair py-[11px] text-left first:pt-0.5 last:border-b-0 last:pb-0.5";
+  if (href)
+    return (
+      <Link href={href} className={cls}>
+        {body}
+      </Link>
+    );
   return onSelect ? (
     <button type="button" onClick={onSelect} aria-pressed={selected} className={cls}>
       {body}

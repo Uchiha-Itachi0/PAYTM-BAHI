@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Mic } from "@/components/icons";
-import { EntryCard } from "@/components/munshi/EntryCard";
+import { type CardEdit, EntryCard } from "@/components/munshi/EntryCard";
 import { Card } from "@/components/ui/Card";
 import { api, ApiError, apiForm } from "@/lib/api/client";
 import type { Munshi as Turn, MunshiCard } from "@/lib/api/types";
@@ -171,6 +171,27 @@ export function Munshi({
     }
   }
 
+  /** He fixed the card on screen: no model, no speech, and no countdown after:
+   *  a card he changed waits for his tap. */
+  async function edit(change: CardEdit): Promise<void> {
+    const cid = conversation.current;
+    if (!card || !cid) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      const out = await api<Turn>(
+        `/shops/${SHOP_ID}/munshi/${cid}/cards/${card.draft_id}/edit`,
+        change,
+      );
+      setCard(out.card ?? null);
+      setCounting(false);
+    } catch (e) {
+      failed(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const recording = mic.state === "recording";
   const state = busy ? "thinking" : speaking ? "speaking" : recording ? "recording" : "idle";
   const [line, fine] = LINE[state];
@@ -209,6 +230,12 @@ export function Munshi({
             busy={busy}
             onYes={() => void answer(true)}
             onNo={() => void answer(false)}
+            onEdit={edit}
+            onEditing={() => {
+              setCounting(false);
+              cancelMic();
+              hush();
+            }}
           />
         </div>
       ) : null}

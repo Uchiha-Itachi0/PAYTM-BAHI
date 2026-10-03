@@ -5,8 +5,8 @@ once and committed in names_hi.json. `make names-hi` fetches any that are
 missing (it needs SARVAM_API_KEY) and leaves the rest alone.
 
 Transliterate reads a few Marathi surnames as English words (Jadhav as जड़, More
-as मोर). Those are corrected below, by hand, so the file stays exactly what
-Sarvam returned and every correction is visible here.
+as मोर), and "Chawl" as चावल (rice). Those are corrected below, by hand, so the
+file stays exactly what Sarvam returned and every correction is visible here.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ FILE = Path(__file__).resolve().parent / "names_hi.json"
 #: Checked by hand: what a Hindi speaker writes, where transliterate was wrong.
 FIXES = {
     "Chavan": "चव्हाण",
+    **{f"Chawl {n}": f"चॉल {n}" for n in range(1, 7)},
     "Jadhav": "जाधव",
     "Kamat": "कामत",
     "Mhatre": "म्हात्रे",

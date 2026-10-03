@@ -18,9 +18,9 @@ from bahi import clock, voice
 from bahi.munshi import brain
 from bahi.service import ledger
 from bahi.service.deps import Con
-from bahi.service.models import CardOut, MunshiIn, MunshiOut
+from bahi.service.models import CardEditIn, CardOut, MunshiIn, MunshiOut
 from bahi.service.routes.voice import _read
-from bahi.store import customers
+from bahi.store import customers, entries
 from bahi.store import munshi as store
 from bahi.store.db import Conn
 from bahi.voice import said, sarvam
@@ -55,25 +55,34 @@ def _conversation(
     return cid
 
 
+def _was(con: Conn, entry_id: str | None) -> int | None:
+    e = entries.get(con, entry_id) if entry_id else None
+    return e.amount_paise if e else None
+
+
 def _out(
     con: Conn, shop_id: str, o: brain.Outcome, heard: str | None, source: str
 ) -> MunshiOut:
     card = None
-    if o.draft is not None:
-        c = customers.get(con, o.draft.customer_id)
-        assert c is not None
+    d = o.draft
+    if d is not None:
+        c = customers.get(con, d.customer_id) if d.customer_id else None
+        name = c.display_name if c else d.new_name
+        assert name is not None
         card = CardOut(
-            draft_id=UUID(o.draft.id),
-            customer_id=UUID(c.id),
-            display_name=c.display_name,
-            tag=c.tag,
-            amount_paise=o.draft.amount_paise,
-            kind=o.draft.kind,  # type: ignore[arg-type]
-            status=o.draft.status,  # type: ignore[arg-type]
-            reasons=o.draft.reasons,  # type: ignore[arg-type]
-            spoken_text=o.draft.spoken_text,
-            entry_id=UUID(o.draft.entry_id) if o.draft.entry_id else None,
-            on_bahi=c.joined == "linked",
+            draft_id=UUID(d.id),
+            customer_id=UUID(c.id) if c else None,
+            display_name=name,
+            tag=c.tag if c else d.new_tag,
+            amount_paise=d.amount_paise,
+            kind=d.kind,  # type: ignore[arg-type]
+            new=d.new_name is not None,
+            corrects_amount_paise=_was(con, d.corrects_entry_id),
+            status=d.status,  # type: ignore[arg-type]
+            reasons=d.reasons,  # type: ignore[arg-type]
+            spoken_text=d.spoken_text,
+            entry_id=UUID(d.entry_id) if d.entry_id else None,
+            on_bahi=c is not None and c.joined == "linked",
         )
     say = (
         f"/shops/{shop_id}/munshi/{o.conversation_id}/say/{o.reply_turn_id}.wav"
@@ -144,6 +153,31 @@ def card_yes(shop_id: str, conversation_id: UUID, draft_id: UUID, con: Con) -> M
 def card_no(shop_id: str, conversation_id: UUID, draft_id: UUID, con: Con) -> MunshiOut:
     """He tapped नहीं: the card goes, nothing is written."""
     return _tap(con, shop_id, conversation_id, draft_id, False)
+
+
+@router.post("/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/edit")
+def card_edit(
+    shop_id: str, conversation_id: UUID, draft_id: UUID, body: CardEditIn, con: Con
+) -> MunshiOut:
+    """He fixed the waiting card on screen: the amount, or someone new's name and
+    where they live. No model is asked, so this works with voice down too."""
+    ledger.shop(con, shop_id)
+    cid = _conversation(con, shop_id, conversation_id)
+    assert cid is not None
+    d = store.draft(con, str(draft_id))
+    if d is None or d.conversation_id != cid:
+        raise HTTPException(404, f"no card {draft_id} in this conversation")
+    o = brain.edit(
+        con,
+        shop_id,
+        cid,
+        str(draft_id),
+        clock.now(),
+        amount_rupees=body.amount_rupees,
+        new_name=body.new_name,
+        new_tag=body.new_tag,
+    )
+    return _out(con, shop_id, o, None, "tap")
 
 
 @router.get(

@@ -10,12 +10,17 @@ from psycopg import errors as pg
 
 from bahi.domain.lifecycle import IllegalMove
 from bahi.voice import VoiceOffline
-from bahi.voice.sarvam import SarvamError
+from bahi.voice.sarvam import OutOfCredits, SarvamError
 
 log = logging.getLogger(__name__)
 
 #: What the shopkeeper reads when Sarvam fails. What Sarvam said goes to the log.
 SARVAM_FAILED = "Sarvam couldn't hear that just now. Say it again, or type it."
+#: When the account is out of credits, saying it again won't help.
+NO_CREDITS = (
+    "Voice is paused: the Sarvam account has no credits left. Top it up at "
+    "dashboard.sarvam.ai. Meanwhile, enter it by hand below."
+)
 
 
 class NotFound(Exception):
@@ -45,6 +50,7 @@ def install(app: FastAPI) -> None:
     # Either way the screen offers the keypad.
     app.add_exception_handler(VoiceOffline, reply(503))
     app.add_exception_handler(SarvamError, sarvam_failed)
+    app.add_exception_handler(OutOfCredits, no_credits)
     # The database's own refusals: a second acknowledgment, a changed amount.
     app.add_exception_handler(pg.UniqueViolation, reply(409))
     app.add_exception_handler(pg.RaiseException, reply(409))
@@ -53,3 +59,8 @@ def install(app: FastAPI) -> None:
 async def sarvam_failed(_: Request, exc: Exception) -> JSONResponse:
     log.warning("Sarvam failed: %s", exc)
     return JSONResponse({"detail": SARVAM_FAILED}, status_code=502)
+
+
+async def no_credits(_: Request, exc: Exception) -> JSONResponse:
+    log.warning("Sarvam is out of credits: %s", exc)
+    return JSONResponse({"detail": NO_CREDITS}, status_code=503)

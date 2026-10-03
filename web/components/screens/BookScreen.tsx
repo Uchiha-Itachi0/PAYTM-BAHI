@@ -1,6 +1,8 @@
 "use client";
 
-import { Mic, Scan } from "@/components/icons";
+import Link from "next/link";
+
+import { Chat, Mic, Moon, Person, Plus, Scan } from "@/components/icons";
 import { MerchantShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
 import { Figure } from "@/components/ui/Figure";
@@ -9,7 +11,7 @@ import { Row } from "@/components/ui/Row";
 import { StickyPill } from "@/components/ui/StickyPill";
 import { TileGrid } from "@/components/ui/TileGrid";
 import { usePoll } from "@/lib/api/client";
-import type { BookLine, ShopBook } from "@/lib/api/types";
+import type { BookLine, Inbox, ShopBook } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { parseShop } from "@/lib/contract";
 import { formatPaise } from "@/lib/money";
@@ -20,7 +22,8 @@ import { formatPaise } from "@/lib/money";
  * Polls the API every two seconds, so a confirmation made on a customer's phone
  * shows here within one tick. Every figure was computed by the backend; this
  * screen formats and places them. The list arrives alphabetical and stays that
- * way: never sorted by who owes most.
+ * way: never sorted by who owes most. Each row opens that customer's thread, or
+ * for someone not on BAHI, their page, where their phone can be added.
  */
 
 function subline(line: BookLine): string {
@@ -31,6 +34,7 @@ function subline(line: BookLine): string {
 
 export function BookScreen(): React.ReactElement {
   const { data, error } = usePoll<ShopBook>(`/shops/${SHOP_ID}/book`);
+  const inbox = usePoll<Inbox>(`/shops/${SHOP_ID}/inbox`);
   const shop = data ? parseShop(data) : undefined;
 
   return (
@@ -49,6 +53,15 @@ export function BookScreen(): React.ReactElement {
               tiles={[
                 { label: "Add udhaar", icon: <Mic />, href: "/m/add?listen=1" },
                 { label: "Udhaar QR", icon: <Scan />, href: "/m/qr" },
+                {
+                  label: "Messages",
+                  icon: <Chat />,
+                  href: "/m/messages",
+                  badge: inbox.data?.unread,
+                },
+                { label: "Tomorrow", icon: <Moon />, href: "/m/tonight" },
+                { label: "Customers", icon: <Person />, href: "/m/customers" },
+                { label: "Add customer", icon: <Plus />, href: "/m/customers/new" },
               ]}
             />
           </Card>
@@ -60,8 +73,20 @@ export function BookScreen(): React.ReactElement {
                 sub={subline(line)}
                 amountPaise={line.balance_paise}
                 chip={line.chip}
+                href={
+                  line.joined === "linked"
+                    ? `/m/chat/${line.customer_id}`
+                    : `/m/customers/${line.customer_id}`
+                }
               />
             ))}
+            <Link
+              href="/m/customers/new"
+              className="mt-2.5 flex items-center justify-center gap-1.5 border-t border-hair pt-3 text-[13.5px] font-extrabold text-cyan-text [&_svg]:size-4"
+            >
+              <Plus />
+              Add a customer who can&apos;t scan
+            </Link>
           </Card>
         </>
       ) : error ? (

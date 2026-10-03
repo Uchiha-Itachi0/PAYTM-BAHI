@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { Bell, Person, Search } from "@/components/icons";
 
+import { Soundbox } from "./Soundbox";
+
 /**
  * The two app shells. BAHI is not a new app: these are screens inside Paytm for
  * Business (the shopkeeper) and the Paytm app (the customer), so each shell is
@@ -16,6 +18,8 @@ interface Heading {
   title: string;
   sub?: string;
   back: string;
+  /** Something on the right of the header, like Paytm's "New chat". */
+  action?: React.ReactNode;
 }
 
 function Frame({ children }: { children: React.ReactNode }): React.ReactElement {
@@ -53,13 +57,19 @@ function TopBar({
         ) : null}
       </p>
       <DemoLabel />
-      <Search className="size-[22px] text-navy-ink" />
+      {business ? (
+        <Link href="/m/customers" aria-label="Find a customer">
+          <Search className="size-[22px] text-navy-ink" />
+        </Link>
+      ) : (
+        <Search className="size-[22px] text-navy-ink" />
+      )}
       {business ? <Bell className="size-[22px] text-navy-ink" /> : null}
     </header>
   );
 }
 
-function BackHeader({ title, sub, back }: Heading): React.ReactElement {
+function BackHeader({ title, sub, back, action }: Heading): React.ReactElement {
   return (
     <header className="flex items-center gap-3 px-3.5 pb-3.5 pt-3">
       <Link href={back} aria-label="Back" className="flex-none text-[20px] leading-none">
@@ -67,9 +77,9 @@ function BackHeader({ title, sub, back }: Heading): React.ReactElement {
       </Link>
       <div className="min-w-0 flex-1">
         <h1 className="text-[19px] font-extrabold tracking-[-0.025em]">{title}</h1>
-        {sub ? <p className="mt-px text-[12px] font-medium text-sub">{sub}</p> : null}
+        {sub ? <p className="mt-px truncate text-[12px] font-medium text-sub">{sub}</p> : null}
       </div>
-      <DemoLabel />
+      {action ?? <DemoLabel />}
     </header>
   );
 }
@@ -99,6 +109,7 @@ export function MerchantShell({
 }): React.ReactElement {
   return (
     <Frame>
+      <Soundbox />
       {heading ? (
         <BackHeader {...heading} />
       ) : (

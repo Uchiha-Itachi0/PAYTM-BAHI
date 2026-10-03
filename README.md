@@ -82,6 +82,11 @@ at the top of each table in `api/migrations/001_init.sql`.
 | `threads` | one conversation per shopkeeper and customer |
 | `messages` | one bubble; no amount column |
 | `scans` | someone at the counter, waiting for three minutes |
+| `reminders` | a reminder Tonight drafted: its words, its hour, and the shopkeeper's Stop |
+
+The munshi's conversations (`conversations`, `turns`, `drafts`) are in
+`004_munshi.sql`; `reminders` and a new customer on the munshi's card are in
+`005_tonight_and_new_customers.sql`.
 
 Balances, expiry, payment gaps and tonight's decisions are computed, never
 stored. Money is `bigint` paise. We store no phone numbers.
@@ -91,6 +96,7 @@ stored. Money is `bigint` paise. We store no phone numbers.
 ```
 make db        create, migrate and seed; writes contract/shop.json
 make db-check  read the seed back: the book, the cast, everyone's usual gap
+make decide    tomorrow's reminders: who is sent one, who is held, and why
 make check     ruff, ruff format, mypy strict, pytest
 make web-check tsc, eslint, vitest: no typed amounts, no shaming words, one palette
 make api       the service on :8000
@@ -135,6 +141,62 @@ hand. Its replies are spoken in Sarvam's `bulbul:v3` voice (`shreya`).
 make munshi-eval another model plays the shopkeeper with a hidden goal; scored on
                  the entry the book would hold (live Sarvam, rolled back, costs credits)
 ```
+
+## The whole loop
+
+Both screens update every two seconds, so the shopkeeper's laptop and the
+customer's phone move together.
+
+**Chat** (`/m/messages`, `/m/chat/…`, `/c/chat/…`). One thread per shop and
+customer. People type; BAHI posts each entry's card, drawn from the entry as it
+is now, so ₹200 posted this morning shows ✓ the moment he confirms. The customer
+answers an entry in the thread: "Yes, I owe ₹200", or "That's not right" with his
+reason. The shopkeeper can Correct the amount of any entry nothing has been paid
+against, whether the customer disputed it, wrote about it in the chat, or it was
+his own slip. That records a new entry pointing at the old one; the old one is
+kept, marked corrected, and the customer confirms the new one himself. The munshi
+does the same by voice ("जाधव का पाँच सौ नहीं, तीन सौ था"), on a card that waits
+for a clear हाँ. When the customer wrote last, the
+munshi suggests two replies in his language, and nothing goes until the
+shopkeeper taps one. A message has nowhere to carry an amount: the Pay button
+comes from the customer's own entries.
+
+**The customer's own book** (`/c/udhaar`). What he owes across every shop he is
+in the book of, each entry, and Pay (also beside the message box in his chat).
+Pay opens the payment screen with what he owes that shop filled in; he can pay
+less. Then Proceed securely, then the UPI PIN (the demo takes any four digits and
+never sends them anywhere). The book takes the payment from his oldest entries
+first, each one named, and tells the shop in the thread with what is still open.
+A disputed entry waits until it is agreed, and an expired one is shown struck
+through, claiming nothing. Then Cleared, or what is still open, and what is open
+elsewhere. The demo's customer side asks whose phone it is: Sharma owes three
+shops.
+
+**Someone who can't scan** (`/m/customers/new`). A mobile number or UPI ID finds
+the Paytm account (a synthetic directory, `data/directory.py`, stands in for
+Paytm's lookup, and the number is never kept); the invite waits on their phone,
+and nothing is recorded until they accept. No phone: kept by name only. Or tell
+the munshi, "रमेश को पाँच सौ", and when nobody fits it asks whether he is new, then
+puts "Ramesh · New · Chawl 7 · ₹500" on a card that waits for a clear हाँ.
+
+**The Soundbox.** The shopkeeper's screens ask `/events` every two seconds: a
+scan chimes, a yes plays a done tone, a dispute asks its question tone, a message
+pings, and money arriving is said aloud with what is still open ("दो सौ रुपये
+मिले, तीन सौ चालीस रुपये बाकी"). It never says a name; the strip on the screen
+shows who.
+
+**Tomorrow** (`/m/tonight`, and "कल किसको याद दिलाना है?" to the munshi). Code
+decides, from each customer's own history (`domain/tonight.py`): a reminder goes
+only to someone past the longest gap they have ever had, at the hour they usually
+pay, between 9 am and 8 pm. Everyone else is held, and the reason is named: inside
+their own gap, an entry they haven't confirmed or say is wrong, too new to read,
+kept by name only, or reminded within their gap. On the seed that is 4 of 38:
+Patil at 10 am, Iqbal at 6:30 pm, Raju and Salma at 8 pm. The munshi writes each
+reminder in the customer's words; our code refuses one that names any figure but
+their balance, so it can never carry a date or another sum, and falls back to our
+own sentence. The shopkeeper can stop any of them. `POST /tonight` is the 11 pm
+run and `POST /tonight/send` sends each at its hour; n8n will call both (V8a).
+Until then, Send now posts them at once for the demo.
 
 ## Voice before the munshi
 

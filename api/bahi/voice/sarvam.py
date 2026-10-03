@@ -55,6 +55,17 @@ class SarvamError(Exception):
     """Sarvam could not be reached, or refused the request."""
 
 
+class OutOfCredits(SarvamError):
+    """Sarvam refused because the account has no credits left (402). Asking
+    again won't help; someone has to top it up."""
+
+
+def _refused(status: int, text: str) -> SarvamError:
+    if status == 402:
+        return OutOfCredits(f"Sarvam said 402: {text[:200]}")
+    return SarvamError(f"Sarvam said {status}: {text[:200]}")
+
+
 def media_type(content_type: str) -> str:
     """ "audio/webm;codecs=opus" -> "audio/webm". Chrome's recorder adds the codec,
     and Sarvam refuses any type with a parameter on it, though it takes the audio."""
@@ -130,7 +141,7 @@ def transcribe(
     except httpx.HTTPError as e:
         raise SarvamError(f"could not reach Sarvam: {e}") from e
     if r.status_code != 200:
-        raise SarvamError(f"Sarvam said {r.status_code}: {r.text[:200]}")
+        raise _refused(r.status_code, r.text)
     transcript = r.json().get("transcript")
     if not isinstance(transcript, str):
         raise SarvamError("Sarvam sent no transcript")
@@ -145,7 +156,7 @@ def _post_json(url: str, body: dict[str, Any], *, key: str, timeout: float) -> A
     except httpx.HTTPError as e:
         raise SarvamError(f"could not reach Sarvam: {e}") from e
     if r.status_code != 200:
-        raise SarvamError(f"Sarvam said {r.status_code}: {r.text[:200]}")
+        raise _refused(r.status_code, r.text)
     return r.json()
 
 

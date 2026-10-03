@@ -183,6 +183,57 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Add By Name",
+        "description": "A4. No phone: kept by name only, like the notebook.",
+        "operationId": "add_by_name_shops__shop_id__customers_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameOnlyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/shops/{shop_id}/entries": {
@@ -221,6 +272,336 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/accounts": {
+      "get": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Find Account",
+        "description": "A4. The Paytm account behind a mobile number or UPI ID, and whether he is\nalready in this book. The number is only used to look, never kept.",
+        "operationId": "find_account_shops__shop_id__accounts_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/invite": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Invite",
+        "description": "A4. Send invite: he accepts on his own phone, and nothing is recorded\nagainst him until he does.",
+        "operationId": "invite_shops__shop_id__customers_invite_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}": {
+      "get": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Get Customer",
+        "description": "One customer: whether he is on BAHI, what he owes, and his entries.",
+        "operationId": "get_customer_shops__shop_id__customers__customer_id__get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Edit Customer",
+        "description": "What the shop calls him, and where he lives or works.",
+        "operationId": "edit_customer_shops__shop_id__customers__customer_id__post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameOnlyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/invite": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Invite By Name",
+        "description": "Someone kept by name: his number or UPI ID, and an invite to his phone. His\nbook keeps working by name until he says yes; then his history is his.",
+        "operationId": "invite_by_name_shops__shop_id__customers__customer_id__invite_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/invite/cancel": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Cancel Invite",
+        "operationId": "cancel_invite_shops__shop_id__customers__customer_id__invite_cancel_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
                 }
               }
             }
@@ -827,6 +1208,51 @@
         }
       }
     },
+    "/voice/received/{paid}/{left}.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Say Received",
+        "description": "The Soundbox when money arrives: \"सौ रुपये मिले, सौ रुपये बाकी।\" Amounts\nonly: this route cannot say a name. 503 when voice is offline and it was never\nspoken; the Soundbox then plays its tone.",
+        "operationId": "say_received_voice_received__paid___left__wav_get",
+        "parameters": [
+          {
+            "name": "paid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Paid"
+            }
+          },
+          {
+            "name": "left",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Left"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/voice/ask/{question}.wav": {
       "get": {
         "tags": [
@@ -1095,6 +1521,79 @@
         }
       }
     },
+    "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/edit": {
+      "post": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "Card Edit",
+        "description": "He fixed the waiting card on screen: the amount, or someone new's name and\nwhere they live. No model is asked, so this works with voice down too.",
+        "operationId": "card_edit_shops__shop_id__munshi__conversation_id__cards__draft_id__edit_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardEditIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MunshiOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/shops/{shop_id}/munshi/{conversation_id}/say/{turn_id}.wav": {
       "get": {
         "tags": [
@@ -1150,10 +1649,1096 @@
           }
         }
       }
+    },
+    "/shops/{shop_id}/inbox": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get Inbox",
+        "description": "C1. Every thread, the latest first, with what is unread.",
+        "operationId": "get_inbox_shops__shop_id__inbox_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/inbox/read": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Read All",
+        "description": "Mark all read.",
+        "operationId": "read_all_shops__shop_id__inbox_read_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/thread": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get Shop Thread",
+        "description": "C3. His thread, as the shop sees it.",
+        "operationId": "get_shop_thread_shops__shop_id__customers__customer_id__thread_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Shop Says",
+        "description": "The shopkeeper writes to him. Words only: a message carries no amount.",
+        "operationId": "shop_says_shops__shop_id__customers__customer_id__thread_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SayIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/thread/read": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Read Shop Thread",
+        "operationId": "read_shop_thread_shops__shop_id__customers__customer_id__thread_read_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/thread/suggest": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Suggest",
+        "description": "Replies the munshi would send, in his language. Only suggestions: the\nshopkeeper taps one to send it. None when voice is off.",
+        "operationId": "suggest_shops__shop_id__customers__customer_id__thread_suggest_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepliesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/entries/{entry_id}/correct": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Correct",
+        "description": "C2. The right amount for an entry he says is wrong: a new entry, which he\nconfirms on his own phone. The disputed one is kept, and counts for nothing.",
+        "operationId": "correct_shops__shop_id__entries__entry_id__correct_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/events": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get Events",
+        "description": "V7. What happened since `after`: for the Soundbox's tones and the screen's\nnews. The first call (no `after`) only says what time it is.",
+        "operationId": "get_events_shops__shop_id__events_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/people/{person_id}/shops/{shop_id}/thread": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get My Thread",
+        "description": "C2. His thread with one shop.",
+        "operationId": "get_my_thread_people__person_id__shops__shop_id__thread_get",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          },
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/people/{person_id}/shops/{shop_id}/thread/read": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Read My Thread",
+        "operationId": "read_my_thread_people__person_id__shops__shop_id__thread_read_post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          },
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/thread": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Customer Says",
+        "description": "He writes to the shop.",
+        "operationId": "customer_says_shops__shop_id__thread_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerSayIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/people/{person_id}/udhaar": {
+      "get": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "My Udhaar",
+        "description": "B2. What he owes across every shop, each entry, and invitations waiting.",
+        "operationId": "my_udhaar_people__person_id__udhaar_get",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyUdhaarOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/pay": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Pay",
+        "description": "B3. He paid this shop by UPI: everything he owes it, or the part he chose.\nPaytm moves the money; the book records which entries it paid, oldest first,\nand the shop is told with what is still open.",
+        "operationId": "pay_shops__shop_id__pay_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaidOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/invite/accept": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Accept",
+        "description": "He said yes to the shop's invite, on his own phone.",
+        "operationId": "accept_shops__shop_id__invite_accept_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/invite/decline": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Decline",
+        "operationId": "decline_shops__shop_id__invite_decline_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/phones": {
+      "get": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Demo Phones",
+        "description": "Whose phone the customer side can be, for the demo: every customer with a\nPaytm account in any shop's book, once each, and the synthetic accounts in\nnobody's book yet. Someone kept by name only has no phone, so is not here.",
+        "operationId": "demo_phones_demo_phones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DemoPhoneOut"
+                  },
+                  "type": "array",
+                  "title": "Response Demo Phones Demo Phones Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/tonight": {
+      "get": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Get Tonight",
+        "description": "A3. Tomorrow's list, as the book stands now. Writes nothing.",
+        "operationId": "get_tonight_shops__shop_id__tonight_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TonightOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Run Tonight",
+        "description": "The 11 pm run: works out the list and has the munshi write each reminder\nnot yet written. Running it again changes nothing already written.",
+        "operationId": "run_tonight_shops__shop_id__tonight_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TonightOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/tonight/send": {
+      "post": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Send Due",
+        "description": "Sends the reminders whose hour has come. n8n calls this (V8a).",
+        "operationId": "send_due_shops__shop_id__tonight_send_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/tonight/send-now": {
+      "post": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Send Now",
+        "description": "The demo's fast-forward: every planned reminder goes now.",
+        "operationId": "send_now_shops__shop_id__tonight_send_now_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/reminders/{reminder_id}/stop": {
+      "post": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Stop",
+        "description": "The shopkeeper said no to this one.",
+        "operationId": "stop_shops__shop_id__reminders__reminder_id__stop_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "reminder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Reminder Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/reminders/{reminder_id}/resume": {
+      "post": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Resume",
+        "description": "He changed his mind: it goes after all.",
+        "operationId": "resume_shops__shop_id__reminders__reminder_id__resume_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "reminder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Reminder Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AccountOut": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "title": "Person Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "named": {
+            "type": "boolean",
+            "title": "Named"
+          },
+          "here": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "linked",
+                  "invited",
+                  "name_only"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Here"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "name",
+          "named",
+          "here"
+        ],
+        "title": "AccountOut",
+        "description": "The Paytm account behind a number or UPI ID. The number is not kept."
+      },
       "AnswerIn": {
         "properties": {
           "text": {
@@ -1352,6 +2937,51 @@
         ],
         "title": "BookOut"
       },
+      "CardEditIn": {
+        "properties": {
+          "amount_rupees": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Rupees"
+          },
+          "new_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Name"
+          },
+          "new_tag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Tag"
+          }
+        },
+        "type": "object",
+        "title": "CardEditIn",
+        "description": "He fixed the waiting card on screen. Anything left out stays as it is."
+      },
       "CardOut": {
         "properties": {
           "draft_id": {
@@ -1360,8 +2990,15 @@
             "title": "Draft Id"
           },
           "customer_id": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Customer Id"
           },
           "display_name": {
@@ -1380,16 +3017,40 @@
             "title": "Tag"
           },
           "amount_paise": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Amount Paise"
           },
           "kind": {
             "type": "string",
             "enum": [
               "udhaar",
-              "payment"
+              "payment",
+              "customer",
+              "correction"
             ],
             "title": "Kind"
+          },
+          "corrects_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Amount Paise"
+          },
+          "new": {
+            "type": "boolean",
+            "title": "New"
           },
           "status": {
             "type": "string",
@@ -1407,7 +3068,9 @@
               "enum": [
                 "weak_match",
                 "large",
-                "unusual"
+                "unusual",
+                "new_customer",
+                "correction"
               ]
             },
             "type": "array",
@@ -1449,6 +3112,7 @@
           "tag",
           "amount_paise",
           "kind",
+          "new",
           "status",
           "reasons",
           "spoken_text",
@@ -1511,6 +3175,20 @@
         ],
         "title": "ClipOut"
       },
+      "CorrectIn": {
+        "properties": {
+          "amount_paise": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Paise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount_paise"
+        ],
+        "title": "CorrectIn"
+      },
       "CounterOut": {
         "properties": {
           "shop_id": {
@@ -1532,6 +3210,90 @@
         ],
         "title": "CounterOut",
         "description": "Everyone at the counter, oldest scan first."
+      },
+      "CustomerDetailOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "joined": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "name_only"
+            ],
+            "title": "Joined"
+          },
+          "invite_pending": {
+            "type": "boolean",
+            "title": "Invite Pending"
+          },
+          "invited_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invited At"
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ThreadEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "tag",
+          "joined",
+          "invite_pending",
+          "invited_at",
+          "balance_paise",
+          "day",
+          "entries"
+        ],
+        "title": "CustomerDetailOut",
+        "description": "One customer, as the shop keeps him: what it calls him, whether he is on\nBAHI, what he owes, and his entries."
       },
       "CustomerOut": {
         "properties": {
@@ -1562,6 +3324,16 @@
               "name_only"
             ],
             "title": "Joined"
+          },
+          "invite_pending": {
+            "type": "boolean",
+            "title": "Invite Pending",
+            "default": false
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise",
+            "default": 0
           }
         },
         "type": "object",
@@ -1572,6 +3344,72 @@
           "joined"
         ],
         "title": "CustomerOut"
+      },
+      "CustomerSayIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "text"
+        ],
+        "title": "CustomerSayIn"
+      },
+      "DemoPhoneOut": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "title": "Person Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "paytm"
+            ],
+            "title": "State"
+          },
+          "shops": {
+            "type": "integer",
+            "title": "Shops"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "name",
+          "tag",
+          "state",
+          "shops"
+        ],
+        "title": "DemoPhoneOut"
       },
       "DisputeIn": {
         "properties": {
@@ -1713,6 +3551,88 @@
           "button"
         ],
         "title": "EntryOut"
+      },
+      "EventOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "scanned",
+              "confirmed",
+              "disputed",
+              "paid",
+              "message"
+            ],
+            "title": "Kind"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Paise"
+          },
+          "left_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left Paise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "at",
+          "customer_id",
+          "display_name",
+          "amount_paise"
+        ],
+        "title": "EventOut",
+        "description": "Something the shop should hear about. The Soundbox plays a tone, or says\nan amount; it never says a name. The screen shows who."
+      },
+      "EventsOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "events"
+        ],
+        "title": "EventsOut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1927,6 +3847,211 @@
         "title": "HeardOut",
         "description": "What was heard, what read it, and what our checks made of it. Nothing is\nrecorded yet."
       },
+      "InboxOut": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/InboxRowOut"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "rows",
+          "unread"
+        ],
+        "title": "InboxOut"
+      },
+      "InboxRowOut": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "joined": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "name_only"
+            ],
+            "title": "Joined"
+          },
+          "author": {
+            "type": "string",
+            "enum": [
+              "shop",
+              "customer",
+              "bahi"
+            ],
+            "title": "Author"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "entry",
+              "reminder"
+            ],
+            "title": "Kind"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThreadEntryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card": {
+            "type": "boolean",
+            "title": "Card"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          },
+          "needs_reply": {
+            "type": "boolean",
+            "title": "Needs Reply"
+          },
+          "reminder_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reminder At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "display_name",
+          "tag",
+          "joined",
+          "author",
+          "kind",
+          "body",
+          "sent_at",
+          "entry",
+          "card",
+          "unread",
+          "needs_reply",
+          "reminder_at"
+        ],
+        "title": "InboxRowOut"
+      },
+      "InviteIn": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "title": "Query"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "InviteIn"
+      },
+      "InviteOut": {
+        "properties": {
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "invited_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Invited At"
+          },
+          "kept_by_name": {
+            "type": "boolean",
+            "title": "Kept By Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop",
+          "display_name",
+          "invited_at",
+          "kept_by_name"
+        ],
+        "title": "InviteOut"
+      },
       "JoinIn": {
         "properties": {
           "person_id": {
@@ -2047,6 +4172,82 @@
         ],
         "title": "LineOut"
       },
+      "LinkIn": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "title": "Query"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "LinkIn",
+        "description": "His mobile number or UPI ID, for someone kept by name. Never stored."
+      },
+      "MessageOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "author": {
+            "type": "string",
+            "enum": [
+              "shop",
+              "customer",
+              "bahi"
+            ],
+            "title": "Author"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "entry",
+              "reminder"
+            ],
+            "title": "Kind"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThreadEntryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card": {
+            "type": "boolean",
+            "title": "Card"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "author",
+          "kind",
+          "body",
+          "sent_at",
+          "entry",
+          "card"
+        ],
+        "title": "MessageOut"
+      },
       "MunshiIn": {
         "properties": {
           "conversation_id": {
@@ -2161,6 +4362,212 @@
         ],
         "title": "MunshiOut"
       },
+      "MyShopOut": {
+        "properties": {
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise"
+          },
+          "payable_paise": {
+            "type": "integer",
+            "title": "Payable Paise"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ThreadEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop",
+          "customer_id",
+          "display_name",
+          "balance_paise",
+          "payable_paise",
+          "day",
+          "entries",
+          "unread"
+        ],
+        "title": "MyShopOut"
+      },
+      "MyUdhaarOut": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "person_id": {
+            "type": "string",
+            "title": "Person Id"
+          },
+          "total_paise": {
+            "type": "integer",
+            "title": "Total Paise"
+          },
+          "shops": {
+            "items": {
+              "$ref": "#/components/schemas/MyShopOut"
+            },
+            "type": "array",
+            "title": "Shops"
+          },
+          "invites": {
+            "items": {
+              "$ref": "#/components/schemas/InviteOut"
+            },
+            "type": "array",
+            "title": "Invites"
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "person_id",
+          "total_paise",
+          "shops",
+          "invites"
+        ],
+        "title": "MyUdhaarOut"
+      },
+      "NameOnlyIn": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "NameOnlyIn"
+      },
+      "PaidOut": {
+        "properties": {
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "left_paise": {
+            "type": "integer",
+            "title": "Left Paise"
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Paid At"
+          },
+          "method": {
+            "type": "string",
+            "const": "upi",
+            "title": "Method"
+          },
+          "settled_in": {
+            "type": "integer",
+            "title": "Settled In"
+          },
+          "entry_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entry Ids"
+          },
+          "elsewhere": {
+            "items": {
+              "$ref": "#/components/schemas/MyShopOut"
+            },
+            "type": "array",
+            "title": "Elsewhere"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop",
+          "amount_paise",
+          "left_paise",
+          "paid_at",
+          "method",
+          "settled_in",
+          "entry_ids",
+          "elsewhere"
+        ],
+        "title": "PaidOut"
+      },
+      "PayIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Paise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id"
+        ],
+        "title": "PayIn",
+        "description": "He pays this shop by UPI: what he owes it, or the part he chose."
+      },
       "PersonIn": {
         "properties": {
           "person_id": {
@@ -2245,6 +4652,103 @@
         ],
         "title": "PickedOut"
       },
+      "PlanOut": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "joined": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "name_only"
+            ],
+            "title": "Joined"
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise"
+          },
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "rhythm": {
+            "$ref": "#/components/schemas/RhythmOut"
+          },
+          "send": {
+            "type": "boolean",
+            "title": "Send"
+          },
+          "why": {
+            "type": "string",
+            "enum": [
+              "past_longest_gap",
+              "inside_gap",
+              "not_confirmed",
+              "disputed",
+              "too_new",
+              "no_phone",
+              "reminded"
+            ],
+            "title": "Why"
+          },
+          "reminded_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reminded On"
+          },
+          "reminder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "display_name",
+          "tag",
+          "joined",
+          "balance_paise",
+          "day",
+          "rhythm",
+          "send",
+          "why",
+          "reminded_on",
+          "reminder"
+        ],
+        "title": "PlanOut"
+      },
       "ReadbackOut": {
         "properties": {
           "roman": {
@@ -2327,6 +4831,66 @@
         "title": "RecordIn",
         "description": "An udhaar entry. Either a scan (he is at the counter) or a customer."
       },
+      "ReminderOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "send_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Send At"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "written": {
+            "type": "string",
+            "enum": [
+              "munshi",
+              "words"
+            ],
+            "title": "Written"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "stopped",
+              "sent"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "send_at",
+          "body",
+          "written",
+          "status"
+        ],
+        "title": "ReminderOut"
+      },
+      "RepliesOut": {
+        "properties": {
+          "replies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Replies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "replies"
+        ],
+        "title": "RepliesOut",
+        "description": "Replies the munshi suggests. Only offered: nothing is sent until he taps."
+      },
       "RhythmOut": {
         "properties": {
           "n": {
@@ -2377,6 +4941,21 @@
         ],
         "title": "RhythmOut"
       },
+      "SayIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "SayIn"
+      },
       "ScanOut": {
         "properties": {
           "scan_id": {
@@ -2411,6 +4990,19 @@
           "entry"
         ],
         "title": "ScanOut"
+      },
+      "SentOut": {
+        "properties": {
+          "sent": {
+            "type": "integer",
+            "title": "Sent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent"
+        ],
+        "title": "SentOut"
       },
       "ShopBookOut": {
         "properties": {
@@ -2468,6 +5060,294 @@
           "locality"
         ],
         "title": "ShopOut"
+      },
+      "ThreadEntryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "paid_paise": {
+            "type": "integer",
+            "title": "Paid Paise"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "recorded",
+              "confirmed",
+              "disputed",
+              "corrected",
+              "settled"
+            ],
+            "title": "Status"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "corrects_entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Entry Id"
+          },
+          "corrects_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Amount Paise"
+          },
+          "disputed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed At"
+          },
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "last_paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Paid At"
+          },
+          "last_method": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "upi",
+                  "cash"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Method"
+          },
+          "expired": {
+            "type": "boolean",
+            "title": "Expired"
+          },
+          "button": {
+            "type": "string",
+            "title": "Button"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "amount_paise",
+          "paid_paise",
+          "status",
+          "recorded_at",
+          "note",
+          "corrects_entry_id",
+          "corrects_amount_paise",
+          "disputed_at",
+          "acknowledged_at",
+          "last_paid_at",
+          "last_method",
+          "expired",
+          "button"
+        ],
+        "title": "ThreadEntryOut",
+        "description": "An entry, as its card in a thread shows it: now, not when it was posted."
+      },
+      "ThreadOut": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "joined": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "name_only"
+            ],
+            "title": "Joined"
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageOut"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "reminder_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reminder At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "thread_id",
+          "customer_id",
+          "shop",
+          "display_name",
+          "tag",
+          "joined",
+          "balance_paise",
+          "day",
+          "messages",
+          "reminder_at"
+        ],
+        "title": "ThreadOut",
+        "description": "One shop and one customer, from either side."
+      },
+      "TonightOut": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "for_day": {
+            "type": "string",
+            "format": "date",
+            "title": "For Day"
+          },
+          "worked_out_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Worked Out At"
+          },
+          "owing_count": {
+            "type": "integer",
+            "title": "Owing Count"
+          },
+          "sending_count": {
+            "type": "integer",
+            "title": "Sending Count"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanOut"
+            },
+            "type": "array",
+            "title": "Plans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "for_day",
+          "worked_out_at",
+          "owing_count",
+          "sending_count",
+          "plans"
+        ],
+        "title": "TonightOut"
       },
       "ValidationError": {
         "properties": {
