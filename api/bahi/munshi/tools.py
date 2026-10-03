@@ -48,6 +48,7 @@ from bahi.domain.find import Found, find
 from bahi.domain.money import rupees
 from bahi.domain.who import Person
 from bahi.memory import cognee_client
+from bahi.service import chat as chat_service
 from bahi.service import ledger, pattern
 from bahi.service import memory as keeping
 from bahi.service import tonight as tonight_service
@@ -206,6 +207,76 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "propose_removal",
+            "description": "Take back an udhaar entry written by mistake: the wrong "
+            "person, or nothing was taken (गलती से लिखा, हटा दो, ये उसका नहीं है, "
+            "added me by mistake). Shows a card for his yes; with it the customer "
+            "owes nothing for that entry, and their phone shows it was taken back. "
+            "Never write a जमा to clear a mistake: जमा is only money that came in. "
+            "Nothing is written yet.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {"type": "string"},
+                    "amount_rupees": {
+                        "type": "number",
+                        "description": "The amount of the entry to take back, if he "
+                        "said it. Leave out if he didn't.",
+                    },
+                },
+                "required": ["customer_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_details",
+            "description": "Change what the book calls a customer, or how it "
+            "describes them (where they live or work), when he says so: 'अनुभव "
+            "शुक्ला actually C wing में रहते हैं', 'Raju का नाम Raju Gaikwad लिखो'. "
+            "Shows a card for his yes. Their Paytm name and number never change.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {"type": "string"},
+                    "name": {
+                        "type": "string",
+                        "description": "The new name in English letters, only if "
+                        "he gave one.",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "The new description, written the way the "
+                        "book writes them ('Room 4, C wing'), only if he gave one.",
+                    },
+                },
+                "required": ["customer_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_message",
+            "description": "Send a customer a message from the shop, when he asks you "
+            "to tell, ask or remind them something (उसको बोल दो, message भेजो, याद "
+            "दिला दो). Write it as the shopkeeper speaking: short, polite, in the "
+            "customer's language, no amount unless he said one. Shows the message on "
+            "a card; it goes only with his yes. Only for customers on BAHI.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {"type": "string"},
+                    "text": {"type": "string", "description": "The message."},
+                },
+                "required": ["customer_id", "text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "propose_new_customer",
             "description": "Put someone who is NOT in the book yet on the card, to add "
             "them by name only (and, with an amount, their first udhaar). Only after "
@@ -243,8 +314,9 @@ TOOLS: list[dict[str, Any]] = [
             "name": "remember",
             "description": "Keep a note the shopkeeper tells you about a customer: "
             "when they get paid, how they pay, anything he asks you to remember. Not "
-            "for money: udhaar and जमा are entries. If he asks BAHI to wait before "
-            "reminding them, give until. The customer is never shown it.",
+            "for money: udhaar and जमा are entries. Not for something to tell them: "
+            "that is propose_message. If he asks BAHI to wait before reminding them, "
+            "give until. The customer is never shown it.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -369,6 +441,14 @@ class Desk:
     def open(cls, con: Conn, shop_id: str, conversation_id: str, now: datetime) -> Desk:
         turns = store.turns(con, conversation_id)
         his = [t for t in turns if t.role == "user"]
+        # The card says what he said for it: his words since the last card was
+        # answered, not the whole conversation, and never "(he tapped yes)".
+        since = store.last_decided_at(con, conversation_id)
+        words = [
+            str(t.message.get("content") or "").strip()
+            for t in his
+            if (since is None or t.created_at > since)
+        ]
         desk = cls(
             con,
             shop_id,
@@ -376,9 +456,7 @@ class Desk:
             now,
             his_seq=his[-1].seq if his else -1,
             his_words=" · ".join(
-                str(t.message.get("content") or "")
-                for t in his
-                if t.message.get("content")
+                w for w in words if w and not (w.startswith("(") and w.endswith(")"))
             )[-400:],
         )
         desk.refs = {
@@ -441,6 +519,9 @@ class Desk:
             "customer_card": self.customer_card,
             "propose_entry": self.propose_entry,
             "propose_correction": self.propose_correction,
+            "propose_removal": self.propose_removal,
+            "propose_details": self.propose_details,
+            "propose_message": self.propose_message,
             "propose_new_customer": self.propose_new_customer,
             "tonight": self.tonight,
             "remember": self.remember,
@@ -461,14 +542,14 @@ class Desk:
         c = self.refs[cid]
         return c.name_hi or c.display_name, c.tag_hi or c.tag or ""
 
-    def _owes(self, cid: str) -> tuple[int, int | None]:
-        """(what he owes in paise, days since he last paid), from the book's own
-        arithmetic."""
-        for c in book_store.load(self.con, self.shop_id):
-            if c.id == cid:
-                ln = book_domain.line(c, self.now.date())
-                return (ln.balance_paise, ln.day) if ln else (0, None)
-        return 0, None
+    def _owes(self, cid: str) -> tuple[book_domain.Standing, int | None]:
+        """(what he owes, split by what he said about it; days since he last
+        paid), from the book's own arithmetic."""
+        today = self.now.date()
+        for c in book_store.load(self.con, self.shop_id, cid):
+            ln = book_domain.line(c, today)
+            return book_domain.standing(c, today), (ln.day if ln else None)
+        return book_domain.Standing(0, 0, 0), None
 
     def _counter_ids(self) -> set[str]:
         return {w.customer_id for w in scans.waiting(self.con, self.shop_id, self.now)}
@@ -611,14 +692,33 @@ class Desk:
         if cid is None:
             return {"error": "no such customer here; use an id from find_customer"}
         said, about = self._say(cid)
-        owed, day = self._owes(cid)
+        st, day = self._owes(cid)
         self.done.append(f"Opened {self.refs[cid].display_name}'s card")
         out: dict[str, Any] = {
             "name": said,
             "about": about,
-            "owes": amount_words(owed) if owed else "कुछ बाकी नहीं",
+            "owes": amount_words(st.accepted_paise)
+            if st.accepted_paise
+            else "कुछ बाकी नहीं",
             "days_since_last_paid": day,
         }
+        if st.waiting_paise:
+            out["waiting_for_their_yes"] = (
+                f"{amount_words(st.waiting_paise)}: written and on their phone, not "
+                "yet agreed, so not in what they owe"
+            )
+        if st.disputed_paise:
+            said_as = {
+                e.disputed_as
+                for e in entries.of_customer(self.con, cid)
+                if e.status == "disputed"
+            }
+            why = "it isn't theirs" if said_as == {"not_mine"} else "it is wrong"
+            out["they_said_wrong"] = (
+                f"{amount_words(st.disputed_paise)}: they said {why}, so it is not in "
+                "what they owe. Take it back (propose_removal) or correct it "
+                "(propose_correction), as he says."
+            )
         kept = memories.of_customer(self.con, cid)
         told = sum(1 for m in kept if m.kind == "said")
         p = pattern.of_customer(self.con, self.shop_id, cid, self.now.date())
@@ -672,12 +772,20 @@ class Desk:
                 f"'{earlier}': his yes to the card remembers it. If he meant someone "
                 "else by it, propose again with called ''.",
             }
-        owed, _ = self._owes(cid)
-        if kind_en == "payment" and paise > owed:
-            words = amount_words(owed) if owed else "कुछ नहीं"
+        payable = ledger.left_to_pay(self.con, cid, self.now.date())
+        if kind_en == "payment" and paise > payable:
+            st, _ = self._owes(cid)
+            words = amount_words(payable) if payable else "कुछ नहीं"
+            problem = f"only {words} can be paid against now"
+            if st.disputed_paise:
+                problem += (
+                    f"; {amount_words(st.disputed_paise)} they said is wrong, and "
+                    "can't be paid until it is corrected or taken back"
+                )
             return {
                 "ok": False,
-                "problem": f"he owes only {words}; tell the shopkeeper and ask",
+                "problem": problem + ". Tell him plainly, and ask what he meant. "
+                "Never offer a different amount yourself.",
             }
         reasons = []
         if self.seen.get(cid):
@@ -731,6 +839,12 @@ class Desk:
         cid = self.resolve(customer_id)
         if cid is None or cid not in self.seen:
             return {"ok": False, "problem": "look this customer up with find_customer"}
+        if _zero(right_amount_rupees):
+            return {
+                "ok": False,
+                "problem": "nothing was owed: that is taking the entry back, not a "
+                "correction. Use propose_removal.",
+            }
         right, problem = _paise(right_amount_rupees)
         if problem is not None:
             return {"ok": False, "problem": problem}
@@ -806,6 +920,171 @@ class Desk:
             "needs_clear_yes": True,
             "next": "The correction is waiting for his yes. Read back the wrong and "
             "the right amount in one short sentence and ask पक्का?",
+        }
+
+    def _open_entries(self, cid: str) -> list[entries.EntryRef]:
+        today = self.now.date()
+        return [
+            e
+            for e in reversed(entries.of_customer(self.con, cid))
+            if e.status in ("recorded", "confirmed", "disputed")
+            and not limitation.expired(
+                e.recorded_at.date(),
+                e.acknowledged_at.date() if e.acknowledged_at else None,
+                today,
+            )
+        ]
+
+    def propose_removal(
+        self, customer_id: str, amount_rupees: float | None = None
+    ) -> dict[str, Any]:
+        cid = self.resolve(customer_id)
+        if cid is None or cid not in self.seen:
+            return {"ok": False, "problem": "look this customer up with find_customer"}
+        open_ = self._open_entries(cid)
+        removable = [e for e in open_ if e.paid_paise == 0]
+
+        def listed() -> list[dict[str, Any]]:
+            return [
+                {"amount": amount_words(e.amount_paise), "on": f"{e.recorded_at:%d %b}"}
+                for e in open_[:LISTED]
+            ]
+
+        if amount_rupees is not None and not _zero(amount_rupees):
+            paise, problem = _paise(amount_rupees)
+            if problem is not None:
+                return {"ok": False, "problem": problem}
+            hits = [e for e in removable if e.amount_paise == paise]
+            if not hits:
+                paid = [e for e in open_ if e.amount_paise == paise]
+                return {
+                    "ok": False,
+                    "problem": "part of that entry is already paid, so it can't be "
+                    "taken back; ask whether to correct it instead"
+                    if paid
+                    else f"no open entry of {amount_words(paise)} for this customer; "
+                    "tell him which entries there are and ask which one",
+                    "open_entries": listed(),
+                }
+            e = hits[0]
+        elif len(removable) == 1:
+            e = removable[0]
+        else:
+            return {
+                "ok": False,
+                "problem": "nothing open to take back for this customer"
+                if not removable
+                else "more than one entry is open: ask which amount to take back",
+                "open_entries": listed(),
+            }
+        store.show(
+            self.con,
+            self.conversation_id,
+            cid,
+            "removal",
+            e.amount_paise,
+            self.his_words or None,
+            ["removal"],
+            self.his_seq,
+            self.now,
+            corrects=e.id,
+        )
+        said, about = self._say(cid)
+        self.done.append(
+            f"Showed a card: take back {self.refs[cid].display_name} "
+            f"₹{e.amount_paise // 100}"
+        )
+        return {
+            "ok": True,
+            "card": f"{said}, {about}: {amount_words(e.amount_paise)} उधार वापस लेना",
+            "needs_clear_yes": True,
+            "next": "The card is waiting for his yes. Say in one short sentence which "
+            "entry comes off, and ask पक्का?",
+        }
+
+    def propose_details(
+        self,
+        customer_id: str,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        cid = self.resolve(customer_id)
+        if cid is None or cid not in self.seen:
+            return {"ok": False, "problem": "look this customer up with find_customer"}
+        c = self.refs[cid]
+        new_name = (name or "").strip() or None
+        new_tag = (description or "").strip() or None
+        if new_name == c.display_name:
+            new_name = None
+        if new_tag == c.tag:
+            new_tag = None
+        if new_name is None and new_tag is None:
+            return {"ok": False, "problem": "nothing to change: ask what to change"}
+        if (new_name and len(new_name) > 40) or (new_tag and len(new_tag) > 60):
+            return {"ok": False, "problem": "that is too long; ask for a shorter one"}
+        store.show(
+            self.con,
+            self.conversation_id,
+            cid,
+            "details",
+            None,
+            self.his_words or None,
+            ["details"],
+            self.his_seq,
+            self.now,
+            new_name=new_name,
+            new_tag=new_tag,
+        )
+        said, about = self._say(cid)
+        change = ", ".join(
+            x
+            for x in (
+                f"name {c.display_name} → {new_name}" if new_name else "",
+                f"description {c.tag or '—'} → {new_tag}" if new_tag else "",
+            )
+            if x
+        )
+        self.done.append(f"Showed a card: {c.display_name}: {change}")
+        return {
+            "ok": True,
+            "card": f"{said}: {change}",
+            "next": "The change is waiting for his yes. Say it in one short sentence "
+            "and ask पक्का?",
+        }
+
+    def propose_message(self, customer_id: str, text: str) -> dict[str, Any]:
+        cid = self.resolve(customer_id)
+        if cid is None or cid not in self.seen:
+            return {"ok": False, "problem": "look this customer up with find_customer"}
+        c = self.refs[cid]
+        if c.joined != "linked":
+            return {
+                "ok": False,
+                "problem": "they aren't on BAHI, so there is no phone to send to; "
+                "say so plainly",
+            }
+        text = (text or "").strip()
+        if not text or len(text) > 500:
+            return {"ok": False, "problem": "write the message, short"}
+        store.show(
+            self.con,
+            self.conversation_id,
+            cid,
+            "message",
+            None,
+            self.his_words or None,
+            ["message"],
+            self.his_seq,
+            self.now,
+            message=text,
+        )
+        said, _ = self._say(cid)
+        self.done.append(f"Showed a message for {c.display_name}")
+        return {
+            "ok": True,
+            "card": f"{said} को: {text}",
+            "next": "The message is on his screen, not sent. Ask in one short "
+            "sentence: भेज दूँ?",
         }
 
     def propose_new_customer(
@@ -1165,6 +1444,11 @@ def save(
     d = store.claim(con, draft_id)
     if d is None:
         return {"ok": False, "problem": "that card is no longer waiting"}
+    if d.kind in ("removal", "details", "message"):
+        try:
+            return _save_other(con, shop_id, d, now, done)
+        except (Conflict, NotFound) as err:
+            return _refused(con, d, now, done, err)
     added = False
     try:
         if d.customer_id is None:
@@ -1223,8 +1507,8 @@ def save(
         elif d.kind == "payment":
             assert d.amount_paise is not None
             ledger.pay_cash(con, c.id, d.amount_paise, now)
-    except Conflict as e:
-        return {"ok": False, "problem": f"the book refused it: {e}"}
+    except Conflict as err:
+        return _refused(con, d, now, done, err)
     store.decide(con, d.id, "saved", now, entry_id, customer_id=c.id)
     nick = None
     if d.called and _keep_nickname(con, shop_id, c.id, d.called, now):
@@ -1259,6 +1543,72 @@ def save(
     }
 
 
+def _refused(
+    con: Conn, d: store.Draft, now: datetime, done: list[str], e: Exception
+) -> dict[str, Any]:
+    """The book said no: the card comes off his screen, so nothing waits on a
+    yes that can't be written."""
+    store.decide(con, d.id, "cancelled", now)
+    done.append("Not written: the book said no")
+    return {
+        "ok": False,
+        "problem": str(e),
+        "card": "taken off his screen; nothing was written",
+        "next": "Tell him why in a few plain words (never 'system' or 'the book "
+        "refused'), and ask what he wants. Never offer a different amount, or a "
+        "payment, to make it fit.",
+    }
+
+
+def _save_other(
+    con: Conn, shop_id: str, d: store.Draft, now: datetime, done: list[str]
+) -> dict[str, Any]:
+    """A card that isn't money in or out: taking an entry back, his name or
+    description, or a message to him."""
+    assert d.customer_id is not None
+    c = ledger.customer_here(con, shop_id, d.customer_id)
+    name = c.name_hi or c.display_name
+    if d.kind == "removal":
+        assert d.corrects_entry_id is not None
+        e = ledger.remove(con, shop_id, d.corrects_entry_id, now)
+        store.decide(con, d.id, "saved", now, customer_id=c.id)
+        done.append(f"Took back: {c.display_name} ₹{e.amount_paise // 100}")
+        sent = c.joined == "linked"
+        return {
+            "saved": True,
+            "taken_back": amount_words(e.amount_paise),
+            "customer": name,
+            "next": "Say it is taken back and they owe nothing for it"
+            + (", and that their phone shows it." if sent else "."),
+        }
+    if d.kind == "details":
+        new = ledger.rename(
+            con,
+            shop_id,
+            c.id,
+            d.new_name or c.display_name,
+            d.new_tag if d.new_tag is not None else c.tag,
+            voice.hindi,
+        )
+        store.decide(con, d.id, "saved", now, customer_id=c.id)
+        done.append(f"Changed: {new.display_name}" + (f", {new.tag}" if new.tag else ""))
+        return {
+            "saved": True,
+            "now_called": new.name_hi or new.display_name,
+            "described": new.tag_hi or new.tag,
+            "next": "Say in one short sentence that it is changed.",
+        }
+    assert d.kind == "message" and d.message is not None
+    chat_service.shop_says(con, shop_id, c.id, d.message, now)
+    store.decide(con, d.id, "saved", now, customer_id=c.id)
+    done.append(f"Sent to {c.display_name}: {d.message[:40]}")
+    return {
+        "saved": True,
+        "sent_to": name,
+        "next": "Say in one short sentence that it is sent to their phone.",
+    }
+
+
 def _paise(amount_rupees: Any) -> tuple[int, str | None]:
     """Whole rupees above zero and within what a conversation may take, as paise,
     or the problem to tell the munshi."""
@@ -1272,6 +1622,13 @@ def _paise(amount_rupees: Any) -> tuple[int, str | None]:
     if paise > MOST_PAISE:
         return 0, "that is too large to take by voice; ask him to check"
     return paise, None
+
+
+def _zero(n: Any) -> bool:
+    try:
+        return float(n) == 0
+    except (TypeError, ValueError):
+        return False
 
 
 def _whole(n: Any) -> int:
@@ -1298,6 +1655,8 @@ def edit_card(
     d = store.draft(con, draft_id)
     if d is None or d.status != "shown":
         return None, "that card is no longer waiting"
+    if d.kind in ("removal", "details", "message"):
+        return None, "say no to this card, and tell the munshi what to change"
     kind, paise = d.kind, d.amount_paise
     if amount_rupees is not None:
         paise, problem = _paise(amount_rupees)
@@ -1306,9 +1665,9 @@ def edit_card(
         if kind == "customer":
             kind = "udhaar"  # an amount on an add-only card makes it their first udhaar
         if kind == "payment" and d.customer_id:
-            owed = ledger.balance(con, shop_id, d.customer_id, now.date())
+            owed = ledger.left_to_pay(con, d.customer_id, now.date())
             if paise > owed:
-                return None, f"they owe only {rupees(owed)}"
+                return None, f"only {rupees(owed)} can be paid against now"
     name, tag = d.new_name, d.new_tag
     if d.new_name is not None:
         name = (new_name if new_name is not None else d.new_name).strip()

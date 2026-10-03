@@ -68,16 +68,22 @@ def _out(
     if d is not None:
         c = customers.get(con, d.customer_id) if d.customer_id else None
         name = c.display_name if c else d.new_name
+        details = d.kind == "details"
         assert name is not None
         card = CardOut(
             draft_id=UUID(d.id),
             customer_id=UUID(c.id) if c else None,
             display_name=name,
             tag=c.tag if c else d.new_tag,
+            change_name=d.new_name if details else None,
+            change_tag=d.new_tag if details else None,
+            message=d.message,
             amount_paise=d.amount_paise,
             kind=d.kind,  # type: ignore[arg-type]
-            new=d.new_name is not None,
-            corrects_amount_paise=_was(con, d.corrects_entry_id),
+            new=d.new_name is not None and not details,
+            corrects_amount_paise=_was(con, d.corrects_entry_id)
+            if d.kind == "correction"
+            else None,
             status=d.status,  # type: ignore[arg-type]
             reasons=d.reasons,  # type: ignore[arg-type]
             spoken_text=d.spoken_text,

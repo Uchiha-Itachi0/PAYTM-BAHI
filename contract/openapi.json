@@ -960,7 +960,7 @@
           "customer"
         ],
         "summary": "Dispute",
-        "description": "B1. \"That's not right\".",
+        "description": "B1. \"Not mine\" or \"Wrong amount\".",
         "operationId": "dispute_entries__entry_id__dispute_post",
         "parameters": [
           {
@@ -2107,6 +2107,58 @@
         }
       }
     },
+    "/shops/{shop_id}/entries/{entry_id}/remove": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Remove",
+        "description": "C2. Take back an entry written by mistake: the wrong person, or nothing was\ntaken. Kept, marked removed, claiming nothing; his phone shows it.",
+        "operationId": "remove_shops__shop_id__entries__entry_id__remove_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/shops/{shop_id}/events": {
       "get": {
         "tags": [
@@ -3027,6 +3079,16 @@
             "type": "integer",
             "title": "Outstanding Paise"
           },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/LineOut"
@@ -3141,7 +3203,10 @@
               "udhaar",
               "payment",
               "customer",
-              "correction"
+              "correction",
+              "removal",
+              "details",
+              "message"
             ],
             "title": "Kind"
           },
@@ -3179,7 +3244,10 @@
                 "large",
                 "unusual",
                 "new_customer",
-                "correction"
+                "correction",
+                "removal",
+                "details",
+                "message"
               ]
             },
             "type": "array",
@@ -3206,6 +3274,39 @@
               }
             ],
             "title": "Called"
+          },
+          "change_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Name"
+          },
+          "change_tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Tag"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
           },
           "entry_id": {
             "anyOf": [
@@ -3380,6 +3481,16 @@
           "balance_paise": {
             "type": "integer",
             "title": "Balance Paise"
+          },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
           },
           "day": {
             "anyOf": [
@@ -3566,6 +3677,15 @@
               }
             ],
             "title": "Reason"
+          },
+          "disputed_as": {
+            "type": "string",
+            "enum": [
+              "not_mine",
+              "wrong_amount"
+            ],
+            "title": "Disputed As",
+            "default": "wrong_amount"
           }
         },
         "type": "object",
@@ -3611,7 +3731,8 @@
               "confirmed",
               "disputed",
               "corrected",
-              "settled"
+              "settled",
+              "removed"
             ],
             "title": "Status"
           },
@@ -4278,6 +4399,16 @@
             "type": "integer",
             "title": "Balance Paise"
           },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
+          },
           "day": {
             "type": "integer",
             "title": "Day"
@@ -4613,6 +4744,11 @@
           "balance_paise": {
             "type": "integer",
             "title": "Balance Paise"
+          },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
           },
           "payable_paise": {
             "type": "integer",
@@ -5483,7 +5619,8 @@
               "confirmed",
               "disputed",
               "corrected",
-              "settled"
+              "settled",
+              "removed"
             ],
             "title": "Status"
           },
@@ -5536,6 +5673,33 @@
               }
             ],
             "title": "Disputed At"
+          },
+          "disputed_as": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "not_mine",
+                  "wrong_amount"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed As"
+          },
+          "removed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed At"
           },
           "acknowledged_at": {
             "anyOf": [
@@ -5657,6 +5821,16 @@
           "balance_paise": {
             "type": "integer",
             "title": "Balance Paise"
+          },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
           },
           "day": {
             "anyOf": [

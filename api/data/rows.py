@@ -50,6 +50,7 @@ class EntryRow:
     spoken_text: str | None = None
     corrects_entry_id: UUID | None = None
     disputed_at: datetime | None = None
+    disputed_as: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,13 +92,24 @@ class MessageRow:
     read_for_memory_at: datetime | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class PaytmAccountRow:
+    """Paytm's own record of a person (simulated; schema paytm, not BAHI's)."""
+
+    person_id: UUID
+    name: str
+    phone: str
+    upi: str
+
+
 def insert(cur: psycopg.Cursor[Any], table: str, rows: Sequence[Any]) -> int:
-    """INSERT every row, matching each field to the column of the same name."""
+    """INSERT every row, matching each field to the column of the same name.
+    `table` may name its schema: "paytm.accounts"."""
     if not rows:
         return 0
     names = [f.name for f in fields(rows[0])]
     query = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
-        sql.Identifier(table),
+        sql.Identifier(*table.split(".")),
         sql.SQL(", ").join(map(sql.Identifier, names)),
         sql.SQL(", ").join(map(sql.Placeholder, names)),
     )

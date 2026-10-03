@@ -96,6 +96,13 @@ def correct(shop_id: str, entry_id: str, body: CorrectIn, con: Con) -> EntryOut:
     return views.entry_out(e)
 
 
+@router.post("/shops/{shop_id}/entries/{entry_id}/remove")
+def remove(shop_id: str, entry_id: str, con: Con) -> EntryOut:
+    """C2. Take back an entry written by mistake: the wrong person, or nothing was
+    taken. Kept, marked removed, claiming nothing; his phone shows it."""
+    return views.entry_out(ledger.remove(con, shop_id, entry_id, clock.now()))
+
+
 @router.get("/shops/{shop_id}/events")
 def get_events(shop_id: str, con: Con, after: datetime | None = None) -> EventsOut:
     """V7. What happened since `after`: for the Soundbox's tones and the screen's

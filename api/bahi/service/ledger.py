@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from bahi import voice
+from bahi import paytm, voice
 from bahi.domain import book as book_domain
 from bahi.domain import wording
 from bahi.domain.book import OPEN
@@ -159,8 +159,28 @@ def correct(
     return new
 
 
+def remove(con: Conn, shop_id: str, entry_id: str, now: datetime) -> EntryRef:
+    """Take back an entry that should never have been written: the wrong person,
+    or nothing was taken. Kept, marked removed, counting for nothing; his phone
+    shows it was taken back. Refused once anything is paid against it (the
+    payment names it), like a correction."""
+    e = entry(con, entry_id)
+    if e.shop_id != shop_id:
+        raise NotFound(f"no entry {entry_id} at this shop")
+    if e.paid_paise > 0:
+        raise Conflict(
+            "part of this entry is already paid, so it can't be taken back; "
+            "record a correction for the rest instead"
+        )
+    status = move(e.status, "remove")
+    entries.remove(con, e.id, now)
+    assert status == "removed"
+    _card(con, e, wording.removed(e.shop_name, e.amount_paise), now)
+    return entry(con, e.id)
+
+
 def balance(con: Conn, shop_id: str, customer_id: str, today: date) -> int:
-    """What he owes this shop, as the book counts it."""
+    """What he has agreed he owes this shop, as the book counts it."""
     found = book_store.load(con, shop_id, customer_id)
     ln = book_domain.line(found[0], today) if found else None
     return ln.balance_paise if ln else 0
@@ -271,9 +291,18 @@ def pay_cash(con: Conn, customer_id: str, amount_paise: int, now: datetime) -> l
         paid.append(e.id)
     if paid:
         last = entry(con, paid[-1])
-        left = balance(con, last.shop_id, customer_id, today)
-        _card(con, last, wording.paid(amount_paise, "cash", left), now)
+        _card(
+            con,
+            last,
+            wording.paid(amount_paise, "cash", left_to_pay(con, customer_id, today)),
+            now,
+        )
     return paid
+
+
+def left_to_pay(con: Conn, customer_id: str, today: date) -> int:
+    """What he can still pay: agreed or waiting for his yes, not disputed."""
+    return sum(e.amount_paise - e.paid_paise for e in payable(con, customer_id, today))
 
 
 # ── the customer ─────────────────────────────────────────────────────────────
@@ -316,6 +345,9 @@ def join(
     if c is None:
         if not name:
             raise Conflict("first visit to this shop: tell us the name to use")
+        # His Paytm account, made on his first scan anywhere; after that the name
+        # on it, its number and its UPI ID never change.
+        paytm.sign_up(con, pid, name, now)
         customers.add(
             con,
             shop_id,
@@ -360,13 +392,19 @@ def confirm(con: Conn, entry_id: str, person_id: UUID, now: datetime) -> EntryRe
 
 
 def dispute(
-    con: Conn, entry_id: str, person_id: UUID, reason: str | None, now: datetime
+    con: Conn,
+    entry_id: str,
+    person_id: UUID,
+    reason: str | None,
+    now: datetime,
+    disputed_as: str = "wrong_amount",
 ) -> EntryRef:
-    """He tapped "That's not right". The entry stays, marked disputed."""
+    """He tapped "Not mine" or "Wrong amount". The entry stays, marked disputed,
+    with which he said; the shop removes it or corrects it."""
     e = mine(con, entry_id, person_id)
     move(e.status, "dispute")  # refuses anything but a recorded entry
-    entries.dispute(con, e.id, now)
-    _card(con, e, wording.disputed(e.display_name, e.amount_paise), now)
+    entries.dispute(con, e.id, now, disputed_as)
+    _card(con, e, wording.disputed(e.display_name, e.amount_paise, disputed_as), now)
     if reason and reason.strip():
         # His reason is his own words in the thread, just after BAHI's line.
         threads.post(

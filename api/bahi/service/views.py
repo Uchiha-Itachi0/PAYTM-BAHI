@@ -41,6 +41,8 @@ def line_out(ln: Line) -> LineOut:
         tag=ln.tag,
         joined=ln.joined,
         balance_paise=ln.balance_paise,
+        waiting_paise=ln.waiting_paise,
+        disputed_paise=ln.disputed_paise,
         day=ln.day,
         chip=ln.chip,
         rhythm=RhythmOut(
@@ -58,6 +60,8 @@ def book_out(shop: Shop, b: Book) -> ShopBookOut:
             invited_count=b.invited_count,
             owing_count=b.owing_count,
             outstanding_paise=b.outstanding_paise,
+            waiting_paise=b.waiting_paise,
+            disputed_paise=b.disputed_paise,
             lines=[line_out(ln) for ln in b.lines],
         ),
     )

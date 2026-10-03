@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from typing import Any
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +16,7 @@ from fastapi.testclient import TestClient
 from bahi import clock
 from bahi.service import app
 from bahi.service.deps import connection
+from bahi.store import customers
 from data import db
 from data.world import HOME, uid
 
@@ -151,7 +153,7 @@ def test_that_is_not_right_then_a_correction_he_confirms(api: TestClient) -> Non
 
     t = shop_thread(api, ANIL)
     line, reason = t["messages"][-2:]
-    assert line["card"] is False and "is not right" in line["body"]
+    assert line["card"] is False and "is not the right amount" in line["body"]
     assert (reason["author"], reason["body"]) == ("customer", "Sirf 100 ka liya tha.")
     assert api.get(f"/shops/{SHOP}/inbox").json()["rows"][0]["needs_reply"] is True
     assert "disputed" in [e["kind"] for e in events(api, start)]
@@ -174,6 +176,48 @@ def test_that_is_not_right_then_a_correction_he_confirms(api: TestClient) -> Non
     r = api.post(f"/entries/{new['id']}/confirm", json={"person_id": ANIL_PERSON})
     assert r.json()["status"] == "confirmed"
     assert shop_thread(api, ANIL)["balance_paise"] == 10000
+
+
+def test_not_mine_then_the_shop_takes_it_back(api: TestClient) -> None:
+    """Anil says the ₹150 isn't his; the shop takes it back. It is kept, claims
+    nothing, both sides see it, and he owes nothing for it."""
+    entry = anils_entry(api)
+    r = api.post(
+        f"/entries/{entry['id']}/dispute",
+        json={"person_id": ANIL_PERSON, "disputed_as": "not_mine"},
+    )
+    assert r.status_code == 200, r.text
+    t = shop_thread(api, ANIL)
+    assert "is not theirs" in t["messages"][-1]["body"]
+    assert (t["balance_paise"], t["disputed_paise"]) == (0, 15000)
+
+    r = api.post(f"/shops/{SHOP}/entries/{entry['id']}/remove")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "removed"
+    mine = my_thread(api, ANIL_PERSON)
+    card = next(
+        m["entry"]
+        for m in mine["messages"]
+        if m["card"] and m["entry"]["id"] == entry["id"]
+    )
+    assert card["status"] == "removed" and card["disputed_as"] == "not_mine"
+    assert "took back ₹150" in mine["messages"][-1]["body"]
+    t = shop_thread(api, ANIL)
+    assert (t["balance_paise"], t["waiting_paise"], t["disputed_paise"]) == (0, 0, 0)
+    # Taken back once; and nothing paid against can be taken back at all.
+    assert api.post(f"/shops/{SHOP}/entries/{entry['id']}/remove").status_code == 409
+
+
+def test_an_entry_with_a_payment_is_never_taken_back(
+    api: TestClient, tx: db.Conn
+) -> None:
+    from bahi.service import ledger
+
+    cid = customers.add(tx, SHOP, "Naya", clock.now())
+    e = ledger.record(tx, SHOP, 10000, clock.now(), customer_id=UUID(cid))
+    ledger.pay_cash(tx, cid, 4000, clock.now())
+    r = api.post(f"/shops/{SHOP}/entries/{e.id}/remove")
+    assert r.status_code == 409 and "already paid" in r.json()["detail"]
 
 
 def test_the_shop_can_correct_an_entry_nobody_disputed(api: TestClient) -> None:
@@ -354,7 +398,9 @@ def test_an_invite_records_nothing_until_she_says_yes(api: TestClient) -> None:
     assert accept.status_code == 204
     assert api.post(f"/shops/{SHOP}/entries", json=record).status_code == 201
     mine = api.get(f"/people/{KAVITA_PERSON}/udhaar").json()
-    assert (mine["invites"], mine["total_paise"]) == ([], 5000)
+    # On her phone for her yes: waiting, not yet in what she owes.
+    assert (mine["invites"], mine["total_paise"]) == ([], 0)
+    assert mine["shops"][0]["waiting_paise"] == 5000
 
 
 def test_inviting_twice_is_refused(api: TestClient) -> None:
@@ -448,11 +494,13 @@ def test_a_name_only_customer_is_invited_and_their_history_comes_with_them(
         == 204
     )
     c = api.get(f"/shops/{SHOP}/customers/{cid}").json()
+    # Her history waits on her phone for her yes: not yet in the balance.
     assert (c["joined"], c["invite_pending"], c["balance_paise"]) == (
         "linked",
         False,
-        25000,
+        0,
     )
+    assert c["waiting_paise"] == 25000
     # Both entries reach her phone as cards, for her own yes.
     cards = [m["entry"] for m in my_thread(api, pid)["messages"] if m["card"]]
     assert [(e["amount_paise"], e["status"]) for e in cards] == [

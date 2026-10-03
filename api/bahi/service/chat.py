@@ -7,8 +7,10 @@ when ₹200 was recorded shows ✓ the moment he confirms, and "paid" when he pa
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
+from bahi import paytm
 from bahi.domain import book as book_domain
 from bahi.domain.limitation import expired
 from bahi.domain.wording import button
@@ -22,6 +24,8 @@ from bahi.service.models import (
     MessageOut,
     MyShopOut,
     MyUdhaarOut,
+    PaytmAccountOut,
+    PaytmNameOut,
     ThreadEntryOut,
     ThreadOut,
 )
@@ -46,6 +50,8 @@ def card(e: EntryRef, today: date, corrects: EntryRef | None = None) -> ThreadEn
         corrects_entry_id=e.corrects_entry_id,
         corrects_amount_paise=corrects.amount_paise if corrects else None,
         disputed_at=e.disputed_at,
+        disputed_as=e.disputed_as,  # type: ignore[arg-type]
+        removed_at=e.removed_at,
         acknowledged_at=e.acknowledged_at,
         last_paid_at=e.last_paid_at,
         last_method=e.last_method,  # type: ignore[arg-type]
@@ -66,11 +72,23 @@ def _cards(con: Conn, customer_id: str, today: date) -> dict[str, ThreadEntryOut
     }
 
 
-def _standing(con: Conn, c: CustomerRef, today: date) -> tuple[int, int | None]:
-    """(what he owes, days since he last paid) at this shop, from the book."""
+@dataclass(frozen=True, slots=True)
+class Standing:
+    """What he has agreed he owes, what waits for his yes, what he said is
+    wrong, and the days since he last paid, at this shop, from the book."""
+
+    owed: int
+    waiting: int
+    disputed: int
+    day: int | None
+
+
+def _standing(con: Conn, c: CustomerRef, today: date) -> Standing:
     found = book_store.load(con, c.shop_id, c.id)
     ln = book_domain.line(found[0], today) if found else None
-    return (ln.balance_paise, ln.day) if ln else (0, None)
+    if ln is None:
+        return Standing(0, 0, 0, None)
+    return Standing(ln.balance_paise, ln.waiting_paise, ln.disputed_paise, ln.day)
 
 
 def _reminder_at(con: Conn, c: CustomerRef, today: date) -> datetime | None:
@@ -100,7 +118,7 @@ def thread(con: Conn, c: CustomerRef, today: date, *, for_shop: bool) -> ThreadO
                 card=first,
             )
         )
-    owed, day = _standing(con, c, today)
+    st = _standing(con, c, today)
     return ThreadOut(
         today=today,
         thread_id=t.id if t else None,
@@ -109,8 +127,10 @@ def thread(con: Conn, c: CustomerRef, today: date, *, for_shop: bool) -> ThreadO
         display_name=c.display_name,
         tag=c.tag,
         joined=c.joined,
-        balance_paise=owed,
-        day=day,
+        balance_paise=st.owed,
+        waiting_paise=st.waiting,
+        disputed_paise=st.disputed,
+        day=st.day,
         messages=out,
         reminder_at=_reminder_at(con, c, today) if for_shop else None,
     )
@@ -178,7 +198,7 @@ def inbox(con: Conn, shop_id: str, today: date) -> InboxOut:
 
 
 def customer_detail(con: Conn, c: CustomerRef, today: date) -> CustomerDetailOut:
-    owed, day = _standing(con, c, today)
+    st = _standing(con, c, today)
     cards = sorted(
         _cards(con, c.id, today).values(), key=lambda e: e.recorded_at, reverse=True
     )
@@ -191,17 +211,32 @@ def customer_detail(con: Conn, c: CustomerRef, today: date) -> CustomerDetailOut
         joined=c.joined,
         invite_pending=c.invite_person_id is not None,
         invited_at=c.invited_at,
-        balance_paise=owed,
-        day=day,
+        paytm=_paytm_name(con, c),
+        balance_paise=st.owed,
+        waiting_paise=st.waiting,
+        disputed_paise=st.disputed,
+        day=st.day,
         entries=sorted(live + paid, key=lambda e: e.recorded_at, reverse=True),
         memories=[memory.out(m) for m in memories.of_customer(con, c.id)],
         pattern=pattern.out(pattern.of_customer(con, c.shop_id, c.id, today)),
     )
 
 
+def _paytm_name(con: Conn, c: CustomerRef) -> PaytmNameOut | None:
+    a = paytm.account(con, c.person_id) if c.person_id and c.linked else None
+    return PaytmNameOut(name=a.name, upi=a.upi) if a else None
+
+
+def account_out(con: Conn, person_id: str) -> PaytmAccountOut | None:
+    a = paytm.account(con, person_id)
+    if a is None:
+        return None
+    return PaytmAccountOut(name=a.name, upi=a.upi, phone=a.phone)
+
+
 def _my_shop(con: Conn, c: CustomerRef, today: date, unread: int) -> MyShopOut:
     s = ledger.shop(con, c.shop_id)
-    owed, day = _standing(con, c, today)
+    st = _standing(con, c, today)
     cards = sorted(
         _cards(con, c.id, today).values(), key=lambda e: e.recorded_at, reverse=True
     )
@@ -211,11 +246,12 @@ def _my_shop(con: Conn, c: CustomerRef, today: date, unread: int) -> MyShopOut:
         shop=views.shop_out(s),
         customer_id=c.id,
         display_name=c.display_name,
-        balance_paise=owed,
+        balance_paise=st.owed,
+        waiting_paise=st.waiting,
         payable_paise=sum(
             e.amount_paise - e.paid_paise for e in ledger.payable(con, c.id, today)
         ),
-        day=day,
+        day=st.day,
         entries=sorted(live + paid, key=lambda e: e.recorded_at, reverse=True),
         unread=unread,
     )
@@ -249,6 +285,7 @@ def my_udhaar(con: Conn, person_id: str, today: date) -> MyUdhaarOut:
     return MyUdhaarOut(
         today=today,
         person_id=person_id,
+        account=account_out(con, person_id),
         total_paise=sum(m.balance_paise for m in mine),
         shops=mine,
         invites=invites,
