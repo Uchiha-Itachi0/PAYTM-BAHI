@@ -410,6 +410,21 @@ class ThreadEntryOut(BaseModel):
     button: str
 
 
+class PaymentOut(BaseModel):
+    """A payment, as its own card in the thread."""
+
+    amount_paise: int
+    method: Literal["upi", "cash"]
+
+
+class PassbookOut(BaseModel):
+    """What he had agreed he owes just before this moment, and just after: the
+    thread read as a passbook (domain/passbook.py)."""
+
+    before_paise: int
+    after_paise: int
+
+
 class MessageOut(BaseModel):
     id: str
     author: Literal["shop", "customer", "bahi"]
@@ -420,6 +435,10 @@ class MessageOut(BaseModel):
     #: The entry's first message draws its card; later ones about the same entry
     #: (a dispute, a payment) are one line.
     card: bool
+    #: A payment: drawn as its own card, not a line.
+    payment: PaymentOut | None = None
+    #: An entry's card, from the moment it counted; a payment, at its moment.
+    passbook: PassbookOut | None = None
 
 
 class ThreadOut(BaseModel):

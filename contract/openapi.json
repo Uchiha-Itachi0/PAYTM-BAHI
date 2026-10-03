@@ -1322,7 +1322,7 @@
           "voice"
         ],
         "summary": "Say Received",
-        "description": "The Soundbox when money arrives: \"सौ रुपये मिले, सौ रुपये बाकी।\" Amounts\nonly: this route cannot say a name. 503 when voice is offline and it was never\nspoken; the Soundbox then plays its tone.",
+        "description": "The Soundbox when money arrives: \"दो सौ रुपये का उधार था, उसमें से सौ\nरुपये मिले, सौ रुपये बाकी।\" Amounts only: this route cannot say a name. 503\nwhen voice is offline and it was never spoken; the Soundbox then plays its\ntone.",
         "operationId": "say_received_voice_received__paid___left__wav_get",
         "parameters": [
           {
@@ -4780,6 +4780,26 @@
           "card": {
             "type": "boolean",
             "title": "Card"
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "passbook": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PassbookOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -5102,6 +5122,25 @@
         ],
         "title": "PaidOut"
       },
+      "PassbookOut": {
+        "properties": {
+          "before_paise": {
+            "type": "integer",
+            "title": "Before Paise"
+          },
+          "after_paise": {
+            "type": "integer",
+            "title": "After Paise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "before_paise",
+          "after_paise"
+        ],
+        "title": "PassbookOut",
+        "description": "What he had agreed he owes just before this moment, and just after: the\nthread read as a passbook (domain/passbook.py)."
+      },
       "PatternOut": {
         "properties": {
           "payments": {
@@ -5296,6 +5335,29 @@
         ],
         "title": "PayIn",
         "description": "He pays this shop by UPI: what he owes it, or the part he chose."
+      },
+      "PaymentOut": {
+        "properties": {
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "upi",
+              "cash"
+            ],
+            "title": "Method"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount_paise",
+          "method"
+        ],
+        "title": "PaymentOut",
+        "description": "A payment, as its own card in the thread."
       },
       "PaytmAccountOut": {
         "properties": {
