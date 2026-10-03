@@ -308,6 +308,11 @@ def join(
     pid = str(person_id)
     c = customers.at_shop(con, shop_id, pid)
     created = False
+    waiting = customers.invited_at_shop(con, shop_id, pid) if c is None else None
+    if waiting is not None:
+        # The shop kept him by name and invited his number: scanning is saying yes.
+        _take(con, waiting, now)
+        c = customers.at_shop(con, shop_id, pid)
     if c is None:
         if not name:
             raise Conflict("first visit to this shop: tell us the name to use")
@@ -493,13 +498,7 @@ def invite(
     """An invitation to his Paytm account. Nothing can be recorded against him
     until he accepts on his own phone."""
     shop(con, shop_id)
-    here = customers.at_shop(con, shop_id, person_id)
-    if here is not None:
-        raise Conflict(
-            f"{here.display_name} is already in your book"
-            if here.linked
-            else f"{here.display_name} is already invited; waiting for their yes"
-        )
+    _not_here(con, shop_id, person_id)
     tag = (tag or "").strip() or None
     cid = customers.add(
         con,
@@ -516,23 +515,129 @@ def invite(
     return c
 
 
-def _invited(con: Conn, shop_id: str, person_id: UUID) -> CustomerRef:
-    c = customers.at_shop(con, shop_id, str(person_id))
-    if c is None or c.linked:
-        raise NotFound("no invitation from this shop")
+def _not_here(con: Conn, shop_id: str, person_id: str) -> None:
+    """This Paytm account isn't in this book yet, or invited to it."""
+    here = customers.at_shop(con, shop_id, person_id)
+    if here is not None:
+        raise Conflict(
+            f"That Paytm account is already in your book as {here.display_name}"
+            if here.linked
+            else f"{here.display_name} is already invited; waiting for their yes"
+        )
+    waiting = customers.invited_at_shop(con, shop_id, person_id)
+    if waiting is not None:
+        raise Conflict(
+            f"{waiting.display_name} is already invited to that account; "
+            "waiting for their yes"
+        )
+
+
+def customer_here(con: Conn, shop_id: str, customer_id: str) -> CustomerRef:
+    c = customers.get(con, customer_id)
+    if c is None or c.shop_id != shop_id:
+        raise NotFound(f"no customer {customer_id} at this shop")
     return c
 
 
+def invite_by_name(
+    con: Conn, shop_id: str, customer_id: str, person_id: str, now: datetime
+) -> CustomerRef:
+    """He kept someone by name, and now has their number: an invite to their
+    Paytm account, waiting on the same row. The book keeps working by name until
+    they say yes; then the row and its history are theirs."""
+    c = customer_here(con, shop_id, customer_id)
+    if c.person_id is not None:
+        raise Conflict(
+            f"{c.display_name} is already on BAHI"
+            if c.linked
+            else f"{c.display_name} is already invited"
+        )
+    if c.invite_person_id != person_id:
+        _not_here(con, shop_id, person_id)
+    customers.set_invite(con, c.id, person_id, now)
+    return customer_here(con, shop_id, c.id)
+
+
+def cancel_invite(con: Conn, shop_id: str, customer_id: str) -> CustomerRef:
+    c = customer_here(con, shop_id, customer_id)
+    if c.invite_person_id is None:
+        raise Conflict(f"there is no invite waiting for {c.display_name}")
+    customers.clear_invite(con, c.id)
+    return customer_here(con, shop_id, c.id)
+
+
+def rename(
+    con: Conn,
+    shop_id: str,
+    customer_id: str,
+    name: str,
+    tag: str | None,
+    hindi: Callable[[str], str | None] = lambda _: None,
+) -> CustomerRef:
+    """What the shop calls him, and how it describes him. His entries don't
+    change: the name is the shop's, the entries are facts."""
+    c = customer_here(con, shop_id, customer_id)
+    name, tag = name.strip(), (tag or "").strip() or None
+    if not name:
+        raise Conflict("a name is needed")
+    customers.rename(
+        con,
+        c.id,
+        name,
+        tag,
+        hindi(name) if name != c.display_name else c.name_hi,
+        (hindi(tag) if tag else None) if tag != c.tag else c.tag_hi,
+    )
+    return customer_here(con, shop_id, c.id)
+
+
+def _take(con: Conn, c: CustomerRef, now: datetime) -> None:
+    """His yes to the invite on a name-only row: the row is his, and each entry
+    still open on it goes to his phone as a card, for his own yes."""
+    customers.take_invite(con, c.id, now)
+    today = now.date()
+    for i, e in enumerate(entries.of_customer(con, c.id)):
+        if (
+            e.status in OPEN
+            and e.amount_paise > e.paid_paise
+            and not expired(
+                e.recorded_at.date(),
+                e.acknowledged_at.date() if e.acknowledged_at else None,
+                today,
+            )
+        ):
+            body = wording.recorded(e.shop_name, e.amount_paise)
+            _card(con, entry(con, e.id), body, now + timedelta(microseconds=i))
+
+
+def _invited(con: Conn, shop_id: str, person_id: UUID) -> CustomerRef:
+    c = customers.at_shop(con, shop_id, str(person_id))
+    if c is not None and not c.linked:
+        return c
+    waiting = customers.invited_at_shop(con, shop_id, str(person_id))
+    if waiting is not None:
+        return waiting
+    raise NotFound("no invitation from this shop")
+
+
 def accept(con: Conn, shop_id: str, person_id: UUID, now: datetime) -> CustomerRef:
-    """He said yes to the shop's invite: from now on it can record against him."""
+    """He said yes to the shop's invite: from now on it can record against him.
+    Kept by name before, his history comes with him, each open entry for his yes."""
     c = _invited(con, shop_id, person_id)
-    customers.link(con, c.id, now)
+    if c.invite_person_id is not None:
+        _take(con, c, now)
+    else:
+        customers.link(con, c.id, now)
     out = customers.get(con, c.id)
     assert out is not None
     return out
 
 
 def decline(con: Conn, shop_id: str, person_id: UUID) -> None:
-    """He said no. The shop's row for him goes; nothing was ever recorded on it."""
+    """He said no. A fresh invite goes; one on a name-only row is withdrawn, and
+    the shop keeps him by name as before."""
     c = _invited(con, shop_id, person_id)
-    customers.drop_invite(con, c.id)
+    if c.invite_person_id is not None:
+        customers.clear_invite(con, c.id)
+    else:
+        customers.drop_invite(con, c.id)

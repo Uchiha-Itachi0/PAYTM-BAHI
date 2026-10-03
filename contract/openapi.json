@@ -394,6 +394,231 @@
         }
       }
     },
+    "/shops/{shop_id}/customers/{customer_id}": {
+      "get": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Get Customer",
+        "description": "One customer: whether he is on BAHI, what he owes, and his entries.",
+        "operationId": "get_customer_shops__shop_id__customers__customer_id__get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Edit Customer",
+        "description": "What the shop calls him, and where he lives or works.",
+        "operationId": "edit_customer_shops__shop_id__customers__customer_id__post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameOnlyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/invite": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Invite By Name",
+        "description": "Someone kept by name: his number or UPI ID, and an invite to his phone. His\nbook keeps working by name until he says yes; then his history is his.",
+        "operationId": "invite_by_name_shops__shop_id__customers__customer_id__invite_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/invite/cancel": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Cancel Invite",
+        "operationId": "cancel_invite_shops__shop_id__customers__customer_id__invite_cancel_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/join/{shop_id}": {
       "post": {
         "tags": [
@@ -2410,6 +2635,10 @@
             "type": "string",
             "title": "Name"
           },
+          "named": {
+            "type": "boolean",
+            "title": "Named"
+          },
           "here": {
             "anyOf": [
               {
@@ -2431,6 +2660,7 @@
         "required": [
           "person_id",
           "name",
+          "named",
           "here"
         ],
         "title": "AccountOut",
@@ -2863,6 +3093,90 @@
         "title": "CounterOut",
         "description": "Everyone at the counter, oldest scan first."
       },
+      "CustomerDetailOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "joined": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "name_only"
+            ],
+            "title": "Joined"
+          },
+          "invite_pending": {
+            "type": "boolean",
+            "title": "Invite Pending"
+          },
+          "invited_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invited At"
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ThreadEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "tag",
+          "joined",
+          "invite_pending",
+          "invited_at",
+          "balance_paise",
+          "day",
+          "entries"
+        ],
+        "title": "CustomerDetailOut",
+        "description": "One customer, as the shop keeps him: what it calls him, whether he is on\nBAHI, what he owes, and his entries."
+      },
       "CustomerOut": {
         "properties": {
           "id": {
@@ -2892,6 +3206,16 @@
               "name_only"
             ],
             "title": "Joined"
+          },
+          "invite_pending": {
+            "type": "boolean",
+            "title": "Invite Pending",
+            "default": false
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise",
+            "default": 0
           }
         },
         "type": "object",
@@ -3561,6 +3885,19 @@
               }
             ],
             "title": "Tag"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           }
         },
         "type": "object",
@@ -3582,13 +3919,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Invited At"
+          },
+          "kept_by_name": {
+            "type": "boolean",
+            "title": "Kept By Name"
           }
         },
         "type": "object",
         "required": [
           "shop",
           "display_name",
-          "invited_at"
+          "invited_at",
+          "kept_by_name"
         ],
         "title": "InviteOut"
       },
@@ -3711,6 +4053,22 @@
           "rhythm"
         ],
         "title": "LineOut"
+      },
+      "LinkIn": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "title": "Query"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "LinkIn",
+        "description": "His mobile number or UPI ID, for someone kept by name. Never stored."
       },
       "MessageOut": {
         "properties": {

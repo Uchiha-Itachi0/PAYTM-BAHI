@@ -6,15 +6,17 @@ from fastapi import APIRouter, Request, Response
 
 from bahi import clock, paytm, voice
 from bahi.domain.book import book
-from bahi.service import ledger, views
+from bahi.service import chat, ledger, views
 from bahi.service.deps import Con, etagged
-from bahi.service.errors import NotFound
+from bahi.service.errors import Conflict, NotFound
 from bahi.service.models import (
     AccountOut,
     CounterOut,
+    CustomerDetailOut,
     CustomerOut,
     EntryOut,
     InviteIn,
+    LinkIn,
     NameOnlyIn,
     RecordIn,
     ShopBookOut,
@@ -69,7 +71,11 @@ def get_counter(shop_id: str, request: Request, con: Con) -> Response:
 def list_customers(shop_id: str, con: Con) -> list[CustomerOut]:
     """Everyone in the book, for picking someone who is not at the counter."""
     ledger.shop(con, shop_id)
-    return [_customer_out(c) for c in customers.of_shop(con, shop_id)]
+    owed = {
+        ln.customer_id: ln.balance_paise
+        for ln in book(book_store.load(con, shop_id), clock.today()).lines
+    }
+    return [_customer_out(c, owed.get(c.id, 0)) for c in customers.of_shop(con, shop_id)]
 
 
 @router.post("/shops/{shop_id}/entries", status_code=201)
@@ -91,8 +97,15 @@ def record_entry(shop_id: str, body: RecordIn, con: Con) -> EntryOut:
 # ── V6: adding someone who can't scan ────────────────────────────────────────
 
 
-def _customer_out(c: CustomerRef) -> CustomerOut:
-    return CustomerOut(id=c.id, display_name=c.display_name, tag=c.tag, joined=c.joined)
+def _customer_out(c: CustomerRef, balance_paise: int = 0) -> CustomerOut:
+    return CustomerOut(
+        id=c.id,
+        display_name=c.display_name,
+        tag=c.tag,
+        joined=c.joined,
+        invite_pending=c.invite_person_id is not None,
+        balance_paise=balance_paise,
+    )
 
 
 @router.get("/shops/{shop_id}/accounts")
@@ -105,7 +118,10 @@ def find_account(shop_id: str, q: str, con: Con) -> AccountOut:
         raise NotFound("No Paytm account with that number or UPI ID")
     here = customers.at_shop(con, shop_id, a.person_id)
     return AccountOut(
-        person_id=a.person_id, name=a.name, here=here.joined if here else None
+        person_id=a.person_id,
+        name=a.name,
+        named=paytm.named(a),
+        here=here.joined if here else None,
     )
 
 
@@ -116,9 +132,10 @@ def invite(shop_id: str, body: InviteIn, con: Con) -> CustomerOut:
     a = paytm.lookup(body.query)
     if a is None:
         raise NotFound("No Paytm account with that number or UPI ID")
-    c = ledger.invite(
-        con, shop_id, a.person_id, a.name, body.tag, clock.now(), voice.hindi
-    )
+    name = a.name if paytm.named(a) else (body.display_name or "").strip()
+    if not name:
+        raise Conflict("Paytm doesn't give this account's name: say what to call them")
+    c = ledger.invite(con, shop_id, a.person_id, name, body.tag, clock.now(), voice.hindi)
     return _customer_out(c)
 
 
@@ -129,3 +146,45 @@ def add_by_name(shop_id: str, body: NameOnlyIn, con: Con) -> CustomerOut:
         con, shop_id, body.display_name, body.tag, clock.now(), voice.hindi
     )
     return _customer_out(c)
+
+
+# ── one customer ─────────────────────────────────────────────────────────────
+
+
+def _detail(con: Con, shop_id: str, customer_id: str) -> CustomerDetailOut:
+    c = ledger.customer_here(con, shop_id, customer_id)
+    return chat.customer_detail(con, c, clock.today())
+
+
+@router.get("/shops/{shop_id}/customers/{customer_id}", response_model=CustomerDetailOut)
+def get_customer(shop_id: str, customer_id: str, request: Request, con: Con) -> Response:
+    """One customer: whether he is on BAHI, what he owes, and his entries."""
+    return etagged(request, _detail(con, shop_id, customer_id))
+
+
+@router.post("/shops/{shop_id}/customers/{customer_id}")
+def edit_customer(
+    shop_id: str, customer_id: str, body: NameOnlyIn, con: Con
+) -> CustomerDetailOut:
+    """What the shop calls him, and where he lives or works."""
+    ledger.rename(con, shop_id, customer_id, body.display_name, body.tag, voice.hindi)
+    return _detail(con, shop_id, customer_id)
+
+
+@router.post("/shops/{shop_id}/customers/{customer_id}/invite")
+def invite_by_name(
+    shop_id: str, customer_id: str, body: LinkIn, con: Con
+) -> CustomerDetailOut:
+    """Someone kept by name: his number or UPI ID, and an invite to his phone. His
+    book keeps working by name until he says yes; then his history is his."""
+    a = paytm.lookup(body.query)
+    if a is None:
+        raise NotFound("No Paytm account with that number or UPI ID")
+    ledger.invite_by_name(con, shop_id, customer_id, a.person_id, clock.now())
+    return _detail(con, shop_id, customer_id)
+
+
+@router.post("/shops/{shop_id}/customers/{customer_id}/invite/cancel")
+def cancel_invite(shop_id: str, customer_id: str, con: Con) -> CustomerDetailOut:
+    ledger.cancel_invite(con, shop_id, customer_id)
+    return _detail(con, shop_id, customer_id)

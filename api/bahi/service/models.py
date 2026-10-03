@@ -68,6 +68,10 @@ class CustomerOut(BaseModel):
     display_name: str
     tag: str | None
     joined: Joined
+    #: Kept by name, with an invite to his number waiting for his yes.
+    invite_pending: bool = False
+    #: What he owes, as the book counts it.
+    balance_paise: int = 0
 
 
 class WaitingOut(BaseModel):
@@ -437,6 +441,9 @@ class InviteOut(BaseModel):
     shop: ShopOut
     display_name: str
     invited_at: datetime
+    #: The shop already keeps him by this name, with its own entries. What they
+    #: say is not shown until he says yes: the number may not be his.
+    kept_by_name: bool
 
 
 class MyUdhaarOut(BaseModel):
@@ -490,6 +497,8 @@ class AccountOut(BaseModel):
 
     person_id: str
     name: str
+    #: Paytm gave the account's name. Otherwise the shop names him.
+    named: bool
     #: Already in this shop's book: linked, or invited and waiting.
     here: Joined | None
 
@@ -498,6 +507,30 @@ class InviteIn(BaseModel):
     #: A mobile number or UPI ID, looked up again here and never stored.
     query: str = Field(min_length=3, max_length=60)
     tag: str | None = Field(default=None, max_length=40)
+    #: The name to keep him under, when Paytm didn't give one.
+    display_name: str | None = Field(default=None, min_length=1, max_length=40)
+
+
+class LinkIn(BaseModel):
+    """His mobile number or UPI ID, for someone kept by name. Never stored."""
+
+    query: str = Field(min_length=3, max_length=60)
+
+
+class CustomerDetailOut(BaseModel):
+    """One customer, as the shop keeps him: what it calls him, whether he is on
+    BAHI, what he owes, and his entries."""
+
+    id: str
+    display_name: str
+    tag: str | None
+    joined: Joined
+    invite_pending: bool
+    invited_at: datetime | None
+    balance_paise: int
+    day: int | None
+    #: Newest first: everything open, then the latest paid.
+    entries: list[ThreadEntryOut]
 
 
 class NameOnlyIn(BaseModel):

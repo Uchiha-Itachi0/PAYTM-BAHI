@@ -294,20 +294,37 @@ def test_a_disputed_entry_is_not_paid_until_it_is_agreed(api: TestClient) -> Non
 
 
 def test_a_number_finds_the_account_and_is_not_kept(api: TestClient, tx: db.Conn) -> None:
-    r = api.get(f"/shops/{SHOP}/accounts", params={"q": "+91 98200 11223"})
-    assert r.json() == {"person_id": KAVITA_PERSON, "name": "Kavita Rao", "here": None}
-    assert api.get(f"/shops/{SHOP}/accounts", params={"q": "98765 43210"}).json()[
-        "here"
-    ] == ("invited")
-    assert (
-        api.get(f"/shops/{SHOP}/accounts", params={"q": "90000 00000"}).status_code == 404
-    )
+    def find(q: str) -> Any:
+        return api.get(f"/shops/{SHOP}/accounts", params={"q": q})
+
+    assert find("+91 98200 11223").json() == {
+        "person_id": KAVITA_PERSON,
+        "name": "Kavita Rao",
+        "named": True,
+        "here": None,
+    }
+    assert find("98765 43210").json()["here"] == "invited"
+    # Any other mobile stands for a demo account; Paytm would name it, we can't.
+    other = find("90000 12345").json()
+    assert (other["named"], other["name"]) == (False, "Paytm account ••2345")
+    assert find("12345").status_code == 404, "not a mobile number"
+    assert find("nobody@nowhere").status_code == 404
     with tx.cursor() as cur:
         cur.execute(
             "SELECT count(*) FROM information_schema.columns "
             "WHERE table_schema = 'public' AND column_name ~ 'phone|mobile|number'"
         )
         assert cur.fetchone() == (0,)
+
+
+def test_an_unnamed_account_is_invited_under_the_shops_name(api: TestClient) -> None:
+    r = api.post(f"/shops/{SHOP}/customers/invite", json={"query": "90000 12345"})
+    assert r.status_code == 409 and "what to call them" in r.json()["detail"]
+    r = api.post(
+        f"/shops/{SHOP}/customers/invite",
+        json={"query": "90000 12345", "display_name": "Shreya", "tag": "Wing C 201"},
+    )
+    assert (r.json()["display_name"], r.json()["joined"]) == ("Shreya", "invited")
 
 
 def test_an_invite_records_nothing_until_she_says_yes(api: TestClient) -> None:
@@ -351,6 +368,126 @@ def test_no_phone_is_kept_by_name_only(api: TestClient) -> None:
         row["display_name"] for row in api.get(f"/shops/{SHOP}/inbox").json()["rows"]
     ]
     assert "Ganpat" not in names
+
+
+# ── someone kept by name gets a phone ────────────────────────────────────────
+
+
+def by_name(api: TestClient, name: str = "Shreya") -> str:
+    r = api.post(
+        f"/shops/{SHOP}/customers", json={"display_name": name, "tag": "Wing C 201"}
+    )
+    cid = str(r.json()["id"])
+    api.post(f"/shops/{SHOP}/entries", json={"amount_paise": 20000, "customer_id": cid})
+    return cid
+
+
+def test_every_customer_is_listed_with_what_they_owe(api: TestClient) -> None:
+    everyone = {c["display_name"]: c for c in api.get(f"/shops/{SHOP}/customers").json()}
+    assert (everyone["Sharma"]["balance_paise"], everyone["Sharma"]["joined"]) == (
+        20000,
+        "linked",
+    )
+    assert everyone["Bablu"]["joined"] == "name_only"
+    assert everyone["Chhotu"]["balance_paise"] == 0, "square today, still in the book"
+
+
+def test_one_customer_shows_their_entries(api: TestClient) -> None:
+    c = api.get(f"/shops/{SHOP}/customers/{SHARMA}").json()
+    assert (c["balance_paise"], c["day"], c["joined"]) == (20000, 4, "linked")
+    assert c["entries"][0]["amount_paise"] == 20000
+
+
+def test_the_shop_renames_someone_and_their_entries_stay(api: TestClient) -> None:
+    cid = by_name(api)
+    r = api.post(
+        f"/shops/{SHOP}/customers/{cid}",
+        json={"display_name": "Shreya Kapoor", "tag": "Room 201, C wing"},
+    )
+    c = r.json()
+    assert (c["display_name"], c["tag"], c["balance_paise"]) == (
+        "Shreya Kapoor",
+        "Room 201, C wing",
+        20000,
+    )
+
+
+def test_a_name_only_customer_is_invited_and_their_history_comes_with_them(
+    api: TestClient,
+) -> None:
+    cid = by_name(api)
+    r = api.post(f"/shops/{SHOP}/customers/{cid}/invite", json={"query": "90000 12345"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["joined"], r.json()["invite_pending"]) == ("name_only", True)
+
+    # Until she says yes, the shop still writes her udhaar by name.
+    more = {"amount_paise": 5000, "customer_id": cid}
+    assert api.post(f"/shops/{SHOP}/entries", json=more).status_code == 201
+
+    shreya = next(p for p in api.get("/demo/phones").json() if p["name"] == "Shreya")
+    assert shreya["state"] == "invited"
+    pid = shreya["person_id"]
+    mine = api.get(f"/people/{pid}/udhaar").json()
+    assert [i["display_name"] for i in mine["invites"]] == ["Shreya"]
+
+    assert (
+        api.post(f"/shops/{SHOP}/invite/accept", json={"person_id": pid}).status_code
+        == 204
+    )
+    c = api.get(f"/shops/{SHOP}/customers/{cid}").json()
+    assert (c["joined"], c["invite_pending"], c["balance_paise"]) == (
+        "linked",
+        False,
+        25000,
+    )
+    # Both entries reach her phone as cards, for her own yes.
+    cards = [m["entry"] for m in my_thread(api, pid)["messages"] if m["card"]]
+    assert [(e["amount_paise"], e["status"]) for e in cards] == [
+        (20000, "recorded"),
+        (5000, "recorded"),
+    ]
+
+
+def test_scanning_the_qr_is_saying_yes_to_the_invite(api: TestClient) -> None:
+    cid = by_name(api)
+    api.post(f"/shops/{SHOP}/customers/{cid}/invite", json={"query": "90000 12345"})
+    pid = next(p for p in api.get("/demo/phones").json() if p["name"] == "Shreya")[
+        "person_id"
+    ]
+    j = api.post(f"/join/{SHOP}", json={"person_id": pid, "name": "Shreya K"}).json()
+    assert j["customer_id"] == cid, "the same row, not a second Shreya"
+    assert api.get(f"/shops/{SHOP}/customers/{cid}").json()["joined"] == "linked"
+
+
+def test_no_to_the_invite_keeps_them_in_the_book_by_name(api: TestClient) -> None:
+    cid = by_name(api)
+    api.post(f"/shops/{SHOP}/customers/{cid}/invite", json={"query": "90000 12345"})
+    pid = next(p for p in api.get("/demo/phones").json() if p["name"] == "Shreya")[
+        "person_id"
+    ]
+    assert (
+        api.post(f"/shops/{SHOP}/invite/decline", json={"person_id": pid}).status_code
+        == 204
+    )
+    c = api.get(f"/shops/{SHOP}/customers/{cid}").json()
+    assert (c["joined"], c["invite_pending"], c["balance_paise"]) == (
+        "name_only",
+        False,
+        20000,
+    )
+
+
+def test_the_shop_can_take_an_invite_back(api: TestClient) -> None:
+    cid = by_name(api)
+    api.post(f"/shops/{SHOP}/customers/{cid}/invite", json={"query": "90000 12345"})
+    r = api.post(f"/shops/{SHOP}/customers/{cid}/invite/cancel")
+    assert r.json()["invite_pending"] is False
+
+
+def test_an_account_already_in_the_book_is_not_invited_twice(api: TestClient) -> None:
+    cid = by_name(api)
+    r = api.post(f"/shops/{SHOP}/customers/{cid}/invite", json={"query": "9819019019"})
+    assert r.status_code == 409 and "Sharma" in r.json()["detail"]
 
 
 # ── V7 · what the Soundbox hears ─────────────────────────────────────────────

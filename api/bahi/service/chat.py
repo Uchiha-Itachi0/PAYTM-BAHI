@@ -15,6 +15,7 @@ from bahi.domain.wording import button
 from bahi.service import ledger, views
 from bahi.service.errors import Conflict, NotFound
 from bahi.service.models import (
+    CustomerDetailOut,
     InboxOut,
     InboxRowOut,
     InviteOut,
@@ -176,6 +177,26 @@ def inbox(con: Conn, shop_id: str, today: date) -> InboxOut:
     return InboxOut(today=today, rows=out, unread=sum(r.unread for r in out))
 
 
+def customer_detail(con: Conn, c: CustomerRef, today: date) -> CustomerDetailOut:
+    owed, day = _standing(con, c, today)
+    cards = sorted(
+        _cards(con, c.id, today).values(), key=lambda e: e.recorded_at, reverse=True
+    )
+    live = [e for e in cards if e.status != "settled"]
+    paid = [e for e in cards if e.status == "settled"][:PAID_SHOWN]
+    return CustomerDetailOut(
+        id=c.id,
+        display_name=c.display_name,
+        tag=c.tag,
+        joined=c.joined,
+        invite_pending=c.invite_person_id is not None,
+        invited_at=c.invited_at,
+        balance_paise=owed,
+        day=day,
+        entries=sorted(live + paid, key=lambda e: e.recorded_at, reverse=True),
+    )
+
+
 def _my_shop(con: Conn, c: CustomerRef, today: date, unread: int) -> MyShopOut:
     s = ledger.shop(con, c.shop_id)
     owed, day = _standing(con, c, today)
@@ -211,16 +232,16 @@ def my_udhaar(con: Conn, person_id: str, today: date) -> MyUdhaarOut:
         )
     )
     invites = []
-    for c in rows:
-        if c.linked:
-            continue
+    waiting = [c for c in rows if not c.linked]
+    for c in waiting + customers.invites_for(con, person_id):
         s = shops.get(con, c.shop_id)
         assert s is not None
         invites.append(
             InviteOut(
                 shop=views.shop_out(s),
                 display_name=c.display_name,
-                invited_at=customers.added_at(con, c.id),
+                invited_at=c.invited_at or customers.added_at(con, c.id),
+                kept_by_name=c.invite_person_id is not None,
             )
         )
     return MyUdhaarOut(
