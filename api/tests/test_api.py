@@ -411,6 +411,22 @@ def test_the_answer_to_kaunse_anubhav_picks_among_them(
     assert a["who"]["person"]["customer_id"] == four[tag]
 
 
+def test_the_shop_describes_him_and_that_is_enough(api: TestClient) -> None:
+    h = hear(api, "Chai tapri wale ko do sau")
+    assert h["who"]["kind"] == "picked"
+    assert h["who"]["person"]["display_name"] == "Bablu"
+    assert h["who"]["person"]["tag"] == "Chai tapri"
+
+
+def test_an_answer_can_describe_him_too(api: TestClient) -> None:
+    book = api.get(f"/shops/{SHOP}/customers").json()
+    offered = [
+        c["id"] for c in book if c["display_name"] in ("Bhosale", "Iqbal bhai", "Bablu")
+    ]
+    a = answer(api, "चाय टपरी", offered)
+    assert a["who"]["kind"] == "picked" and a["who"]["person"]["display_name"] == "Bablu"
+
+
 def test_an_answer_is_looked_for_only_among_those_offered(api: TestClient) -> None:
     a = answer(api, "Sharma", list(anubhavs(api).values()))
     assert a["who"]["kind"] == "ask"

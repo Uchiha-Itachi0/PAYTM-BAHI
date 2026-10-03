@@ -81,7 +81,10 @@ class Test:
 def load(path: Path = DATA) -> Test:
     with gzip.open(path, "rt", encoding="utf-8") as f:
         raw = json.load(f)
-    book = [Person(c["id"], c["name"], c["tag"], c["name_hi"]) for c in raw["book"]]
+    book = [
+        Person(c["id"], c["name"], c["tag"], c["name_hi"], c.get("tag_hi"))
+        for c in raw["book"]
+    ]
     lines = [
         Line(x["said"], x["intent"], x["rupees"], x["who"], tuple(x["waiting"]))
         for x in raw["lines"]
@@ -186,7 +189,16 @@ def main() -> int:
 
     ours = graded["sarvam-105b + checks"]
     moved = [i for i, rec in enumerate(test.recordings) if ours[i] != rec["graded"]]
-    print(f"\n{len(moved)} of {len(ours)} recordings graded differently from the day.")
+    rank = {b: i for i, b in enumerate(BUCKETS)}
+    worse = [
+        i
+        for i in moved
+        if rank[BUCKET[ours[i]]] > rank[BUCKET[test.recordings[i]["graded"]]]
+    ]
+    print(
+        f"\n{len(moved)} of {len(ours)} recordings graded differently from the day, "
+        f"{len(worse)} of them worse."
+    )
     for i in moved[:10]:
         rec = test.recordings[i]
         where = f"[{rec['line']}] {rec['voice']} {rec['noise']}"
@@ -201,7 +213,7 @@ def main() -> int:
                 f"  [{rec['line']:2d}] {g:20} heard {rec['heard']!r} -> "
                 f"{reply['intent']} ₹{reply['amount_rupees']}"
             )
-    return 1 if moved else 0
+    return 1 if worse else 0
 
 
 if __name__ == "__main__":

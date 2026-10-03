@@ -14,7 +14,7 @@ from bahi.domain.who import Ask, Person, Picked, said_like, shortlist, who
 
 SHUKLA = Person("c-shukla", "Anubhav Shukla", "Room 1006, B wing", "अनुभव शुक्ला")
 A204 = Person("c-204", "Anubhav", "Room 204, A wing", "अनुभव")
-JAIN = Person("c-jain", "Anubhav Jain", "Medical shop", "अनुभव जैन")
+JAIN = Person("c-jain", "Anubhav Jain", "Medical shop", "अनुभव जैन", "मेडिकल शॉप")
 A311 = Person("c-311", "Anubhav", "Room 311, B wing", "अनुभव")
 DAS = Person("c-das", "Anubhav Das", "Garage", "अनुभव दास")
 ANUBHAVS = (SHUKLA, A204, JAIN, A311, DAS)
@@ -24,7 +24,21 @@ MEENA = Person("c-meena", "Meena Tai", "Opposite lane", "मीना ताई"
 GAIKWAD = Person("c-gaikwad", "Gaikwad", "Chawl 5", "गायकवाड़")
 PAWAR = Person("c-pawar", "Pawar", "Room 17, C wing", "पवार")
 KAVITA = Person("c-kavita", "Kavita")  # joined offline: no Devanagari
-BOOK = [*ANUBHAVS, SHARMA, IQBAL, MEENA, GAIKWAD, PAWAR, KAVITA]
+BABLU = Person("c-bablu", "Bablu", "Chai tapri", "बबलू", "चाय तापरी")
+ANIL = Person("c-anil", "Anil", "Tailor shop", "अनिल", "टेलर शॉप")
+SCRAP = Person("c-shaikh", "Shaikh bhai", "Scrap shop", "शेख भाई", "स्क्रैप शॉप")
+ROOMS = [Person(f"c-r{i}", f"Resident {i}", f"Room {i}, B wing") for i in range(1, 6)]
+MARKET = [
+    Person("c-mutton", "Salim", "Mutton market"),
+    Person("c-veg", "Lakshmi", "Vegetable market"),
+    Person("c-flower", "Gauri", "Flower market"),
+]
+BOOK = [
+    *ANUBHAVS,
+    *(SHARMA, IQBAL, MEENA, GAIKWAD, PAWAR, KAVITA, BABLU, ANIL, SCRAP),
+    *ROOMS,
+    *MARKET,
+]
 
 
 def picked(words: str, waiting: list[Person] | None = None) -> Picked:
@@ -122,6 +136,51 @@ def test_the_one_at_the_counter_beats_his_namesakes_in_the_book() -> None:
 )
 def test_a_name_is_found_in_either_script(said: str, person: Person) -> None:
     assert picked(said).person == person
+
+
+# ── how the shop describes him ───────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("said", ["चाय टपरी वाले", "chai tapri wala", "Chai tapri"])
+def test_the_shops_description_of_him_picks_him(said: str) -> None:
+    assert picked(said) == Picked(BABLU, "in_book")
+
+
+def test_a_description_narrows_a_shared_name() -> None:
+    """ "मेडिकल वाले अनुभव": the Anubhav at the medical shop, not all five."""
+    assert picked("मेडिकल वाले अनुभव").person == JAIN
+    assert picked("medical wale Anubhav").person == JAIN
+
+
+def test_a_word_three_customers_share_asks_among_them() -> None:
+    assert who("market wale", [], BOOK) == Ask("several", tuple(MARKET))
+    assert picked("mutton market wale").person == MARKET[0]
+
+
+def test_a_word_many_customers_share_tells_nobody_apart() -> None:
+    """Five rooms in B wing: "room" and "wing" point to no one, and nothing in the
+    code says so; the book does."""
+    for said in ("room wale", "B wing wale"):
+        result = who(said, [], BOOK)
+        assert isinstance(result, Ask)
+        assert not set(result.among) & set(ROOMS)
+    assert who("B wing wale Anubhav", [], BOOK) == Ask("several", ANUBHAVS)
+
+
+def test_short_description_words_are_not_enough_alone() -> None:
+    """ "shop" is three letters by sound, like "van" or "pan": too easily a word
+    said in passing. The whole phrase still counts."""
+    assert not isinstance(who("shop wale", [], BOOK), Picked)
+    assert picked("tailor shop wale").person == ANIL
+
+
+def test_what_tells_customers_apart_comes_from_the_whole_book() -> None:
+    """Offered two of the five rooms, "room" still tells nobody apart, because the
+    book has five; and "fish" still picks among the market three."""
+    two_rooms = ROOMS[:2]
+    result = who("room wale", [], two_rooms, known=BOOK)
+    assert not (isinstance(result, Ask) and result.why == "several")
+    assert who("mutton wale", [], MARKET[:2], known=BOOK) == Picked(MARKET[0], "in_book")
 
 
 def test_a_weak_match_is_offered_never_picked() -> None:

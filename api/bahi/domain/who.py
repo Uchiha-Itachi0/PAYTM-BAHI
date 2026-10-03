@@ -15,6 +15,12 @@ they do not. Every rule below was measured on the 1,338-recording test:
 - A number said with the name (room 1006, "204 wale") narrows it to the customers
   whose tag has that number. A run of number words is a number, never part of a
   name: "दस सौ छह" is 1006, not Anubhav Das.
+- So does the rest of the tag, the way the shop describes him: "चाय टपरी वाले" is
+  whoever the book calls "Chai tapri", and "मेडिकल वाले अनुभव" is the Anubhav at
+  the medical shop. Said alone, a description picks him the way a name would.
+  Only words that tell customers apart count, and the book decides which those
+  are: a word more than three customers share ("Room", "wing", "Building")
+  can't point to anyone, so it is never used. There is no list of such words.
 - Someone at the counter beats someone in the book with the same name.
 - A weak match (65 to 84) is never picked, only offered.
 
@@ -25,6 +31,7 @@ With no words naming anyone, the one person waiting is the one; several waiting 
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -48,6 +55,11 @@ STRONG = 85
 WEAK = 65
 #: Names this close to the best are the same name to the ear.
 TIE = 10
+#: A description word shared by more customers than this tells nobody apart.
+MAX_SHARED = 3
+#: A description word must be at least this long, as a key: "van", "pan" or "shop"
+#: is too easily a Hindi word ("बन", "पन") said in passing, or a letter ("A wing").
+TAG_WORD_MIN = 4
 #: A shortlist match, for what the reader is shown.
 SHORTLIST = 80
 SHORTLIST_MAX = 30
@@ -63,6 +75,8 @@ class Person:
     tag: str | None = None
     #: The name in Devanagari, from Sarvam's transliteration. None if we lack it.
     name_hi: str | None = None
+    #: The tag in Devanagari, likewise.
+    tag_hi: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +106,47 @@ def _forms(name: str, name_hi: str | None) -> tuple[frozenset[str], frozenset[st
         k for w in written for p in (w, *w.split()) if len(k := key(p)) >= 3
     )
     return whole, parts
+
+
+@lru_cache(maxsize=4096)
+def _tag_forms(tag: str | None, tag_hi: str | None) -> frozenset[str]:
+    """The words of his tag, as keys: "Medical shop" gives "medical" (and "shop"
+    is too short to count). Words, not phrases: "A wing" and "B wing" differ by
+    one letter, which a whole-phrase score drowns in the "wing" they share. The
+    numbers are matched as numbers."""
+    keys: set[str] = set()
+    for written in (tag, tag_hi):
+        for word in re.sub(r"[\d,]+", " ", written or "").split():
+            if len(k := key(word)) >= TAG_WORD_MIN:
+                keys.add(k)
+    return frozenset(keys)
+
+
+def _described(
+    spans: Sequence[str], people: Sequence[Person], known: Sequence[Person]
+) -> list[str]:
+    """Everyone whose tag the words describe: "चाय टपरी वाले" and Chai tapri.
+
+    A word counts only if it tells customers apart: at most three in `known`, the
+    whole book, have it. The rarest word said wins, as the longest name does:
+    "mutton market wale" is the one mutton market, not all three markets.
+    """
+    shared: Counter[str] = Counter()
+    for p in known:
+        shared.update(_tag_forms(p.tag, p.tag_hi))
+    rarest: dict[str, int] = {}
+    for p in people:
+        hits = [
+            shared[t]
+            for t in _tag_forms(p.tag, p.tag_hi)
+            if 0 < shared[t] <= MAX_SHARED and any(ratio(s, t) >= STRONG for s in spans)
+        ]
+        if hits:
+            rarest[p.ref] = min(hits)
+    if not rarest:
+        return []
+    best = min(rarest.values())
+    return [r for r, n in rarest.items() if n == best]
 
 
 def _spans(words: Sequence[str], sizes: Iterable[int]) -> list[str]:
@@ -135,13 +190,15 @@ def _people(waiting: Sequence[Person], book: Sequence[Person]) -> list[Person]:
 def shortlist(
     transcript: str, waiting: Sequence[Person], book: Sequence[Person]
 ) -> list[Person]:
-    """Customers whose names sound like words said, or whose tag has a number said,
-    then everyone waiting. The reader sees these; it may name no one else."""
+    """Customers whose names sound like words said, or whose tag has a number said
+    or is described, then everyone waiting. The reader sees these; it may name no
+    one else."""
     people = _people(waiting, book)
     by_ref = {p.ref: p for p in people}
     sc = _scores(transcript, people)
     keep = sorted((r for r, s in sc.items() if s >= SHORTLIST), key=lambda r: -sc[r])
     keep += _with_number(re.findall(r"\d+", transcript), people)
+    keep += _described(sorted(_spoken(transcript)), people, people)
     keep += [p.ref for p in waiting]
     return [by_ref[r] for r in dict.fromkeys(keep)][:SHORTLIST_MAX]
 
@@ -159,9 +216,13 @@ def said_like(words: str, transcript: str) -> bool:
 
 
 def fits(
-    words: str, waiting: Sequence[Person], book: Sequence[Person]
+    words: str,
+    waiting: Sequence[Person],
+    book: Sequence[Person],
+    known: Sequence[Person] | None = None,
 ) -> tuple[Strength, list[Person]]:
-    """Everyone the words could mean, and how strongly."""
+    """Everyone the words could mean, and how strongly. `known` is the whole book,
+    for which description words tell customers apart, when `book` is narrower."""
     people = _people(waiting, book)
     by_ref = {p.ref: p for p in people}
     at_counter = {p.ref for p in waiting}
@@ -184,6 +245,8 @@ def fits(
     if said:
         numbers.append(str(said // 100))
     detail = _with_number(numbers, people)
+    described = _described(_spans(name_words, (4, 3, 2, 1)), people, known or people)
+    detail += [r for r in described if r not in detail]
 
     for n in (4, 3, 2, 1):  # the longest stretch that names someone wins
         spans = _spans(name_words, (n,))
@@ -216,11 +279,13 @@ def who(
     book: Sequence[Person],
     *,
     transcript: str | None = None,
+    known: Sequence[Person] | None = None,
 ) -> Picked | Ask:
     """The person the words name, or a question.
 
     `transcript`, when given, is what the words must have been said in: a
-    reader's quote that nobody said is not a name.
+    reader's quote that nobody said is not a name. `known`: the whole book, when
+    `book` is only who was offered.
     """
     if not words or not words.strip():
         if len(waiting) == 1:
@@ -228,7 +293,7 @@ def who(
         return Ask("who" if waiting else "nobody", tuple(waiting))
     if transcript is not None and not said_like(words, transcript):
         return Ask("not_said", ())
-    strength, fit = fits(words, waiting, book)
+    strength, fit = fits(words, waiting, book, known)
     if strength == "strong" and len(fit) == 1:
         p = fit[0]
         return Picked(p, "at_counter" if p.ref in {w.ref for w in waiting} else "in_book")

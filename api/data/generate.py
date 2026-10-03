@@ -50,7 +50,7 @@ from data.world import HOME, SEED, SHOPS, START, TODAY, at, uid
 #: toward weekly and fortnightly, with a few who settle once a month.
 HABITS = (3, 4, 5, 6, 7, 7, 7, 8, 9, 10, 10, 12, 14, 14, 15, 15, 20, 21, 30)
 
-#: Every seeded name in Devanagari, as Sarvam writes it. Committed, so the seed
+#: Every seeded name and tag in Devanagari, as Sarvam writes it. Committed, so the seed
 #: still rebuilds identically with the wifi off.
 HINDI = names_hi.load()
 
@@ -116,6 +116,7 @@ class Builder:
                 added_at=added_at,
                 linked_at=linked_at,
                 name_hi=HINDI.get(name),
+                tag_hi=HINDI.get(tag) if tag else None,
             )
         )
         return cid

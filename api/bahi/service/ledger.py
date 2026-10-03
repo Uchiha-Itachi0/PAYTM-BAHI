@@ -109,7 +109,7 @@ def counter_and_book(
     until they say yes. A Person's ref is the customer id; his scan is looked up.
     """
     book = [
-        Person(c.id, c.display_name, c.tag, c.name_hi)
+        Person(c.id, c.display_name, c.tag, c.name_hi, c.tag_hi)
         for c in customers.of_shop(con, shop_id)
         if c.joined != "invited"
     ]
@@ -153,14 +153,14 @@ def answer(
     """
     shop(con, shop_id)
     at_counter, book, waiting_scans = counter_and_book(con, shop_id, now)
+    known = book  # which words tell customers apart is a question for the whole book
     if among:
         wanted = set(among)
         book = [p for p in book if p.ref in wanted]
         at_counter = [p for p in at_counter if p.ref in wanted]
-    decided = (
-        who(transcript, at_counter, book) if transcript.strip() else Ask("not_found", ())
-    )
-    return Answer(decided, waiting_scans)
+    if not transcript.strip():
+        return Answer(Ask("not_found", ()), waiting_scans)
+    return Answer(who(transcript, at_counter, book, known=known), waiting_scans)
 
 
 # ── the customer ─────────────────────────────────────────────────────────────
