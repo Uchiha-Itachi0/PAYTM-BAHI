@@ -551,6 +551,35 @@ def test_three_or_more_are_a_count_until_he_has_been_asked(
     assert all(c["name"] and "owes" not in c for c in named["customers"])
 
 
+def test_a_long_list_is_read_eight_at_a_time_then_the_rest_after_the_last(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    now = clock.now()
+    for n in (50, 51, 52):
+        customers.add(tx, SHOP, f"Naya {n}", now, tag=f"Room {n}, B wing")
+    results: list[Any] = []
+    wing = {"description": "B wing"}
+    model.then(tool("find_customer", wing), reply("बी विंग में कई लोग हैं। नाम बताऊँ?"))
+    out = say(api, "बी विंग वाले को दो सौ")
+    model.then(
+        tool("find_customer", {**wing, "read_names": True}),
+        tool("find_customer", keeping(results, {**wing, "read_names": True, "skip": 8})),
+        tool("counter", keeping(results, {})),
+        reply("..."),
+    )
+    say(api, "पढ़ दो, फिर बाकी भी", out["conversation_id"])
+    first, rest = results
+    total = first["count"]
+    assert total > 8
+    # Eight, and how many are left, with how to ask for them.
+    assert len(first["customers"]) == 8 and first["more"] == total - 8
+    assert "skip 8" in first["next"] and "more" in first["next"]
+    # The rest, starting after the last one read: nobody twice, nobody missed.
+    assert len(rest["customers"]) == total - 8 and "more" not in rest
+    ids = [c["id"] for c in first["customers"] + rest["customers"]]
+    assert len(set(ids)) == total
+
+
 def test_names_he_never_heard_the_count_of_are_not_read(
     api: TestClient, model: Script
 ) -> None:
@@ -595,6 +624,22 @@ def test_someone_picked_from_several_waits_for_a_clear_yes(
     model.then(*shows_sharma(200))
     card = say(api, "शर्मा जी को", out["conversation_id"])["card"]
     assert card["display_name"] == "Sharma" and card["reasons"] == []
+
+
+def test_a_sound_with_no_words_never_reaches_the_munshi(
+    api: TestClient, model: Script, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The mic caught a cough, and Sarvam heard no words: the munshi isn't asked
+    (Sarvam refuses an empty turn), and he is told plainly."""
+    from bahi import voice
+
+    monkeypatch.setattr(voice, "hear", lambda *a, **k: voice.Transcript("  ", "sarvam"))
+    r = api.post(
+        f"/shops/{SHOP}/munshi/voice",
+        files={"audio": ("speech.webm", b"a cough", "audio/webm")},
+    )
+    assert r.status_code == 422 and "Didn't catch any words" in r.json()["detail"]
+    assert model.calls == 0
 
 
 # ── the munshi's voice ───────────────────────────────────────────────────────

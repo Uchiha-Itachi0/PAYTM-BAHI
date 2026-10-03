@@ -102,6 +102,11 @@ TOOLS: list[dict[str, Any]] = [
                         "read the names out (पढ़ दो, नाम बताओ, read them). When three "
                         "or more fit, the names come back only then.",
                     },
+                    "skip": {
+                        "type": "integer",
+                        "description": "When he wants the rest of a list you are "
+                        "reading out: how many of its names you have already read.",
+                    },
                 },
                 "required": [],
             },
@@ -376,6 +381,7 @@ class Desk:
         name: str | None = None,
         description: str | None = None,
         read_names: bool = False,
+        skip: int = 0,
     ) -> dict[str, Any]:
         search = find(self.people, name, description)
         here = self._counter_ids()
@@ -424,14 +430,22 @@ class Desk:
             # said aloud at the counter must not carry anyone's balance.
             return r
 
-        out["customers"] = [row(f) for f in found[:LISTED]]
+        # Three or more reach here only when he asked for the names: a page of
+        # LISTED at a time, how many are left said after it, and the next page
+        # starts after the last name read.
+        first = min(max(_whole(skip), 0), len(found)) if len(found) >= 3 else 0
+        shown = found[first : first + LISTED]
+        left = len(found) - first - len(shown)
+        out["customers"] = [row(f) for f in shown]
         if len(found) == 1:
             self.alone.add(found[0].person.ref)
-        for f in found[:LISTED]:
+        for f in shown:
             weak = not f.strong
             self.seen[f.person.ref] = self.seen.get(f.person.ref, True) and weak
-        if len(found) > LISTED:
-            out["more"] = len(found) - LISTED
+        if len(found) >= 3:
+            out["reading"] = f"{first + 1} to {first + len(shown)} of {len(found)}"
+        if left:
+            out["more"] = left
         if search.note:
             out["note"] = search.note
         if len(found) == 1 and not found[0].strong:
@@ -446,16 +460,20 @@ class Desk:
                 "Nobody fits. Say so plainly and ask who he means. If he says they "
                 "are new, offer to add them with propose_new_customer."
             )
-        elif len(found) > LISTED:
+        elif left:
             out["next"] = (
-                f"He asked for the names: read these {LISTED}, each with its place "
-                f"only, never what they owe. Say there are {len(found) - LISTED} more "
-                "and ask which one, or for a name or place to narrow it."
+                f"He asked for the names: read these {len(shown)}, each with its "
+                "place only, never what they owe. Then say there are "
+                f"{left} more names, and ask which one or whether to read more. If "
+                "he wants more, call find_customer again with the same words, "
+                f"read_names true and skip {first + len(shown)}: the next ones, "
+                "after the last name you read."
             )
         elif len(found) >= 3:
             out["next"] = (
                 "He asked for the names: read each with its place only, never what "
                 "they owe, then ask which one."
+                + (" These are the last of them." if first else "")
             )
         self.done.append(f"Looked for {looked}: {len(found)} found")
         return out
@@ -874,6 +892,13 @@ def _paise(amount_rupees: Any) -> tuple[int, str | None]:
     if paise > MOST_PAISE:
         return 0, "that is too large to take by voice; ask him to check"
     return paise, None
+
+
+def _whole(n: Any) -> int:
+    try:
+        return int(n)
+    except (TypeError, ValueError):
+        return 0
 
 
 def edit_card(

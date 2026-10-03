@@ -126,6 +126,10 @@ def talk_voice(
     at_counter, book, _ = ledger.counter_and_book(con, shop_id, clock.now())
     names = [p.name for p in at_counter + book]
     t = voice.hear(data, audio.content_type or "", keyterms=names)
+    if not t.text.strip():
+        # Noise, a cough, or the counter's own voice: the mic heard a sound but no
+        # words. Nothing goes to the munshi (an empty turn is refused anyway).
+        raise HTTPException(422, "Didn't catch any words. Tap the mic and say it again.")
     o = brain.talk(con, shop_id, cid, t.text, clock.now(), ask, heard=t.text)
     return _out(con, shop_id, o, t.text, t.source)
 
