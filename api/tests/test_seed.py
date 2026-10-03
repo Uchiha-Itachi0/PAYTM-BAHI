@@ -28,7 +28,9 @@ def test_the_contract_is_the_database_not_a_hand_edit(con: db.Conn) -> None:
 
 def test_the_book_adds_up(con: db.Conn) -> None:
     b = home_book(con)
-    assert (b.customer_count, b.invited_count, b.owing_count) == (60, 1, 38)
+    # Anil's ₹150 is on his phone, unanswered: waiting, so he owes nothing yet.
+    assert (b.customer_count, b.invited_count, b.owing_count) == (60, 1, 37)
+    assert b.waiting_paise == 15000
 
 
 def test_only_the_four_written_in_have_changed(con: db.Conn) -> None:

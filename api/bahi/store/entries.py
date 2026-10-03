@@ -27,6 +27,9 @@ class EntryRef:
     corrects_entry_id: str | None
     acknowledged_at: datetime | None
     disputed_at: datetime | None
+    #: What he said is wrong with it: not_mine or wrong_amount (None before V9).
+    disputed_as: str | None
+    removed_at: datetime | None
     #: The last payment against it, and how it was paid.
     last_paid_at: datetime | None
     last_method: str | None
@@ -40,7 +43,7 @@ SELECT e.id::text AS id, c.id::text AS customer_id, c.display_name,
                 0)::bigint AS paid_paise,
        e.status, e.recorded_at, e.note, e.spoken_text,
        e.corrects_entry_id::text AS corrects_entry_id,
-       a.acknowledged_at, e.disputed_at,
+       a.acknowledged_at, e.disputed_at, e.disputed_as, e.removed_at,
        p.paid_at AS last_paid_at, p.method AS last_method
 FROM entries e
 JOIN customers c ON c.id = e.customer_id
@@ -102,10 +105,19 @@ def set_status(con: Conn, entry_id: str, status: str) -> None:
     con.execute("UPDATE entries SET status = %s WHERE id = %s", (status, entry_id))
 
 
-def dispute(con: Conn, entry_id: str, now: datetime) -> None:
-    """He said it's not right, now."""
+def dispute(con: Conn, entry_id: str, now: datetime, disputed_as: str) -> None:
+    """He said it's not right, now: not his at all, or the wrong amount."""
     con.execute(
-        "UPDATE entries SET status = 'disputed', disputed_at = %s WHERE id = %s",
+        "UPDATE entries SET status = 'disputed', disputed_at = %s, disputed_as = %s "
+        "WHERE id = %s",
+        (now, disputed_as, entry_id),
+    )
+
+
+def remove(con: Conn, entry_id: str, now: datetime) -> None:
+    """The shop took it back: it should never have been written."""
+    con.execute(
+        "UPDATE entries SET status = 'removed', removed_at = %s WHERE id = %s",
         (now, entry_id),
     )
 

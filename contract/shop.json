@@ -10,15 +10,19 @@
   "book": {
     "customer_count": 60,
     "invited_count": 1,
-    "owing_count": 38,
-    "outstanding_paise": 1067000,
+    "owing_count": 37,
+    "outstanding_paise": 1052000,
+    "waiting_paise": 15000,
+    "disputed_paise": 0,
     "lines": [
       {
         "customer_id": "bcb5b5db-822b-592a-b9fa-acc6ccbdff50",
         "display_name": "Anil",
         "tag": "Tailor shop",
         "joined": "linked",
-        "balance_paise": 15000,
+        "balance_paise": 0,
+        "waiting_paise": 15000,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "not_confirmed",
         "rhythm": {
@@ -34,6 +38,8 @@
         "tag": "Chai tapri",
         "joined": "name_only",
         "balance_paise": 6000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 3,
         "chip": "on_rhythm",
         "rhythm": {
@@ -49,6 +55,8 @@
         "tag": "Pan stall",
         "joined": "linked",
         "balance_paise": 22000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 5,
         "chip": "on_rhythm",
         "rhythm": {
@@ -64,6 +72,8 @@
         "tag": "Chapel lane",
         "joined": "linked",
         "balance_paise": 10000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 6,
         "chip": "on_rhythm",
         "rhythm": {
@@ -79,6 +89,8 @@
         "tag": "Building 2",
         "joined": "linked",
         "balance_paise": 18000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -94,6 +106,8 @@
         "tag": "Room 8, A wing",
         "joined": "linked",
         "balance_paise": 37000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 14,
         "chip": "new",
         "rhythm": {
@@ -109,6 +123,8 @@
         "tag": "Chawl 5",
         "joined": "linked",
         "balance_paise": 12000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 6,
         "chip": "on_rhythm",
         "rhythm": {
@@ -124,6 +140,8 @@
         "tag": "Vegetable cart",
         "joined": "linked",
         "balance_paise": 8000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -139,6 +157,8 @@
         "tag": "Garage, lane 2",
         "joined": "linked",
         "balance_paise": 32000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 12,
         "chip": "changed",
         "rhythm": {
@@ -154,6 +174,8 @@
         "tag": "Chawl 4",
         "joined": "linked",
         "balance_paise": 24000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -169,6 +191,8 @@
         "tag": "Room 21, C wing",
         "joined": "linked",
         "balance_paise": 54000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 3,
         "chip": "on_rhythm",
         "rhythm": {
@@ -184,6 +208,8 @@
         "tag": "Room 13, B wing",
         "joined": "linked",
         "balance_paise": 39000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -199,6 +225,8 @@
         "tag": "Building 2",
         "joined": "linked",
         "balance_paise": 14000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 5,
         "chip": "on_rhythm",
         "rhythm": {
@@ -214,6 +242,8 @@
         "tag": "Chapel lane",
         "joined": "linked",
         "balance_paise": 9000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -229,6 +259,8 @@
         "tag": "Building 4",
         "joined": "name_only",
         "balance_paise": 45000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 8,
         "chip": "on_rhythm",
         "rhythm": {
@@ -244,6 +276,8 @@
         "tag": "Opposite lane",
         "joined": "linked",
         "balance_paise": 34000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 11,
         "chip": "on_rhythm",
         "rhythm": {
@@ -259,6 +293,8 @@
         "tag": "Room 9, B wing",
         "joined": "linked",
         "balance_paise": 8000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 4,
         "chip": "on_rhythm",
         "rhythm": {
@@ -274,6 +310,8 @@
         "tag": "Building 10",
         "joined": "linked",
         "balance_paise": 25000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 3,
         "chip": "on_rhythm",
         "rhythm": {
@@ -289,6 +327,8 @@
         "tag": "Chawl 3",
         "joined": "linked",
         "balance_paise": 18000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -304,6 +344,8 @@
         "tag": "Building 5",
         "joined": "linked",
         "balance_paise": 11000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 5,
         "chip": "on_rhythm",
         "rhythm": {
@@ -319,6 +361,8 @@
         "tag": "PG, 3rd floor",
         "joined": "linked",
         "balance_paise": 30000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 13,
         "chip": "new",
         "rhythm": {
@@ -334,6 +378,8 @@
         "tag": "Room 5, A wing",
         "joined": "linked",
         "balance_paise": 30000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 4,
         "chip": "on_rhythm",
         "rhythm": {
@@ -349,6 +395,8 @@
         "tag": "Auto stand",
         "joined": "linked",
         "balance_paise": 96000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 40,
         "chip": "changed",
         "rhythm": {
@@ -364,6 +412,8 @@
         "tag": "Room 17, C wing",
         "joined": "linked",
         "balance_paise": 43000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 4,
         "chip": "on_rhythm",
         "rhythm": {
@@ -379,6 +429,8 @@
         "tag": "Butcher lane",
         "joined": "linked",
         "balance_paise": 9000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 3,
         "chip": "on_rhythm",
         "rhythm": {
@@ -394,6 +446,8 @@
         "tag": "Room 6, B wing",
         "joined": "linked",
         "balance_paise": 31000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 3,
         "chip": "on_rhythm",
         "rhythm": {
@@ -409,6 +463,8 @@
         "tag": "Dhobi ghat",
         "joined": "linked",
         "balance_paise": 40000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 26,
         "chip": "changed",
         "rhythm": {
@@ -424,6 +480,8 @@
         "tag": "Room 4, A wing",
         "joined": "linked",
         "balance_paise": 35000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 14,
         "chip": "on_rhythm",
         "rhythm": {
@@ -439,6 +497,8 @@
         "tag": "Room 18, B wing",
         "joined": "linked",
         "balance_paise": 20000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 10,
         "chip": "on_rhythm",
         "rhythm": {
@@ -454,6 +514,8 @@
         "tag": "Building 7",
         "joined": "linked",
         "balance_paise": 40000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 19,
         "chip": "changed",
         "rhythm": {
@@ -469,6 +531,8 @@
         "tag": "Chawl 3",
         "joined": "linked",
         "balance_paise": 29000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -484,6 +548,8 @@
         "tag": "Scrap shop",
         "joined": "linked",
         "balance_paise": 101000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 4,
         "chip": "on_rhythm",
         "rhythm": {
@@ -499,6 +565,8 @@
         "tag": "Room 19, B wing",
         "joined": "linked",
         "balance_paise": 20000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 4,
         "chip": "on_rhythm",
         "rhythm": {
@@ -514,6 +582,8 @@
         "tag": "Hotel, corner",
         "joined": "linked",
         "balance_paise": 32000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 4,
         "chip": "on_rhythm",
         "rhythm": {
@@ -529,6 +599,8 @@
         "tag": "Watchman, bldg 6",
         "joined": "linked",
         "balance_paise": 17000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 4,
         "chip": "on_rhythm",
         "rhythm": {
@@ -544,6 +616,8 @@
         "tag": "Room 10, C wing",
         "joined": "linked",
         "balance_paise": 7000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 3,
         "chip": "on_rhythm",
         "rhythm": {
@@ -559,6 +633,8 @@
         "tag": "Building 6",
         "joined": "linked",
         "balance_paise": 33000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {
@@ -574,6 +650,8 @@
         "tag": "Chawl 1",
         "joined": "linked",
         "balance_paise": 13000,
+        "waiting_paise": 0,
+        "disputed_paise": 0,
         "day": 2,
         "chip": "on_rhythm",
         "rhythm": {

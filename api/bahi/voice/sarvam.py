@@ -125,8 +125,26 @@ def transcribe(
     key: str,
     keyterms: Sequence[str] = (),
 ) -> str:
+    return heard(audio, content_type, key=key, keyterms=keyterms, language=LANGUAGE)[0]
+
+
+def listening() -> str:
+    """What the munshi listens for: "unknown" (the default) lets Sarvam tell
+    which of its languages he spoke. SARVAM_STT_LANGUAGE pins one, e.g. hi-IN."""
+    return os.environ.get("SARVAM_STT_LANGUAGE", "unknown").strip() or "unknown"
+
+
+def heard(
+    audio: bytes,
+    content_type: str,
+    *,
+    key: str,
+    keyterms: Sequence[str] = (),
+    language: str | None = None,
+) -> tuple[str, str | None]:
+    """(the words, the language Sarvam heard them in, if it says)."""
     m = model()
-    form: dict[str, str] = {"model": m, "language_code": LANGUAGE}
+    form: dict[str, str] = {"model": m, "language_code": language or listening()}
     if m == "saaras:v4":
         terms = [t[:MAX_KEYTERM_LEN] for t in dict.fromkeys(keyterms) if t]
         if terms:
@@ -145,10 +163,12 @@ def transcribe(
         raise SarvamError(f"could not reach Sarvam: {e}") from e
     if r.status_code != 200:
         raise _refused(r.status_code, r.text)
-    transcript = r.json().get("transcript")
+    body = r.json()
+    transcript = body.get("transcript")
     if not isinstance(transcript, str):
         raise SarvamError("Sarvam sent no transcript")
-    return transcript
+    lang = body.get("language_code")
+    return transcript, lang if isinstance(lang, str) and lang else None
 
 
 def _post_json(url: str, body: dict[str, Any], *, key: str, timeout: float) -> Any:
@@ -256,11 +276,18 @@ def speaker() -> str:
     return os.environ.get("SARVAM_TTS_SPEAKER", VOICE).strip().lower() or VOICE
 
 
-def speak(text: str, *, key: str, voice: str, timeout: float = TTS_TIMEOUT_S) -> bytes:
-    """The words, spoken by Sarvam's bulbul:v3, as a WAV file."""
+def speak(
+    text: str,
+    *,
+    key: str,
+    voice: str,
+    timeout: float = TTS_TIMEOUT_S,
+    language: str = LANGUAGE,
+) -> bytes:
+    """The words, spoken by Sarvam's bulbul:v3 in `language`, as a WAV file."""
     body = {
         "text": text,
-        "language_code": LANGUAGE,
+        "language_code": language,
         "speaker": voice,
         "model": TTS_MODEL,
         "speech_sample_rate": TTS_SAMPLE_RATE,

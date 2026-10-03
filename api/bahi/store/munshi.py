@@ -13,7 +13,7 @@ from bahi.store.db import Conn
 
 TURN = (
     "id::text AS id, conversation_id::text AS conversation_id, seq, role, message, "
-    "heard, ms"
+    "heard, ms, created_at"
 )
 
 
@@ -26,6 +26,7 @@ class Turn:
     message: dict[str, Any]
     heard: str | None
     ms: int | None
+    created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +35,9 @@ class Draft:
     conversation_id: str
     #: None for someone not in the book yet, until his yes adds him.
     customer_id: str | None
-    #: udhaar, payment, or customer (only adds someone; no amount).
+    #: udhaar, payment, customer (only adds someone; no amount), correction,
+    #: removal (takes back an entry), details (his name or description), or
+    #: message (words to send him).
     kind: str
     amount_paise: int | None
     spoken_text: str | None
@@ -49,6 +52,8 @@ class Draft:
     corrects_entry_id: str | None
     #: The name he used for them, when it isn't the book's (a nickname).
     called: str | None = None
+    #: A message card: the words to send.
+    message: str | None = None
 
 
 def start(con: Conn, shop_id: str, now: datetime) -> str:
@@ -128,13 +133,23 @@ def add_turn(
 COLUMNS = """id::text AS id, conversation_id::text AS conversation_id,
        customer_id::text AS customer_id, kind, amount_paise, spoken_text, reasons,
        status, shown_seq, entry_id::text AS entry_id, new_name, new_tag,
-       corrects_entry_id::text AS corrects_entry_id, called"""
+       corrects_entry_id::text AS corrects_entry_id, called, message"""
 DRAFT = f"SELECT {COLUMNS} FROM drafts"
 
 
 def draft(con: Conn, draft_id: str) -> Draft | None:
     with con.cursor(row_factory=class_row(Draft)) as cur:
         return cur.execute(DRAFT + " WHERE id = %s", (draft_id,)).fetchone()
+
+
+def last_decided_at(con: Conn, conversation_id: str) -> datetime | None:
+    """When the last card in this conversation was said yes or no to: what he
+    said before it belongs to that card, not the next one."""
+    row = con.execute(
+        "SELECT max(decided_at) FROM drafts WHERE conversation_id = %s",
+        (conversation_id,),
+    ).fetchone()
+    return row[0] if row else None
 
 
 def latest_draft(con: Conn, conversation_id: str) -> Draft | None:
@@ -161,6 +176,7 @@ def show(
     new_tag: str | None = None,
     corrects: str | None = None,
     called: str | None = None,
+    message: str | None = None,
 ) -> Draft:
     """The new card. A card already waiting in this conversation is replaced."""
     with con.cursor(row_factory=class_row(Draft)) as cur:
@@ -173,8 +189,9 @@ def show(
             f"""
             INSERT INTO drafts (conversation_id, customer_id, kind, amount_paise,
                                 spoken_text, reasons, shown_seq, created_at,
-                                new_name, new_tag, corrects_entry_id, called)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                new_name, new_tag, corrects_entry_id, called,
+                                message)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING {COLUMNS}
             """,
             (
@@ -190,6 +207,7 @@ def show(
                 new_tag,
                 corrects,
                 called,
+                message,
             ),
         ).fetchone()
     assert row is not None

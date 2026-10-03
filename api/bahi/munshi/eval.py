@@ -121,6 +121,35 @@ SCENARIOS = [
         nickname="चिंटू",
     ),
     Scenario(
+        "give_is_udhaar",
+        "डिसूज़ा को सौ रुपये दे देना।",
+        "udhaar ₹100 for D'Souza of Chapel lane: you are giving him goods on credit.",
+        ("D'Souza", "udhaar", 100),
+    ),
+    Scenario(
+        "take_back",
+        "अनिल वाला डेढ़ सौ गलती से लिखा था, वो हटा दो।",
+        "Take back Anil's ₹150 udhaar (Tailor shop): it was written by mistake, he "
+        "took nothing. Nothing new is written and no money came in.",
+        ("Anil", "removal", 150),
+        "When the munshi reads back that Anil's ₹150 comes off, say: हाँ, हटा दो।",
+    ),
+    Scenario(
+        "message",
+        "शर्मा जी को बोल दो कल सुबह दुकान पे आ जाएं, उनका सामान आ गया है।",
+        "Send Sharma (Room 19, B wing) a message from the shop: come tomorrow morning, "
+        "their goods have arrived.",
+        ("Sharma", "message", 0),
+        "When the munshi reads the message back, say: हाँ, भेज दो।",
+    ),
+    Scenario(
+        "details",
+        "अनुभव शुक्ला actually सी विंग में रहते हैं, रूम 311।",
+        "Change where Anubhav Shukla lives to Room 311, C wing. Nothing about money.",
+        ("Anubhav Shukla", "details", 0),
+        "When the munshi reads back the change, say: हाँ, बदल दो।",
+    ),
+    Scenario(
         "correction",
         "मिश्रा जी को चार सौ लिख दो।",
         "udhaar for Mishra ji (Room 9, B wing). You first said ₹400, but it was really "
@@ -190,13 +219,34 @@ def run(s: Scenario, key: str) -> dict[str, Any]:
     early = [n for n in s.unread if n in first]
     return {
         "id": s.id,
-        "ok": written == s.expect and not early and called == s.nickname,
+        # A nickname the scenario names must be kept; one it doesn't name may be
+        # kept too ("दूध वाले भैया" is what he calls Yadav), never a wrong one.
+        "ok": written == s.expect
+        and not early
+        and (s.nickname is None or called == s.nickname),
         "early": early,
         "written": written,
         "called": called,
         "said": said,
         "s": seconds,
     }
+
+
+#: Sarvam's rate limit: wait this long and run the scenario again, this often.
+WAIT_S = 30.0
+TRIES = 4
+
+
+def patient(s: Scenario, key: str) -> dict[str, Any]:
+    """The scenario, run again from the start after a rate limit, not lost."""
+    for attempt in range(TRIES):
+        try:
+            return run(s, key)
+        except sarvam.SarvamError as e:
+            if "429" not in str(e) or attempt == TRIES - 1:
+                raise
+            time.sleep(WAIT_S)
+    raise AssertionError("unreachable")
 
 
 def main() -> None:
@@ -206,7 +256,10 @@ def main() -> None:
     times = int(sys.argv[1]) if len(sys.argv) > 1 else 2
     only = set(sys.argv[2].split(",")) if len(sys.argv) > 2 else None
     results = [
-        run(s, key) for s in SCENARIOS if not only or s.id in only for _ in range(times)
+        patient(s, key)
+        for s in SCENARIOS
+        if not only or s.id in only
+        for _ in range(times)
     ]
     for r in results:
         early = f"  read before asking: {', '.join(r['early'])}" if r["early"] else ""

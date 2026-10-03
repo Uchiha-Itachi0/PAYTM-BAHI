@@ -11,7 +11,15 @@ from fastapi import APIRouter, Request, Response
 from bahi import clock
 from bahi.service import chat, ledger, views
 from bahi.service.deps import Con, etagged
-from bahi.service.models import DemoPhoneOut, MyUdhaarOut, PaidOut, PayIn, PersonIn
+from bahi.service.errors import NotFound
+from bahi.service.models import (
+    DemoPhoneOut,
+    MyUdhaarOut,
+    PaidOut,
+    PayIn,
+    PaytmAccountOut,
+    PersonIn,
+)
 from bahi.store import customers
 from data import directory
 
@@ -22,6 +30,15 @@ router = APIRouter(tags=["customer"])
 def my_udhaar(person_id: str, request: Request, con: Con) -> Response:
     """B2. What he owes across every shop, each entry, and invitations waiting."""
     return etagged(request, chat.my_udhaar(con, person_id, clock.today()))
+
+
+@router.get("/people/{person_id}/account", response_model=PaytmAccountOut)
+def my_account(person_id: str, con: Con) -> PaytmAccountOut:
+    """His Paytm account: the name on it, its UPI ID and number. Fixed."""
+    a = chat.account_out(con, person_id)
+    if a is None:
+        raise NotFound("no Paytm account yet: scan a shop's udhaar QR first")
+    return a
 
 
 @router.post("/shops/{shop_id}/pay")

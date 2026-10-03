@@ -61,6 +61,10 @@ export function Munshi({
   }, [lines, card]);
 
   const listenAgain = useRef<() => void>(() => undefined);
+  // The mic opened by itself (after a reply, or on arrival), not by his tap. If
+  // it then hears only silence, it closes quietly: no "didn't catch" warning
+  // for words he never meant to say.
+  const byItself = useRef(false);
 
   const take = useCallback(
     async (out: Turn): Promise<void> => {
@@ -105,6 +109,7 @@ export function Munshi({
         await take(out);
       } catch (e) {
         setBusy(false);
+        if (byItself.current && e instanceof ApiError && e.status === 422) return;
         failed(e);
       }
     },
@@ -124,11 +129,14 @@ export function Munshi({
     void startMic();
   }, [startMic]);
   useEffect(() => {
-    listenAgain.current = open;
+    listenAgain.current = () => {
+      byItself.current = true;
+      open();
+    };
   }, [open]);
 
   useEffect(() => {
-    if (listen) open();
+    if (listen) listenAgain.current();
     // Only on arrival: later openings follow the conversation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -253,7 +261,11 @@ export function Munshi({
         <button
           type="button"
           aria-label={recording ? "Stop" : "Speak"}
-          onClick={() => (recording ? mic.stop() : open())}
+          onClick={() => {
+            if (recording) return mic.stop();
+            byItself.current = false;
+            open();
+          }}
           disabled={busy}
           className={`grid size-14 shrink-0 place-items-center rounded-full text-white shadow-pill disabled:opacity-40 [&_svg]:size-6 ${recording ? "animate-pulse bg-cyan" : "bg-navy"}`}
         >

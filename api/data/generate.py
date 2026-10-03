@@ -33,13 +33,16 @@ from datetime import date, datetime, timedelta
 
 from bahi.domain import wording
 from bahi.domain.wording import acknowledgment
+from bahi.paytm import made_up as paytm_made_up
 from data import db, names_hi
+from data.directory import ACCOUNTS, REAL_NAMES
 from data.personas import CAST, CROWD, Open, Persona
 from data.rows import (
     AcknowledgmentRow,
     CustomerRow,
     EntryRow,
     MessageRow,
+    PaytmAccountRow,
     RepaymentRow,
     ShopRow,
     ThreadRow,
@@ -74,6 +77,8 @@ class Plan:
     repayments: list[RepaymentRow] = field(default_factory=list)
     threads: list[ThreadRow] = field(default_factory=list)
     messages: list[MessageRow] = field(default_factory=list)
+    #: Paytm's own records of everyone with a phone (schema paytm, not the book).
+    accounts: dict[uuid.UUID, PaytmAccountRow] = field(default_factory=dict)
 
 
 class Builder:
@@ -108,6 +113,10 @@ class Builder:
     ) -> uuid.UUID:
         cid = uid("customer", shop, key)
         pid = uid("person", person) if person else None
+        if pid is not None and pid not in self.plan.accounts:
+            real = REAL_NAMES.get(name, name)
+            phone, upi = paytm_made_up(str(pid), real)
+            self.plan.accounts[pid] = PaytmAccountRow(pid, real, phone, upi)
         self.plan.customers.append(
             CustomerRow(
                 id=cid,
@@ -328,7 +337,9 @@ def dispute(
         when,
         note="Atta, tel",
     )
-    b.plan.entries[-1] = replace(b.plan.entries[-1], disputed_at=said_wrong)
+    b.plan.entries[-1] = replace(
+        b.plan.entries[-1], disputed_at=said_wrong, disputed_as="wrong_amount"
+    )
     right = b.entry(
         shop,
         p.key,
@@ -343,7 +354,13 @@ def dispute(
 
     lines = (
         ("bahi", "entry", wording.recorded(name, 20000), wrong, timedelta(seconds=5)),
-        ("bahi", "entry", wording.disputed(p.name, 20000), wrong, timedelta(minutes=2)),
+        (
+            "bahi",
+            "entry",
+            wording.disputed(p.name, 20000, "wrong_amount"),
+            wrong,
+            timedelta(minutes=2),
+        ),
         (
             "customer",
             "text",
@@ -534,6 +551,11 @@ def plan() -> Plan:
             history(b, HOME, p, ids[p.key], linked=p.joined == "linked")
     sharma_elsewhere(b, ids["sharma"])
     b.all_read()
+    # The directory's accounts are Paytm users too, in a book or not; their
+    # numbers are the ones an invite is tried with.
+    for a in ACCOUNTS:
+        pid = uuid.UUID(a.person_id)
+        b.plan.accounts[pid] = PaytmAccountRow(pid, a.name, a.phone, a.upi)
     return b.plan
 
 
@@ -552,6 +574,9 @@ TABLES = (
 def load(con: db.Conn, p: Plan) -> dict[str, int]:
     with con.cursor() as cur:
         counts = {table: insert(cur, table, getattr(p, table)) for table in TABLES}
+        counts["paytm.accounts"] = insert(
+            cur, "paytm.accounts", list(p.accounts.values())
+        )
     con.commit()
     return counts
 

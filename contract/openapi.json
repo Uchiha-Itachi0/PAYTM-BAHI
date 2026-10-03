@@ -960,7 +960,7 @@
           "customer"
         ],
         "summary": "Dispute",
-        "description": "B1. \"That's not right\".",
+        "description": "B1. \"Not mine\" or \"Wrong amount\".",
         "operationId": "dispute_entries__entry_id__dispute_post",
         "parameters": [
           {
@@ -1739,6 +1739,16 @@
               "format": "uuid",
               "title": "Turn Id"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Lang"
+            }
           }
         ],
         "responses": {
@@ -2107,6 +2117,58 @@
         }
       }
     },
+    "/shops/{shop_id}/entries/{entry_id}/remove": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Remove",
+        "description": "C2. Take back an entry written by mistake: the wrong person, or nothing was\ntaken. Kept, marked removed, claiming nothing; his phone shows it.",
+        "operationId": "remove_shops__shop_id__entries__entry_id__remove_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/shops/{shop_id}/events": {
       "get": {
         "tags": [
@@ -2342,6 +2404,49 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MyUdhaarOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/people/{person_id}/account": {
+      "get": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "My Account",
+        "description": "His Paytm account: the name on it, its UPI ID and number. Fixed.",
+        "operationId": "my_account_people__person_id__account_get",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaytmAccountOut"
                 }
               }
             }
@@ -2699,6 +2804,123 @@
         }
       }
     },
+    "/shops/{shop_id}/reminders/{reminder_id}": {
+      "post": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Rewrite",
+        "description": "His own words for tomorrow's reminder, or his own hour for it.",
+        "operationId": "rewrite_shops__shop_id__reminders__reminder_id__post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "reminder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Reminder Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderEditIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers/{customer_id}/pause": {
+      "post": {
+        "tags": [
+          "tonight"
+        ],
+        "summary": "Pause",
+        "description": "No reminders to him until the day he chose, and tomorrow's stopped.",
+        "operationId": "pause_shops__shop_id__customers__customer_id__pause_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/shops/{shop_id}/reminders/{reminder_id}/stop": {
       "post": {
         "tags": [
@@ -3027,6 +3249,16 @@
             "type": "integer",
             "title": "Outstanding Paise"
           },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/LineOut"
@@ -3141,7 +3373,10 @@
               "udhaar",
               "payment",
               "customer",
-              "correction"
+              "correction",
+              "removal",
+              "details",
+              "message"
             ],
             "title": "Kind"
           },
@@ -3179,7 +3414,10 @@
                 "large",
                 "unusual",
                 "new_customer",
-                "correction"
+                "correction",
+                "removal",
+                "details",
+                "message"
               ]
             },
             "type": "array",
@@ -3206,6 +3444,39 @@
               }
             ],
             "title": "Called"
+          },
+          "change_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Name"
+          },
+          "change_tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Tag"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
           },
           "entry_id": {
             "anyOf": [
@@ -3377,9 +3648,29 @@
             ],
             "title": "Invited At"
           },
+          "paytm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaytmNameOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "balance_paise": {
             "type": "integer",
             "title": "Balance Paise"
+          },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
           },
           "day": {
             "anyOf": [
@@ -3566,6 +3857,15 @@
               }
             ],
             "title": "Reason"
+          },
+          "disputed_as": {
+            "type": "string",
+            "enum": [
+              "not_mine",
+              "wrong_amount"
+            ],
+            "title": "Disputed As",
+            "default": "wrong_amount"
           }
         },
         "type": "object",
@@ -3611,7 +3911,8 @@
               "confirmed",
               "disputed",
               "corrected",
-              "settled"
+              "settled",
+              "removed"
             ],
             "title": "Status"
           },
@@ -4278,6 +4579,16 @@
             "type": "integer",
             "title": "Balance Paise"
           },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
+          },
           "day": {
             "type": "integer",
             "title": "Day"
@@ -4614,6 +4925,11 @@
             "type": "integer",
             "title": "Balance Paise"
           },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
           "payable_paise": {
             "type": "integer",
             "title": "Payable Paise"
@@ -4664,6 +4980,16 @@
           "person_id": {
             "type": "string",
             "title": "Person Id"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaytmAccountOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "total_paise": {
             "type": "integer",
@@ -4930,6 +5256,20 @@
         "title": "PatternOut",
         "description": "How he pays, from his own book (domain/pattern.py)."
       },
+      "PauseIn": {
+        "properties": {
+          "until": {
+            "type": "string",
+            "format": "date",
+            "title": "Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "until"
+        ],
+        "title": "PauseIn"
+      },
       "PayIn": {
         "properties": {
           "person_id": {
@@ -4956,6 +5296,49 @@
         ],
         "title": "PayIn",
         "description": "He pays this shop by UPI: what he owes it, or the part he chose."
+      },
+      "PaytmAccountOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "upi": {
+            "type": "string",
+            "title": "Upi"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "upi",
+          "phone"
+        ],
+        "title": "PaytmAccountOut",
+        "description": "His own Paytm account, as his phone shows it. Fixed: nobody changes these\nin BAHI."
+      },
+      "PaytmNameOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "upi": {
+            "type": "string",
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "upi"
+        ],
+        "title": "PaytmNameOut",
+        "description": "What the shop sees of someone's Paytm account: never the number."
       },
       "PersonIn": {
         "properties": {
@@ -5232,6 +5615,38 @@
         "title": "RecordIn",
         "description": "An udhaar entry. Either a scan (he is at the counter) or a customer."
       },
+      "ReminderEditIn": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "title": "ReminderEditIn",
+        "description": "His own words for it, or his own hour (HH:MM, IST), or both."
+      },
       "ReminderOut": {
         "properties": {
           "id": {
@@ -5251,7 +5666,8 @@
             "type": "string",
             "enum": [
               "munshi",
-              "words"
+              "words",
+              "shop"
             ],
             "title": "Written"
           },
@@ -5483,7 +5899,8 @@
               "confirmed",
               "disputed",
               "corrected",
-              "settled"
+              "settled",
+              "removed"
             ],
             "title": "Status"
           },
@@ -5536,6 +5953,33 @@
               }
             ],
             "title": "Disputed At"
+          },
+          "disputed_as": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "not_mine",
+                  "wrong_amount"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed As"
+          },
+          "removed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed At"
           },
           "acknowledged_at": {
             "anyOf": [
@@ -5657,6 +6101,16 @@
           "balance_paise": {
             "type": "integer",
             "title": "Balance Paise"
+          },
+          "waiting_paise": {
+            "type": "integer",
+            "title": "Waiting Paise",
+            "default": 0
+          },
+          "disputed_paise": {
+            "type": "integer",
+            "title": "Disputed Paise",
+            "default": 0
           },
           "day": {
             "anyOf": [

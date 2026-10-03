@@ -31,6 +31,7 @@ export type Inbox = S["InboxOut"];
 export type InboxRow = S["InboxRowOut"];
 export type Replies = S["RepliesOut"];
 export type MyUdhaar = S["MyUdhaarOut"];
+export type PaytmAccount = S["PaytmAccountOut"];
 export type MyShop = S["MyShopOut"];
 export type Invite = S["InviteOut"];
 export type Paid = S["PaidOut"];

@@ -66,6 +66,16 @@ export function ShopThreadScreen({ customerId }: { customerId: string }): React.
     }
   }
 
+  async function remove(entryId: string): Promise<void> {
+    setProblem(null);
+    try {
+      await api(`/shops/${SHOP_ID}/entries/${entryId}/remove`, {});
+      thread.refresh();
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : "Couldn't take it back.");
+    }
+  }
+
   const sub = t
     ? [t.tag, t.day !== null && t.balance_paise > 0 ? `day ${t.day}` : null]
         .filter(Boolean)
@@ -102,7 +112,10 @@ export function ShopThreadScreen({ customerId }: { customerId: string }): React.
           side="shop"
           name={t.display_name}
           shop={t.shop.name}
-          actions={{ onCorrect: (e, paise) => void correct(e.id, paise) }}
+          actions={{
+            onCorrect: (e, paise) => void correct(e.id, paise),
+            onRemove: (e) => void remove(e.id),
+          }}
         />
       ) : thread.error ? (
         <Notice tone="warn">Cannot reach this thread: {thread.error}</Notice>

@@ -56,13 +56,17 @@ def received(paid_paise: int, left_paise: int) -> str:
     return f"{got}, {amount_words(left_paise)} बाकी।"
 
 
-def _name(text: str, voice: str) -> str:
-    raw = f"{sarvam.TTS_MODEL}|{voice}|{text}".encode()
+def _name(text: str, voice: str, language: str = sarvam.LANGUAGE) -> str:
+    # Hindi, the first language, keeps the names its files were made under.
+    lang = "" if language == sarvam.LANGUAGE else f"|{language}"
+    raw = f"{sarvam.TTS_MODEL}|{voice}|{text}{lang}".encode()
     return hashlib.sha256(raw).hexdigest()[:24] + ".wav"
 
 
-def cached(text: str, voice: str | None = None) -> Path | None:
-    name = _name(text, voice or sarvam.speaker())
+def cached(
+    text: str, voice: str | None = None, language: str = sarvam.LANGUAGE
+) -> Path | None:
+    name = _name(text, voice or sarvam.speaker(), language)
     return next((d / name for d in (SAID, LIVE) if (d / name).exists()), None)
 
 
@@ -93,19 +97,23 @@ _LOCK = threading.Lock()
 _BUSY: dict[str, Future[Path]] = {}
 
 
-def _say_and_keep(text: str, voice: str, key: str) -> Path:
+def _say_and_keep(text: str, voice: str, key: str, language: str) -> Path:
     audio = sarvam.speak(
-        text, key=key, voice=voice, timeout=sarvam.SENTENCE_TTS_TIMEOUT_S
+        text,
+        key=key,
+        voice=voice,
+        timeout=sarvam.SENTENCE_TTS_TIMEOUT_S,
+        language=language,
     )
     LIVE.mkdir(parents=True, exist_ok=True)
-    path = LIVE / _name(text, voice)
+    path = LIVE / _name(text, voice, language)
     path.write_bytes(audio)
     return path
 
 
-def _started(text: str) -> Future[Path]:
+def _started(text: str, language: str) -> Future[Path]:
     voice = sarvam.speaker()
-    found = cached(text, voice)
+    found = cached(text, voice, language)
     if found is not None:
         ready: Future[Path] = Future()
         ready.set_result(found)
@@ -113,11 +121,11 @@ def _started(text: str) -> Future[Path]:
     key = api_key()
     if offline() or key is None:
         raise VoiceOffline("Voice is offline and this sentence was never spoken")
-    name = _name(text, voice)
+    name = _name(text, voice, language)
     with _LOCK:
         busy = _BUSY.get(name)
         if busy is None:
-            busy = _SENTENCES.submit(_say_and_keep, text, voice, key)
+            busy = _SENTENCES.submit(_say_and_keep, text, voice, key, language)
             _BUSY[name] = busy
 
             def over(f: Future[Path], name: str = name) -> None:
@@ -129,15 +137,15 @@ def _started(text: str) -> Future[Path]:
     return busy
 
 
-def sentence(text: str) -> Path:
+def sentence(text: str, language: str = sarvam.LANGUAGE) -> Path:
     """One of the munshi's sentences as a WAV on disk, said now, or already being
     said since `warm`. SarvamError if Sarvam couldn't; VoiceOffline when voice is
     switched off and it was never said."""
-    return _started(text).result()
+    return _started(text, language).result()
 
 
-def warm(text: str) -> None:
+def warm(text: str, language: str = sarvam.LANGUAGE) -> None:
     """Start saying the munshi's reply now: the screen will ask for it a moment
     later, and by then it is ready or nearly."""
     with contextlib.suppress(VoiceOffline):
-        _started(text)
+        _started(text, language)

@@ -6,12 +6,18 @@
         └──────────────settle─────────────────────┘
 
     recorded, confirmed or disputed ──correct──▶ corrected
+    recorded, confirmed or disputed ──remove───▶ removed
 
 A correction is the shopkeeper's: he finds the amount was wrong, whether the
 customer said so (disputed), hasn't answered yet (recorded), or already said yes
 (confirmed). The entry is kept, marked corrected, and a new entry with the right
 amount takes its place, needing the customer's own yes. Nothing that has been
 paid against is corrected: the payment names that entry.
+
+A removal is the shopkeeper's too: the entry should never have been written (the
+wrong person, or nothing was taken). It is kept, marked removed, and claims
+nothing; nothing replaces it. Nothing paid against is removed, for the same
+reason.
 
 A table, not a web of if-statements, so the whole rule fits on one screen and a
 test can walk every pair. Anything not in the table raises, and the API turns
@@ -25,8 +31,8 @@ from __future__ import annotations
 
 from typing import Literal
 
-Status = Literal["recorded", "confirmed", "disputed", "corrected", "settled"]
-Action = Literal["confirm", "dispute", "correct", "settle"]
+Status = Literal["recorded", "confirmed", "disputed", "corrected", "settled", "removed"]
+Action = Literal["confirm", "dispute", "correct", "settle", "remove"]
 
 STATUSES: tuple[Status, ...] = (
     "recorded",
@@ -34,8 +40,9 @@ STATUSES: tuple[Status, ...] = (
     "disputed",
     "corrected",
     "settled",
+    "removed",
 )
-ACTIONS: tuple[Action, ...] = ("confirm", "dispute", "correct", "settle")
+ACTIONS: tuple[Action, ...] = ("confirm", "dispute", "correct", "settle", "remove")
 
 MOVES: dict[tuple[Status, Action], Status] = {
     ("recorded", "confirm"): "confirmed",
@@ -44,6 +51,10 @@ MOVES: dict[tuple[Status, Action], Status] = {
     # He found the mistake himself, before or after the customer said yes.
     ("recorded", "correct"): "corrected",
     ("confirmed", "correct"): "corrected",
+    # Written by mistake: taken back, whatever he said or hasn't said.
+    ("recorded", "remove"): "removed",
+    ("disputed", "remove"): "removed",
+    ("confirmed", "remove"): "removed",
     # Paid before he answered, or kept by name only and paid in cash.
     ("recorded", "settle"): "settled",
     ("confirmed", "settle"): "settled",

@@ -21,6 +21,11 @@ import { formatPaise } from "@/lib/money";
  * Edit fixes the card on screen, no voice needed: the amount, and for someone
  * new, their name and where they live. The same checks apply, and his tap is
  * still what writes it.
+ *
+ * Three cards carry no new money: taking back an entry written by mistake, a
+ * change to what the book calls someone or how it describes them, and a message
+ * to send them. Each waits for his clear yes, and none is edited here: he says
+ * no and tells the munshi again.
  */
 
 export interface CardEdit {
@@ -29,12 +34,52 @@ export interface CardEdit {
   new_tag?: string;
 }
 
-const KIND = {
+const KIND: Record<MunshiCard["kind"], string> = {
   udhaar: "उधार",
   payment: "जमा",
   customer: "नया ग्राहक",
   correction: "सुधार",
-} as const;
+  removal: "वापस",
+  details: "बदलाव",
+  message: "संदेश",
+};
+
+const YES: Partial<Record<MunshiCard["kind"], string>> = {
+  removal: "हाँ, हटा दो",
+  details: "हाँ, बदल दो",
+  message: "हाँ, भेज दो",
+};
+
+/** Cards he says no to and asks again, rather than edits. */
+const NOT_EDITED: MunshiCard["kind"][] = ["removal", "details", "message"];
+
+function savedLine(card: MunshiCard): string {
+  const name = card.display_name;
+  switch (card.kind) {
+    case "customer":
+      return `Added to your book · ${name}, by name only`;
+    case "correction":
+      return card.on_bahi
+        ? `Corrected · sent to ${name}'s phone to confirm`
+        : `Corrected · ${name} isn't on BAHI, so nothing was sent`;
+    case "removal":
+      return card.on_bahi
+        ? `Taken back · ${name} owes nothing for it, and their phone shows it`
+        : `Taken back · ${name} owes nothing for it`;
+    case "details":
+      return "Changed in your book";
+    case "message":
+      return `Sent to ${name}'s phone`;
+    case "payment":
+      return card.on_bahi ? `Written · it shows in ${name}'s chat` : "Written";
+    case "udhaar":
+      return card.on_bahi
+        ? `Written · sent to ${name}'s phone to confirm`
+        : card.new
+          ? "Added by name and written · nothing is sent to someone with no phone"
+          : `Written · ${name} isn't on BAHI, so nothing was sent`;
+  }
+}
 
 const REASON: Record<MunshiCard["reasons"][number], string> = {
   weak_match: "The name only sounded close",
@@ -43,6 +88,9 @@ const REASON: Record<MunshiCard["reasons"][number], string> = {
   unusual: "Much more than they usually take",
   new_customer: "Not in your book yet: added by name only",
   correction: "A new entry replaces the old one; they confirm it",
+  removal: "They won't owe it; it stays in the book, marked taken back",
+  details: "Changes what your book calls them",
+  message: "Goes to their phone only with your yes",
 };
 
 function Editor({
@@ -169,13 +217,36 @@ export function EntryCard({
             </p>
           ) : null}
           {card.amount_paise !== null ? (
-            <p className="text-[26px] font-extrabold leading-none tracking-[-0.035em] tabular-nums">
+            <p
+              className={`text-[26px] font-extrabold leading-none tracking-[-0.035em] tabular-nums ${card.kind === "removal" && card.status === "saved" ? "line-through opacity-70" : ""}`}
+            >
               {formatPaise(card.amount_paise)}
             </p>
           ) : null}
           <p className="mt-1 text-[12px] font-extrabold opacity-80">{KIND[card.kind]}</p>
         </div>
       </div>
+      {card.kind === "details" ? (
+        <div className="mt-2 flex flex-col gap-0.5 text-[13px] font-bold">
+          {card.change_name ? (
+            <p>
+              Name: <span className="opacity-70 line-through">{card.display_name}</span> →{" "}
+              {card.change_name}
+            </p>
+          ) : null}
+          {card.change_tag ? (
+            <p>
+              Where: <span className="opacity-70 line-through">{card.tag ?? "—"}</span> →{" "}
+              {card.change_tag}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {card.kind === "message" && card.message ? (
+        <p className="mt-2 rounded-[11px] bg-white/10 px-3 py-2 text-[14px] font-semibold leading-snug">
+          {card.message}
+        </p>
+      ) : null}
       {card.spoken_text ? (
         <p className="mt-2 text-[12px] font-medium opacity-80">You said: “{card.spoken_text}”</p>
       ) : null}
@@ -224,7 +295,7 @@ export function EntryCard({
                 disabled={busy}
                 className="flex-1 rounded-pill bg-cyan p-[11px] text-[15px] font-extrabold text-white disabled:opacity-40"
               >
-                हाँ, लिख दो
+                {YES[card.kind] ?? "हाँ, लिख दो"}
               </button>
             ) : null}
             <button
@@ -236,7 +307,7 @@ export function EntryCard({
               {counting ? "Cancel" : "नहीं"}
             </button>
           </div>
-          {onEdit ? (
+          {onEdit && !NOT_EDITED.includes(card.kind) ? (
             <button
               type="button"
               onClick={() => {
@@ -252,21 +323,7 @@ export function EntryCard({
         </>
       ) : null}
 
-      {saved ? (
-        <p className="mt-2.5 text-[13px] font-extrabold">
-          {card.kind === "customer"
-            ? `Added to your book · ${card.display_name}, by name only`
-            : card.kind === "correction"
-              ? card.on_bahi
-                ? `Corrected · sent to ${card.display_name}'s phone to confirm`
-                : `Corrected · ${card.display_name} isn't on BAHI, so nothing was sent`
-            : card.on_bahi
-              ? `Written · sent to ${card.display_name}'s phone to confirm`
-              : card.new
-                ? `Added by name and written · nothing is sent to someone with no phone`
-                : `Written · ${card.display_name} isn't on BAHI, so nothing was sent`}
-        </p>
-      ) : null}
+      {saved ? <p className="mt-2.5 text-[13px] font-extrabold">{savedLine(card)}</p> : null}
       {saved && card.new && card.customer_id ? (
         <Link
           href={`/m/customers/${card.customer_id}`}
@@ -275,7 +332,11 @@ export function EntryCard({
           Add their phone, to send them entries →
         </Link>
       ) : null}
-      {gone ? <p className="mt-2 text-[12.5px] font-bold">Taken away. Nothing was written.</p> : null}
+      {gone ? (
+        <p className="mt-2 text-[12.5px] font-bold">
+          {card.kind === "message" ? "Not sent." : "Taken away. Nothing was written."}
+        </p>
+      ) : null}
     </section>
   );
 }

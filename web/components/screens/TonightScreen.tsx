@@ -93,17 +93,49 @@ function chip(r: Reminder | null, sending: boolean): { text: string; tone: strin
     : { text: "Hold", tone: "bg-ok-bg text-ok" };
 }
 
+/** The day `n` days after `iso` (YYYY-MM-DD), as YYYY-MM-DD. */
+function addDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** HH:MM of a send time, in India's time. */
+function hhmm(at: string): string {
+  return new Date(at).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Kolkata",
+  });
+}
+
+const PAUSES = [
+  { days: 7, label: "1 week" },
+  { days: 14, label: "2 weeks" },
+  { days: 30, label: "1 month" },
+] as const;
+
 function SendCard({
   p,
+  today,
   busy,
   onStop,
+  onEdit,
+  onPause,
 }: {
   p: Plan;
+  today: string;
   busy: boolean;
   onStop: (r: Reminder, stop: boolean) => void;
+  onEdit: (r: Reminder, body: string, at: string) => Promise<void>;
+  onPause: (p: Plan, until: string) => Promise<void>;
 }): React.ReactElement {
   const r = p.reminder;
   const c = chip(r, true);
+  const [mode, setMode] = useState<"idle" | "edit" | "pause">("idle");
+  const [body, setBody] = useState(r?.body ?? "");
+  const [at, setAt] = useState(r ? hhmm(r.send_at) : "10:00");
   return (
     <section className="rounded-card border-l-[5px] border-cyan bg-card px-4 py-3.5">
       <div className="flex items-start justify-between gap-3">
@@ -127,30 +159,131 @@ function SendCard({
       {r ? (
         <div className="mt-3 rounded-[12px] bg-tile px-3 py-2.5">
           <p className="text-[11px] font-bold text-sub">
-            {r.written === "munshi" ? "The munshi wrote" : "In our words (the munshi was offline)"}
+            {r.written === "munshi"
+              ? "The munshi wrote"
+              : r.written === "shop"
+                ? "In your words"
+                : "In our words (the munshi was offline)"}
           </p>
           <p
             className={`mt-1 text-[14px] font-semibold leading-snug ${r.status === "stopped" ? "text-sub line-through" : ""}`}
           >
             {r.body}
           </p>
-          {r.status !== "sent" ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onStop(r, r.status !== "stopped")}
-              className="mt-2 text-[12.5px] font-extrabold text-cyan-text disabled:opacity-40"
+          {r.status !== "sent" && mode === "edit" ? (
+            <form
+              className="mt-2 flex flex-col gap-2"
+              onSubmit={(ev) => {
+                ev.preventDefault();
+                void onEdit(r, body, at).then(() => setMode("idle"));
+              }}
             >
-              {r.status === "stopped" ? "Let it go after all" : "Stop this one"}
-            </button>
-          ) : (
+              <textarea
+                value={body}
+                onChange={(ev) => setBody(ev.target.value)}
+                rows={3}
+                maxLength={300}
+                aria-label="The reminder, in your words"
+                className="rounded-[11px] border-[1.5px] border-line bg-white px-3 py-2 text-[14px] font-semibold outline-none focus:border-cyan"
+              />
+              <label className="flex items-center gap-2 text-[12.5px] font-bold text-sub">
+                Send at
+                <input
+                  type="time"
+                  value={at}
+                  min="09:00"
+                  max="20:00"
+                  onChange={(ev) => setAt(ev.target.value)}
+                  className="rounded-[9px] border-[1.5px] border-line bg-white px-2 py-1 text-[14px] font-bold text-ink"
+                />
+                <span className="font-medium">between 9 am and 8 pm</span>
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={busy || !body.trim()}
+                  className="flex-1 rounded-pill bg-navy px-3 py-2 text-[13.5px] font-extrabold text-white disabled:opacity-40"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("idle")}
+                  className="rounded-pill px-3 py-2 text-[13px] font-bold text-sub"
+                >
+                  Back
+                </button>
+              </div>
+            </form>
+          ) : null}
+          {r.status !== "sent" && mode === "pause" ? (
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-[12.5px] font-semibold text-sub">
+                No reminders to {p.display_name} for…
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PAUSES.map((x) => (
+                  <button
+                    key={x.days}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onPause(p, addDays(today, x.days))}
+                    className="rounded-pill border-[1.5px] border-cyan bg-white px-3 py-1.5 text-[13px] font-extrabold text-cyan-text disabled:opacity-40"
+                  >
+                    {x.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setMode("idle")}
+                  className="px-2 text-[13px] font-bold text-sub"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {r.status !== "sent" && mode === "idle" ? (
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {r.status !== "stopped" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setBody(r.body);
+                    setAt(hhmm(r.send_at));
+                    setMode("edit");
+                  }}
+                  className="text-[12.5px] font-extrabold text-cyan-text disabled:opacity-40"
+                >
+                  Edit words or time
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onStop(r, r.status !== "stopped")}
+                className="text-[12.5px] font-extrabold text-cyan-text disabled:opacity-40"
+              >
+                {r.status === "stopped" ? "Let it go after all" : "Stop this one"}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setMode("pause")}
+                className="text-[12.5px] font-extrabold text-cyan-text disabled:opacity-40"
+              >
+                Pause {p.display_name}
+              </button>
+            </div>
+          ) : r.status === "sent" ? (
             <Link
               href={`/m/chat/${p.customer_id}`}
               className="mt-2 block text-[12.5px] font-extrabold text-cyan-text"
             >
               In {p.display_name}&apos;s chat →
             </Link>
-          )}
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -211,6 +344,39 @@ export function TonightScreen(): React.ReactElement {
     }
   }
 
+  async function edit(r: Reminder, body: string, at: string): Promise<void> {
+    setBusy(true);
+    setNews(null);
+    try {
+      await api(`/shops/${SHOP_ID}/reminders/${r.id}`, {
+        body: body.trim() === r.body ? null : body.trim(),
+        at,
+      });
+      await load();
+    } catch (e) {
+      setNews({ tone: "warn", text: e instanceof ApiError ? e.message : "Couldn't save it." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pause(p: Plan, until: string): Promise<void> {
+    setBusy(true);
+    setNews(null);
+    try {
+      await api(`/shops/${SHOP_ID}/customers/${p.customer_id}/pause`, { until });
+      setNews({
+        tone: "ok",
+        text: `Paused. No reminder goes to ${p.display_name} until after ${shortDate(until)}.`,
+      });
+      await load();
+    } catch (e) {
+      setNews({ tone: "warn", text: e instanceof ApiError ? e.message : "Couldn't pause." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function sendNow(): Promise<void> {
     setBusy(true);
     try {
@@ -257,7 +423,15 @@ export function TonightScreen(): React.ReactElement {
           ) : null}
           {top.length ? (
             top.map((p) => (
-              <SendCard key={p.customer_id} p={p} busy={busy} onStop={(r, s) => void stop(r, s)} />
+              <SendCard
+                key={p.customer_id}
+                p={p}
+                today={t.today}
+                busy={busy}
+                onStop={(r, s) => void stop(r, s)}
+                onEdit={edit}
+                onPause={pause}
+              />
             ))
           ) : (
             <Notice tone="ok">Nobody needs a reminder tomorrow.</Notice>

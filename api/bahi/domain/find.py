@@ -13,6 +13,8 @@ well each one fits. It never picks: the munshi picks, or asks.
   word counts for what it tells apart in this book: "wing", on everyone with a
   wing, counts for little; "B" or "19" for a lot. So "B wing" fits the B wing
   customers fully, and "V wing" (a misheard B) fits nobody, not every wing.
+- A whole name beats a part of one: "अनुभव शुक्ला" finds Anubhav Shukla, not
+  every Anubhav, when the book has someone with that whole name.
 - Name and description together: evidence adds up. A full description beats a
   faint name, so "दूध वाले भैया" said as a name with "Milk van" finds Yadav, not
   whoever "भैया" happens to sound like.
@@ -107,6 +109,12 @@ def _named(name: str, p: Person) -> float:
     return max((ratio(s, f) for s in spans for f in forms if s and f), default=0.0)
 
 
+def _whole(name: str, p: Person) -> float:
+    """How like his whole name, said as a whole, this is."""
+    said = key(" ".join(w for w in name.split() if not w[0].isdigit()))
+    return max((ratio(said, f) for f in _forms(p.name, p.name_hi)[0] if f), default=0.0)
+
+
 def find(book: Sequence[Person], name: str | None, description: str | None) -> Search:
     name = (name or "").strip() or None
     description = (description or "").strip() or None
@@ -114,6 +122,12 @@ def find(book: Sequence[Person], name: str | None, description: str | None) -> S
         return Search((), "give a name or a description")
 
     named = {p.ref: s for p in book if name and (s := _named(name, p)) >= FAINT}
+    if name and len(name.split()) >= 2:
+        # He said a whole name and someone has it: those who share only part of
+        # it (the first name) are not who he means.
+        whole = {p.ref for p in book if p.ref in named and _whole(name, p) >= STRONG}
+        if whole:
+            named = {r: s for r, s in named.items() if r in whole}
     words = _words(description)
     weights = _weights(words, book)
     fitting = {

@@ -10,7 +10,7 @@ purity test needs no exceptions.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Literal
 from uuid import UUID
 
@@ -18,7 +18,9 @@ from pydantic import BaseModel, Field
 
 from bahi.domain.book import Chip, Joined
 
-EntryStatus = Literal["recorded", "confirmed", "disputed", "corrected", "settled"]
+EntryStatus = Literal[
+    "recorded", "confirmed", "disputed", "corrected", "settled", "removed"
+]
 
 
 class ShopOut(BaseModel):
@@ -39,7 +41,12 @@ class LineOut(BaseModel):
     display_name: str
     tag: str | None
     joined: Joined
+    #: What he has agreed he owes.
     balance_paise: int
+    #: On his phone, waiting for his yes; not in the balance.
+    waiting_paise: int = 0
+    #: He said it is wrong; not in the balance.
+    disputed_paise: int = 0
     day: int
     chip: Chip
     rhythm: RhythmOut
@@ -49,7 +56,12 @@ class BookOut(BaseModel):
     customer_count: int
     invited_count: int
     owing_count: int
+    #: What customers have agreed they owe.
     outstanding_paise: int
+    #: Written, waiting for customers' yes; not in outstanding.
+    waiting_paise: int = 0
+    #: Customers said these are wrong; not in outstanding.
+    disputed_paise: int = 0
     lines: list[LineOut]
 
 
@@ -146,9 +158,27 @@ class PersonIn(BaseModel):
     person_id: UUID
 
 
+class PaytmAccountOut(BaseModel):
+    """His own Paytm account, as his phone shows it. Fixed: nobody changes these
+    in BAHI."""
+
+    name: str
+    upi: str
+    phone: str
+
+
+class PaytmNameOut(BaseModel):
+    """What the shop sees of someone's Paytm account: never the number."""
+
+    name: str
+    upi: str
+
+
 class DisputeIn(BaseModel):
     person_id: UUID
     reason: str | None = Field(default=None, max_length=280)
+    #: Not his at all, or the wrong amount.
+    disputed_as: Literal["not_mine", "wrong_amount"] = "wrong_amount"
 
 
 # ── voice ────────────────────────────────────────────────────────────────────
@@ -295,8 +325,12 @@ class CardOut(BaseModel):
     #: None on a card that only adds someone.
     amount_paise: int | None
     #: customer: only adds someone new to the book, by name. correction: the
-    #: right amount for an entry already written.
-    kind: Literal["udhaar", "payment", "customer", "correction"]
+    #: right amount for an entry already written. removal: takes an entry back
+    #: (amount_paise is what it said). details: his name or description.
+    #: message: words to send him.
+    kind: Literal[
+        "udhaar", "payment", "customer", "correction", "removal", "details", "message"
+    ]
     #: A correction: what the entry said.
     corrects_amount_paise: int | None = None
     #: Someone not in the book yet: his yes adds them, by name only.
@@ -312,12 +346,20 @@ class CardOut(BaseModel):
             "unusual",
             "new_customer",
             "correction",
+            "removal",
+            "details",
+            "message",
         ]
     ]
     #: What he said, shown under the amount.
     spoken_text: str | None
     #: The name he used for them, not the book's: his yes remembers it.
     called: str | None = None
+    #: A details card: the new name and description (None: unchanged).
+    change_name: str | None = None
+    change_tag: str | None = None
+    #: A message card: the words to send.
+    message: str | None = None
     entry_id: UUID | None
     #: The customer has BAHI on his phone, so a saved entry reaches it.
     on_bahi: bool
@@ -355,6 +397,10 @@ class ThreadEntryOut(BaseModel):
     corrects_entry_id: str | None
     corrects_amount_paise: int | None
     disputed_at: datetime | None
+    #: What he said is wrong with it.
+    disputed_as: Literal["not_mine", "wrong_amount"] | None = None
+    #: The shop took it back.
+    removed_at: datetime | None = None
     acknowledged_at: datetime | None
     last_paid_at: datetime | None
     last_method: Literal["upi", "cash"] | None
@@ -389,6 +435,10 @@ class ThreadOut(BaseModel):
     tag: str | None
     joined: Joined
     balance_paise: int
+    #: Waiting for his yes; not in the balance.
+    waiting_paise: int = 0
+    #: He said it is wrong; not in the balance.
+    disputed_paise: int = 0
     #: Days since he last paid, when he owes something.
     day: int | None
     messages: list[MessageOut]
@@ -449,6 +499,8 @@ class MyShopOut(BaseModel):
     #: What the shop calls him.
     display_name: str
     balance_paise: int
+    #: Waiting for his yes; not in the balance.
+    waiting_paise: int = 0
     #: What he can pay now: his balance less anything he says is wrong.
     payable_paise: int
     #: Days since he last paid here, when he owes something.
@@ -469,6 +521,8 @@ class InviteOut(BaseModel):
 class MyUdhaarOut(BaseModel):
     today: date
     person_id: str
+    #: His Paytm account, once he has scanned somewhere.
+    account: PaytmAccountOut | None = None
     total_paise: int
     #: Every shop whose book he is in, the ones he owes first.
     shops: list[MyShopOut]
@@ -547,7 +601,13 @@ class CustomerDetailOut(BaseModel):
     joined: Joined
     invite_pending: bool
     invited_at: datetime | None
+    #: The name and UPI ID on his Paytm account, if he is on BAHI.
+    paytm: PaytmNameOut | None = None
     balance_paise: int
+    #: Waiting for his yes; not in the balance.
+    waiting_paise: int = 0
+    #: He said it is wrong; not in the balance.
+    disputed_paise: int = 0
     day: int | None
     #: Newest first: everything open, then the latest paid.
     entries: list[ThreadEntryOut]
@@ -640,8 +700,21 @@ class ReminderOut(BaseModel):
     send_at: datetime
     body: str
     #: munshi: Sarvam's model wrote it, and it passed our checks. words: ours.
-    written: Literal["munshi", "words"]
+    #: shop: the shopkeeper rewrote it.
+    written: Literal["munshi", "words", "shop"]
     status: Literal["planned", "stopped", "sent"]
+
+
+class ReminderEditIn(BaseModel):
+    """His own words for it, or his own hour (HH:MM, IST), or both."""
+
+    body: str | None = Field(default=None, min_length=1, max_length=300)
+    at: time | None = None
+
+
+class PauseIn(BaseModel):
+    #: The last day with no reminder.
+    until: date
 
 
 class PlanOut(BaseModel):

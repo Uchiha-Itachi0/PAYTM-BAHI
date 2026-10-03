@@ -161,7 +161,7 @@ def test_a_card_then_a_tap_writes_the_entry_and_says_it_was_sent(
     assert card["status"] == "shown" and card["reasons"] == []
     assert card["spoken_text"] == "शर्मा जी को दो सौ लिख दो"
     assert out["reply"].endswith("पक्का?")
-    assert out["say_url"].endswith(".wav")
+    assert ".wav?lang=hi-IN" in out["say_url"]
     assert sharmas_entries(tx) == before, "a card is not an entry"
 
     model.then(reply("लिख दिया और शर्मा जी के फोन पर भेज दिया।"))
@@ -386,6 +386,142 @@ def test_the_munshi_corrects_an_entry_rather_than_writing_a_new_one(
     assert len(after) == len(before) + 1, "one new entry: the correction"
 
 
+def unpaid_open(tx: db.Conn) -> list[Any]:
+    """Sharma's entries that could be taken back: open, nothing paid, and not
+    past the limitation line."""
+    from bahi.domain.limitation import expired
+
+    today = clock.now().date()
+    return [
+        e
+        for e in entries.of_customer(tx, SHARMA)
+        if e.status in ("recorded", "confirmed", "disputed")
+        and e.paid_paise == 0
+        and not expired(
+            e.recorded_at.date(),
+            e.acknowledged_at.date() if e.acknowledged_at else None,
+            today,
+        )
+    ]
+
+
+def test_the_munshi_takes_back_an_entry_written_by_mistake(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    """ "शर्मा वाला दो सौ गलती से लिखा, हटा दो": a removal card, never a जमा."""
+    (open_,) = unpaid_open(tx)
+    results: list[Any] = []
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_removal",
+            lambda found: {"customer_id": first_found(found), "amount_rupees": 0},
+        ),
+        tool("counter", keeping(results, {})),
+        reply("शर्मा जी का दो सौ उधार हटाना है, पक्का?"),
+    )
+    out = say(api, "शर्मा वाला दो सौ गलती से लिखा, हटा दो")
+    assert results[0]["ok"] is True, "an amount of zero means: he didn't say one"
+    card = out["card"]
+    assert (card["kind"], card["amount_paise"], card["reasons"]) == (
+        "removal",
+        open_.amount_paise,
+        ["removal"],
+    )
+    model.then(reply("हटा दिया।"))
+    done = tap(api, out)
+    assert done["card"]["status"] == "saved"
+    assert entries.get(tx, open_.id).status == "removed"  # type: ignore[union-attr]
+    assert any(d.startswith("Took back: Sharma") for d in done["done"])
+
+
+def test_a_card_the_book_refuses_comes_off_the_screen(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    from bahi.service import ledger
+
+    (open_,) = unpaid_open(tx)
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool("propose_removal", lambda found: {"customer_id": first_found(found)}),
+        reply("पक्का?"),
+    )
+    out = say(api, "शर्मा वाला हटा दो")
+    everything = ledger.left_to_pay(tx, SHARMA, clock.now().date())
+    ledger.pay_cash(tx, SHARMA, everything, clock.now())  # paid before his yes
+    model.then(reply("ये एंट्री का कुछ हिस्सा चुक गया है, इसलिए हट नहीं सकती।"))
+    done = tap(api, out)
+    assert done["card"]["status"] == "cancelled", "nothing waits on a yes it can't get"
+    assert entries.get(tx, open_.id).status == "settled"  # type: ignore[union-attr]
+
+
+def test_the_munshi_changes_where_someone_lives(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_details",
+            lambda found: {
+                "customer_id": first_found(found),
+                "description": "Room 3, C wing",
+            },
+        ),
+        reply("शर्मा जी, अब रूम 3, सी विंग, पक्का?"),
+    )
+    out = say(api, "शर्मा जी actually सी विंग रूम तीन में रहते हैं")
+    card = out["card"]
+    assert (card["kind"], card["change_tag"], card["change_name"]) == (
+        "details",
+        "Room 3, C wing",
+        None,
+    )
+    model.then(reply("बदल दिया।"))
+    tap(api, out)
+    c = customers.get(tx, SHARMA)
+    assert c is not None and (c.display_name, c.tag) == ("Sharma", "Room 3, C wing")
+
+
+def test_a_message_goes_only_with_his_yes(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    from bahi.store import threads
+
+    def said() -> list[str]:
+        t = threads.of_customer(tx, SHARMA)
+        return (
+            [m.body for m in threads.messages(tx, t.id) if m.author == "shop"]
+            if t
+            else []
+        )
+
+    before = said()
+    text = "शर्मा जी, कल दुकान पर आ जाना, सामान आ गया है।"
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_message",
+            lambda found: {"customer_id": first_found(found), "text": text},
+        ),
+        reply("भेज दूँ?"),
+    )
+    out = say(api, "शर्मा को बोल दो कल आ जाए, सामान आ गया है")
+    assert (out["card"]["kind"], out["card"]["message"]) == ("message", text)
+    assert said() == before, "a card sends nothing"
+    model.then(reply("भेज दिया।"))
+    tap(api, out)
+    assert said() == [*before, text]
+
+
+def test_the_card_says_only_what_he_said_for_it(api: TestClient, model: Script) -> None:
+    model.then(*shows_sharma(200), reply("लिख दिया।"))
+    out = say(api, "शर्मा को दो सौ")
+    tap(api, out)
+    model.then(*shows_sharma(50), reply("..."))
+    card = say(api, "अब शर्मा को पचास और", out["conversation_id"])["card"]
+    assert card["spoken_text"] == "अब शर्मा को पचास और"
+
+
 def test_with_no_wrong_amount_and_one_open_entry_that_is_the_one(
     api: TestClient, model: Script
 ) -> None:
@@ -482,7 +618,7 @@ def test_a_card_is_fixed_within_the_same_limits(api: TestClient, model: Script) 
     model.then(*shows_sharma(100, "paid_back"))
     out = say(api, "शर्मा जी ने सौ दिए")
     r = edit(api, out, amount_rupees=5000)
-    assert r.status_code == 409 and "owe only" in r.json()["detail"]
+    assert r.status_code == 409 and "can be paid" in r.json()["detail"]
 
 
 def test_a_decided_card_is_not_changed(api: TestClient, model: Script) -> None:
@@ -671,7 +807,9 @@ def voice_on(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> list[str]:
     monkeypatch.setattr(said, "LIVE", tmp_path)
     asked: list[str] = []
 
-    def speak(text: str, *, key: str, voice: str, timeout: float) -> bytes:
+    def speak(
+        text: str, *, key: str, voice: str, timeout: float, language: str = "hi-IN"
+    ) -> bytes:
         assert timeout == sarvam.SENTENCE_TTS_TIMEOUT_S
         asked.append(text)
         time.sleep(0.05)
@@ -1014,3 +1152,29 @@ def test_a_misheard_name_comes_back_weak() -> None:
 def test_nobody_fits_says_so() -> None:
     s = find(BOOK, "रमेश", None)
     assert s.found == () and s.note and "nobody" in s.note
+
+
+def test_the_reply_is_said_in_its_own_language() -> None:
+    from bahi.voice import language_of
+
+    assert language_of("शर्मा जी, दो सौ रुपये उधार, पक्का?") == "hi-IN"
+    assert language_of("शर्मा, दोनशे रुपये उधार, नक्की?", "mr-IN") == "mr-IN"
+    assert language_of("சர்மா, இருநூறு ரூபாய், சரியா?") == "ta-IN"
+    assert language_of("Sharma, two hundred rupees udhaar, okay?") == "en-IN"
+    assert language_of("₹200") == "hi-IN"
+
+
+def test_a_whole_name_finds_that_person_not_everyone_with_the_first_name() -> None:
+    book = [
+        Person("a1", "Anubhav", "Room 311, B wing", "अनुभव", "रूम 311, बी विंग"),
+        Person("a2", "Anubhav Jain", "Medical shop", "अनुभव जैन", "मेडिकल शॉप"),
+        Person("a3", "Anubhav Shukla", "Room 1006, B wing", "अनुभव शुक्ला", None),
+    ]
+
+    def refs(name: str, description: str | None = None) -> list[str]:
+        return [f.person.ref for f in find(book, name, description).found]
+
+    assert refs("अनुभव शुक्ला") == ["a3"]
+    # Even with the new address he is moving him to, which another Anubhav has.
+    assert refs("अनुभव शुक्ला", "Room 311, C wing") == ["a3"]
+    assert refs("अनुभव") == ["a1", "a2", "a3"], "the first name alone: all three"

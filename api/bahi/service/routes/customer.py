@@ -65,6 +65,8 @@ def confirm(entry_id: str, body: PersonIn, con: Con) -> EntryOut:
 
 @router.post("/entries/{entry_id}/dispute")
 def dispute(entry_id: str, body: DisputeIn, con: Con) -> EntryOut:
-    """B1. "That's not right"."""
-    e = ledger.dispute(con, entry_id, body.person_id, body.reason, clock.now())
+    """B1. "Not mine" or "Wrong amount"."""
+    e = ledger.dispute(
+        con, entry_id, body.person_id, body.reason, clock.now(), body.disputed_as
+    )
     return views.entry_out(e)

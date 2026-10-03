@@ -130,9 +130,10 @@ def test_past_his_longest_gap_is_changed() -> None:
     assert ln is not None and ln.chip == "changed"
 
 
-def test_an_unanswered_entry_is_not_confirmed_and_still_counts() -> None:
+def test_an_unanswered_entry_waits_and_is_not_in_the_balance() -> None:
     ln = line(customer(entry(15000, "recorded", acked=False)), TODAY)
-    assert ln is not None and (ln.chip, ln.balance_paise) == ("not_confirmed", 15000)
+    assert ln is not None and ln.chip == "not_confirmed"
+    assert (ln.balance_paise, ln.waiting_paise) == (0, 15000)
 
 
 def test_a_name_only_customer_is_read_by_his_rhythm() -> None:

@@ -34,6 +34,8 @@ def reset(con: db.Conn) -> None:
     with con.cursor() as cur:
         cur.execute("DROP SCHEMA public CASCADE")
         cur.execute("CREATE SCHEMA public")
+        # Paytm's simulated accounts (011) live beside the book, not in it.
+        cur.execute("DROP SCHEMA IF EXISTS paytm CASCADE")
     con.commit()
     print("  dropped and recreated schema public")
 

@@ -37,8 +37,14 @@ def corrected(shop_name: str, amount_paise: int) -> str:
     return f"Corrected by {shop_name} to {rupees(amount_paise)}."
 
 
-def disputed(customer_name: str, amount_paise: int) -> str:
-    return f"{customer_name} says {rupees(amount_paise)} is not right."
+def disputed(customer_name: str, amount_paise: int, disputed_as: str) -> str:
+    if disputed_as == "not_mine":
+        return f"{customer_name} says {rupees(amount_paise)} is not theirs."
+    return f"{customer_name} says {rupees(amount_paise)} is not the right amount."
+
+
+def removed(shop_name: str, amount_paise: int) -> str:
+    return f"{shop_name} took back {rupees(amount_paise)}. Nothing to pay for it."
 
 
 def paid(amount_paise: int, method: str, left_paise: int | None = None) -> str:

@@ -11,12 +11,13 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 
 from bahi import clock
-from bahi.domain.tonight import Plan, Tonight, Wait, tonight
+from bahi.domain.tonight import EARLIEST, LATEST, Plan, Tonight, Wait, tonight
 from bahi.munshi import writer
 from bahi.service import ledger
+from bahi.service import memory as keeping
 from bahi.service.errors import Conflict, NotFound
 from bahi.store import book as book_store
 from bahi.store import memories, reminders, threads
@@ -80,7 +81,10 @@ def draft(con: Conn, shop_id: str, now: datetime) -> Evening:
         written = list(
             pool.map(
                 lambda p: writer.reminder(
-                    p.display_name, shop.name, p.balance_paise, chats[p.customer_id]
+                    p.display_name,
+                    shop.name,
+                    p.balance_paise,
+                    chats[p.customer_id],
                 ),
                 todo,
             )
@@ -96,6 +100,56 @@ def draft(con: Conn, shop_id: str, now: datetime) -> Evening:
             now,
         )
     return work_out(con, shop_id, now)
+
+
+#: The longest a reminder may say, in the shopkeeper's own words too.
+MOST_CHARS = 300
+
+
+def rewrite(
+    con: Conn,
+    shop_id: str,
+    reminder_id: str,
+    *,
+    body: str | None = None,
+    at: time | None = None,
+) -> Reminder:
+    """The shopkeeper's own words, or his own hour, for tomorrow's reminder. The
+    hour stays inside the same window the decision keeps (EARLIEST to LATEST): a
+    reminder never arrives at night, whoever set the hour."""
+    r = reminders.get(con, reminder_id, shop_id)
+    if r is None:
+        raise NotFound(f"no reminder {reminder_id} at this shop")
+    words = r.body if body is None else " ".join(body.split())
+    if not words or len(words) > MOST_CHARS:
+        raise Conflict(f"a reminder is 1 to {MOST_CHARS} characters")
+    when = r.send_at
+    if at is not None:
+        if not EARLIEST <= at <= LATEST:
+            raise Conflict(
+                f"a reminder goes between {EARLIEST:%H:%M} and {LATEST:%H:%M}, "
+                "never at night"
+            )
+        when = datetime.combine(r.for_day, at, tzinfo=clock.IST)
+    written = "shop" if body is not None else r.written
+    if not reminders.rewrite(con, r.id, words, when, written):
+        raise Conflict("that reminder has already gone")
+    out = reminders.get(con, r.id, shop_id)
+    assert out is not None
+    return out
+
+
+PAUSED = "Reminders paused by you"
+
+
+def pause(con: Conn, shop_id: str, customer_id: str, until: date, now: datetime) -> None:
+    """No reminders to him up to and including `until`: a note of the
+    shopkeeper's that Tonight waits on, like any other, and tomorrow's reminder,
+    if already written, stopped."""
+    keeping.keep(con, shop_id, customer_id, "note", PAUSED, "shop", now, until=until)
+    r = reminders.for_day(con, shop_id, now.date() + timedelta(days=1)).get(customer_id)
+    if r is not None and r.status == "planned":
+        reminders.set_status(con, r.id, "stopped")
 
 
 def stop(con: Conn, shop_id: str, reminder_id: str, *, stopped: bool) -> Reminder:

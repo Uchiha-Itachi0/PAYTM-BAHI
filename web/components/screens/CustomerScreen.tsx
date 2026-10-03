@@ -294,14 +294,34 @@ export function CustomerScreen({ customerId }: { customerId: string }): React.Re
                     ? "Invite sent · waiting for their yes"
                     : "Name only · no phone, nothing reaches them"}
             </p>
+            {c.paytm ? (
+              <p className="mt-0.5 truncate text-[12px] font-medium text-sub">
+                Paytm: {c.paytm.name} · {c.paytm.upi}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="mt-4">
           <Figure
-            label="Owes you"
+            label="Owes you · agreed"
             value={formatPaise(c.balance_paise)}
             fine={c.balance_paise && c.day !== null ? `day ${c.day}` : undefined}
           />
+          {(c.waiting_paise ?? 0) > 0 || (c.disputed_paise ?? 0) > 0 ? (
+            <p className="mt-1 text-[12px] font-semibold text-sub">
+              Not counted:{" "}
+              {[
+                (c.waiting_paise ?? 0) > 0
+                  ? `${formatPaise(c.waiting_paise ?? 0)} waiting for their yes`
+                  : null,
+                (c.disputed_paise ?? 0) > 0
+                  ? `${formatPaise(c.disputed_paise ?? 0)} they say is wrong`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
         </div>
         {c.joined === "linked" ? (
           <div className="mt-3.5">
