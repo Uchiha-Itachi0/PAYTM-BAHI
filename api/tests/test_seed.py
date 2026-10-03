@@ -22,7 +22,7 @@ def test_the_plan_is_identical_every_time() -> None:
 
 
 def test_the_contract_is_the_database_not_a_hand_edit(con: db.Conn) -> None:
-    on_disk = json.loads(contract.CONTRACT.read_text(encoding="utf-8"))
+    on_disk = json.loads(contract.SHOP.read_text(encoding="utf-8"))
     assert on_disk == contract.build(con)
 
 

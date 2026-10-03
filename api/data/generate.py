@@ -31,7 +31,7 @@ import uuid
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
-from bahi.domain.money import rupees
+from bahi.domain.wording import acknowledgment
 from data import db
 from data.personas import CAST, CROWD, Open, Persona
 from data.rows import (
@@ -144,7 +144,7 @@ class Builder:
         return eid
 
     def ack(self, shop: str, eid: uuid.UUID, paise: int, when: datetime) -> None:
-        wording = f"Yes, I owe {rupees(paise)} to {SHOPS[shop][0]}"
+        wording = acknowledgment(paise, SHOPS[shop][0])
         self.plan.acknowledgments.append(
             AcknowledgmentRow(uid("ack", str(eid)), eid, wording, acknowledged_at=when)
         )

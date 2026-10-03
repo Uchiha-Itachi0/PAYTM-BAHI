@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+import psycopg
 import pytest
 
 from data import db
@@ -37,6 +38,14 @@ def tx(con: db.Conn) -> Iterator[db.Conn]:
     """The seeded database inside a transaction that is always rolled back.
 
     Tests that try to break a rule write here, so the seed is never changed.
+
+    The transaction is opened explicitly. psycopg's `con.transaction()` makes a
+    savepoint only when a transaction is already in progress; on an idle
+    connection it starts a real one and commits it. Opening one here means every
+    `transaction()` inside a test is a savepoint, and everything is rolled back.
     """
+    con.rollback()
+    con.execute("SELECT 1")
+    assert con.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS
     yield con
     con.rollback()

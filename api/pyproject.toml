@@ -32,3 +32,5 @@ strict = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# Starlette would like TestClient to move to httpx2; the tests do not care which.
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
