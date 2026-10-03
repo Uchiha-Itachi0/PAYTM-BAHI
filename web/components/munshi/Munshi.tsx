@@ -16,7 +16,8 @@ import { hush, sayLine } from "@/lib/voice";
  *
  * One conversation. What he says or types goes to the munshi (Sarvam's model with
  * tools, on the server); its reply is shown and said in Sarvam's voice, and the
- * mic opens again once it has finished speaking, unless the entry is done. When
+ * mic opens again once it has finished speaking (all of it, however long),
+ * unless the entry is done or he cut in first. When
  * it proposes an entry, the card shows the stored amount. An ordinary one goes in
  * three seconds unless he says or taps no (the countdown stops the moment he
  * starts speaking); one with reasons waits for a clear हाँ. Nothing is written
@@ -75,8 +76,10 @@ export function Munshi({
 
       if (out.reply && out.say_url) {
         setSpeaking(true);
-        await sayLine(out.say_url, out.reply);
+        const finished = await sayLine(out.say_url, out.reply);
         setSpeaking(false);
+        // He cut in (the mic, a tap, an edit): what he did next decides.
+        if (!finished) return;
       }
       const waiting = out.card?.status === "shown";
       if (waiting && out.card?.reasons.length === 0) setCounting(true);

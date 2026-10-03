@@ -89,6 +89,8 @@ def _out(
         if o.reply and o.reply_turn_id
         else None
     )
+    if say and o.reply:
+        said.warm(o.reply)  # ready, or nearly, when the screen asks for it
     return MunshiOut(
         conversation_id=UUID(o.conversation_id),
         heard=heard,
@@ -124,6 +126,10 @@ def talk_voice(
     at_counter, book, _ = ledger.counter_and_book(con, shop_id, clock.now())
     names = [p.name for p in at_counter + book]
     t = voice.hear(data, audio.content_type or "", keyterms=names)
+    if not t.text.strip():
+        # Noise, a cough, or the counter's own voice: the mic heard a sound but no
+        # words. Nothing goes to the munshi (an empty turn is refused anyway).
+        raise HTTPException(422, "Didn't catch any words. Tap the mic and say it again.")
     o = brain.talk(con, shop_id, cid, t.text, clock.now(), ask, heard=t.text)
     return _out(con, shop_id, o, t.text, t.source)
 
@@ -200,6 +206,6 @@ def say_reply(
         raise HTTPException(404, "no reply to say")
     text = brain.spoken(str(t.message["content"]))
     try:
-        return FileResponse(said.speech(text), media_type="audio/wav")
+        return FileResponse(said.sentence(text), media_type="audio/wav")
     except sarvam.SarvamError as e:
         raise HTTPException(503, "Sarvam didn't say it this time") from e

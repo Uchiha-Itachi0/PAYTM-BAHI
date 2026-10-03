@@ -1207,7 +1207,7 @@ export interface components {
              */
             status: "shown" | "saved" | "replaced" | "cancelled";
             /** Reasons */
-            reasons: ("weak_match" | "large" | "unusual" | "new_customer" | "correction")[];
+            reasons: ("weak_match" | "one_of_several" | "large" | "unusual" | "new_customer" | "correction")[];
             /** Spoken Text */
             spoken_text: string | null;
             /** Entry Id */

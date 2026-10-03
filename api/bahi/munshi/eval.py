@@ -49,7 +49,12 @@ class Scenario:
     #: written. kind is udhaar, payment or correction.
     expect: tuple[str, str, int] | None
     extra: str = ""
+    #: Names that must not be in the munshi's first reply: with three or more
+    #: fitting, it says how many and asks before reading any out.
+    unread: tuple[str, ...] = ()
 
+
+B_WING = ("शर्मा", "आशा", "कामत", "राहुल", "रिजवान")
 
 SCENARIOS = [
     Scenario(
@@ -59,6 +64,7 @@ SCENARIOS = [
         "you hear it.",
         ("Sharma", "udhaar", 200),
         "If the munshi offers to read out the names, say: हाँ, नाम बताओ।",
+        unread=B_WING,
     ),
     Scenario(
         "b_wing_tell",
@@ -66,6 +72,16 @@ SCENARIOS = [
         "udhaar ₹200 for Sharma, Room 19, B wing.",
         ("Sharma", "udhaar", 200),
         "If the munshi offers to read out the names, say instead: नहीं, शर्मा जी को।",
+        unread=B_WING,
+    ),
+    Scenario(
+        "c_wing_ask",
+        "सी विंग वाले को उधार देना है मुझे।",
+        "udhaar ₹300 for Pawar, Room 17, C wing. You don't remember the name until "
+        "you hear it.",
+        ("Pawar", "udhaar", 300),
+        "If the munshi offers to read out the names, say: हाँ, पढ़ दो।",
+        unread=("पवार", "कदम", "सुनीता", "उषा", "कमला"),
     ),
     Scenario(
         "doodh",
@@ -158,9 +174,12 @@ def run(s: Scenario, key: str) -> dict[str, Any]:
                 (d.amount_paise or 0) // 100,
             )
         con.rollback()
+    first = next((text for who, text in said if who == "munshi"), "")
+    early = [n for n in s.unread if n in first]
     return {
         "id": s.id,
-        "ok": written == s.expect,
+        "ok": written == s.expect and not early,
+        "early": early,
         "written": written,
         "said": said,
         "s": seconds,
@@ -177,7 +196,8 @@ def main() -> None:
         run(s, key) for s in SCENARIOS if not only or s.id in only for _ in range(times)
     ]
     for r in results:
-        print(f"\n{'✓' if r['ok'] else '✗'} {r['id']}  written: {r['written']}")
+        early = f"  read before asking: {', '.join(r['early'])}" if r["early"] else ""
+        print(f"\n{'✓' if r['ok'] else '✗'} {r['id']}  written: {r['written']}{early}")
         for who, text in r["said"]:
             print(f"   {'दुकानदार' if who == 'shop' else 'मुंशी'}: {text}")
     per = Counter(r["id"] for r in results if r["ok"])

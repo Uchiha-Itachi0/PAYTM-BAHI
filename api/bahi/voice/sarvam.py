@@ -45,6 +45,9 @@ HEDGE_AFTER_S = 2.5
 TRANSLITERATE_TIMEOUT_S = 3.0
 #: An amount takes bulbul:v3 0.4 to 0.6 s; the countdown is 3 s.
 TTS_TIMEOUT_S = 3.0
+#: The munshi's sentences are longer: on 30 Sep, 61 characters took 1.3 to 2.2 s,
+#: and five names 3.2 s, or 6.7 s at worst. Said whole, never in pieces.
+SENTENCE_TTS_TIMEOUT_S = 15.0
 TTS_MODEL = "bulbul:v3"
 #: Picked by ear from twelve bulbul:v3 voices on 30 Sep: the clearest readback.
 VOICE = "shreya"
@@ -253,7 +256,7 @@ def speaker() -> str:
     return os.environ.get("SARVAM_TTS_SPEAKER", VOICE).strip().lower() or VOICE
 
 
-def speak(text: str, *, key: str, voice: str) -> bytes:
+def speak(text: str, *, key: str, voice: str, timeout: float = TTS_TIMEOUT_S) -> bytes:
     """The words, spoken by Sarvam's bulbul:v3, as a WAV file."""
     body = {
         "text": text,
@@ -263,7 +266,7 @@ def speak(text: str, *, key: str, voice: str) -> bytes:
         "speech_sample_rate": TTS_SAMPLE_RATE,
         "output_audio_codec": "wav",
     }
-    reply = _post_json(TTS_URL, body, key=key, timeout=TTS_TIMEOUT_S)
+    reply = _post_json(TTS_URL, body, key=key, timeout=timeout)
     audios = reply.get("audios") if isinstance(reply, dict) else None
     if not isinstance(audios, list) or not audios or not isinstance(audios[0], str):
         raise SarvamError("Sarvam sent no audio")

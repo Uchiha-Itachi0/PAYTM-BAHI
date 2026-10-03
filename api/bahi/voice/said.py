@@ -9,11 +9,21 @@ Each phrase is spoken once by Sarvam's bulbul:v3 and kept, keyed by the voice
 and the words. `make voice` speaks the demo's phrases into `audio/said`, which
 is committed, so they play with the wifi off. Anything else is spoken on first
 use and kept in `audio/raw/said`, which git ignores.
+
+A munshi sentence can be long (a list of names he asked to hear), and bulbul
+takes longer the longer it is: 1.3 s for a short one, 3.2 to 6.7 s for five
+names. It is always one request, never pieces joined: each request is voiced
+afresh, and on 30 Sep two halves of one sentence came back at 188 and 216 Hz,
+two voices to the ear. So it is started the moment the reply exists (`warm`),
+not when the screen asks for it.
 """
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 from bahi.domain.speak import say
@@ -72,3 +82,62 @@ def speech(text: str, *, keep_in: Path | None = None) -> Path:
     path = folder / _name(text, voice)
     path.write_bytes(audio)
     return path
+
+
+# ── the munshi's sentences ───────────────────────────────────────────────────
+
+_SENTENCES = ThreadPoolExecutor(max_workers=4, thread_name_prefix="said")
+_LOCK = threading.Lock()
+#: Sentences being said right now, by file name: the screen's request for one
+#: that `warm` started waits for it instead of asking Sarvam again.
+_BUSY: dict[str, Future[Path]] = {}
+
+
+def _say_and_keep(text: str, voice: str, key: str) -> Path:
+    audio = sarvam.speak(
+        text, key=key, voice=voice, timeout=sarvam.SENTENCE_TTS_TIMEOUT_S
+    )
+    LIVE.mkdir(parents=True, exist_ok=True)
+    path = LIVE / _name(text, voice)
+    path.write_bytes(audio)
+    return path
+
+
+def _started(text: str) -> Future[Path]:
+    voice = sarvam.speaker()
+    found = cached(text, voice)
+    if found is not None:
+        ready: Future[Path] = Future()
+        ready.set_result(found)
+        return ready
+    key = api_key()
+    if offline() or key is None:
+        raise VoiceOffline("Voice is offline and this sentence was never spoken")
+    name = _name(text, voice)
+    with _LOCK:
+        busy = _BUSY.get(name)
+        if busy is None:
+            busy = _SENTENCES.submit(_say_and_keep, text, voice, key)
+            _BUSY[name] = busy
+
+            def over(f: Future[Path], name: str = name) -> None:
+                with _LOCK:
+                    if _BUSY.get(name) is f:
+                        del _BUSY[name]
+
+            busy.add_done_callback(over)
+    return busy
+
+
+def sentence(text: str) -> Path:
+    """One of the munshi's sentences as a WAV on disk, said now, or already being
+    said since `warm`. SarvamError if Sarvam couldn't; VoiceOffline when voice is
+    switched off and it was never said."""
+    return _started(text).result()
+
+
+def warm(text: str) -> None:
+    """Start saying the munshi's reply now: the screen will ask for it a moment
+    later, and by then it is ready or nearly."""
+    with contextlib.suppress(VoiceOffline):
+        _started(text)
