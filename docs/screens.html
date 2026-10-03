@@ -1,0 +1,730 @@
+<title>BAHI Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ── the sheet around the phones ─────────────────────────────────────── */
+:root{
+  --paper:#f4f5f7;
+  --sheet:#ffffff;
+  --ink:#16181d;
+  --muted:#5d636e;
+  --faint:#8b919c;
+  --rule:#e2e5ea;
+  --accent:#0077a8;
+  --shadow:0 1px 2px rgba(16,24,40,.05), 0 12px 32px rgba(16,24,40,.09);
+
+  /* ── Paytm app tokens, read off the real app ───────────────────────── */
+  --pt-sky-top:#a9daf2;     /* status bar / header band */
+  --pt-sky:#c8e8f8;         /* page ground behind cards */
+  --pt-sky-low:#e4f4fc;     /* fades toward the bottom */
+  --pt-card:#ffffff;
+  --pt-tile:#f4f5f7;        /* grey icon tile */
+  --pt-navy:#0f2e7e;        /* filled action tiles, Scan QR pill */
+  --pt-navy-ink:#002970;    /* logo navy */
+  --pt-cyan:#00b9f1;        /* links, secondary buttons, active tab */
+  --pt-text:#1c1c1c;
+  --pt-sub:#6e7278;
+  --pt-hair:#eceef1;
+  --pt-green:#1e7e34;
+  --pt-green-bg:#e8f5e9;
+  --pt-amber:#a8620a;
+  --pt-amber-bg:#fdf3e3;
+  --pt-grey:#79808c;
+  --pt-grey-bg:#eff1f4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0d1118;
+    --sheet:#161b24;
+    --ink:#e9ecf2;
+    --muted:#a0a8b6;
+    --faint:#717a89;
+    --rule:#262d39;
+    --accent:#56c8ef;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0d1118;
+  --sheet:#161b24;
+  --ink:#e9ecf2;
+  --muted:#a0a8b6;
+  --faint:#717a89;
+  --rule:#262d39;
+  --accent:#56c8ef;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;padding-block:0 76px;padding-inline:24px;
+  background:var(--paper);color:var(--ink);
+  font-family:Manrope,"Helvetica Neue",Arial,sans-serif;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1200px;margin-inline:auto}
+
+.mast{padding-block:54px 34px;border-bottom:1px solid var(--rule)}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+h1{font-size:clamp(32px,5vw,48px);font-weight:800;letter-spacing:-.03em;line-height:1.05;
+  margin:0 0 14px;text-wrap:balance}
+.lede{font-size:16.5px;color:var(--muted);max-width:62ch;margin:0 0 26px;line-height:1.55}
+.lede strong{color:var(--ink);font-weight:700}
+.meta{display:flex;flex-wrap:wrap;gap:9px}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:11.5px;border:1px solid var(--rule);
+  border-radius:999px;padding:5px 12px;color:var(--muted);background:var(--sheet)}
+.tag b{color:var(--ink);font-weight:500}
+
+section{padding-block:52px 0}
+.shead{display:flex;flex-wrap:wrap;align-items:baseline;gap:13px;margin-bottom:7px}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);
+  border:1px solid var(--rule);border-radius:6px;padding:2px 8px;background:var(--sheet)}
+h2{font-size:clamp(22px,2.8vw,29px);font-weight:800;letter-spacing:-.025em;margin:0}
+.sub{color:var(--muted);font-size:15px;max-width:68ch;margin:0 0 36px;line-height:1.55}
+
+.screens{display:flex;flex-wrap:wrap;gap:32px}
+.unit{flex:1 1 288px;max-width:328px;display:flex;flex-direction:column;gap:14px}
+
+/* ══ PHONE — the Paytm app ═══════════════════════════════════════════ */
+.phone{
+  width:100%;border-radius:22px;overflow:hidden;box-shadow:var(--shadow);
+  background:linear-gradient(180deg,var(--pt-sky-top) 0,var(--pt-sky) 130px,var(--pt-sky-low) 420px,var(--pt-sky-low) 100%);
+  color:var(--pt-text);display:flex;flex-direction:column;min-height:596px;
+  font-size:14px;
+}
+.phone.plain{background:#fff}
+
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:7px 14px 4px;
+  font-size:10.5px;font-weight:700;font-family:"IBM Plex Mono",monospace;color:#2b3440}
+.sbar .rt{display:flex;gap:4px;align-items:center}
+.sbar .bat{width:17px;height:9px;border:1.4px solid #2b3440;border-radius:2.5px;position:relative}
+.sbar .bat::after{content:"";position:absolute;inset:1.5px;right:6px;background:#2b3440;border-radius:1px}
+.bars{display:flex;gap:1.5px;align-items:flex-end;height:9px}
+.bars i{width:2.5px;background:#2b3440;border-radius:.5px;display:block}
+
+/* top bar: avatar + wordmark + actions */
+.topbar{display:flex;align-items:center;gap:10px;padding:8px 14px 12px}
+.ava{width:30px;height:30px;border-radius:50%;background:#f3ddf5;color:#8a3d96;display:grid;
+  place-items:center;font-size:11.5px;font-weight:800;flex:none}
+.mark{font-size:17px;font-weight:800;color:var(--pt-navy-ink);letter-spacing:-.04em;flex:1}
+.mark small{font-weight:700;font-size:15px;color:var(--pt-navy-ink);opacity:.9}
+.ticon{width:22px;height:22px;flex:none;stroke:var(--pt-navy-ink);fill:none;stroke-width:2.1}
+
+/* back-style header */
+.hdr{display:flex;align-items:center;gap:12px;padding:6px 14px 14px}
+.hdr .bk{font-size:20px;line-height:1;color:var(--pt-text);flex:none}
+.hdr h3{font-size:19px;font-weight:800;margin:0;letter-spacing:-.025em}
+.hdr .who{font-size:12px;color:var(--pt-sub);margin:1px 0 0;font-weight:500}
+
+.scroll{padding:0 10px 12px;display:flex;flex-direction:column;gap:11px;flex:1}
+
+/* the white floating card — the core Paytm object */
+.pcard{background:var(--pt-card);border-radius:16px;padding:15px 14px}
+.pcard.tight{padding:12px 14px}
+.pcard h4{font-size:19px;font-weight:800;letter-spacing:-.03em;margin:0 0 13px}
+.pcard h5{font-size:14px;font-weight:800;letter-spacing:-.02em;margin:0 0 10px}
+
+/* 4-across icon grid */
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.gcell{text-align:center}
+.tile{height:52px;border-radius:13px;background:var(--pt-tile);display:grid;place-items:center;margin-bottom:6px}
+.tile.solid{background:var(--pt-navy)}
+.tile svg{width:23px;height:23px;fill:none;stroke:var(--pt-navy);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tile.solid svg{stroke:#fff}
+.gcell span{font-size:10.5px;font-weight:600;line-height:1.25;display:block;color:var(--pt-text)}
+
+/* big amount block */
+.amtblk .lab{font-size:12.5px;color:var(--pt-sub);font-weight:600}
+.amtblk .big{font-size:31px;font-weight:800;letter-spacing:-.035em;font-variant-numeric:tabular-nums;margin-top:2px}
+.amtblk .fine{font-size:12px;color:var(--pt-sub);margin-top:5px;line-height:1.45}
+
+/* transaction / person rows */
+.row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--pt-hair)}
+.row:first-child{padding-top:2px}
+.row:last-child{border-bottom:0;padding-bottom:2px}
+.circ{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;
+  font-size:13px;font-weight:800}
+.c-blue{background:#dceffa;color:#1367a0}
+.c-yell{background:#fcf0d2;color:#9a7412}
+.c-pink{background:#fbe0e6;color:#a93b58}
+.c-mint{background:#dcf3e7;color:#1c7a4e}
+.c-lilac{background:#e9e3fa;color:#5b46a8}
+.rmid{flex:1;min-width:0}
+.rmid .t{font-size:14.5px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rmid .s{font-size:11.5px;color:var(--pt-sub);margin-top:2px;font-weight:500}
+.rend{text-align:right;flex:none}
+.rend .v{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.rend .v.neg{color:var(--pt-text)}
+.rend .v.pos{color:#00a550}
+.chip{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;margin-top:6px}
+.chip.g{background:var(--pt-green-bg);color:var(--pt-green)}
+.chip.a{background:var(--pt-amber-bg);color:var(--pt-amber)}
+.chip.n{background:var(--pt-grey-bg);color:var(--pt-grey)}
+
+/* buttons */
+.btn{display:block;width:100%;text-align:center;border:0;font-family:inherit;cursor:default;
+  border-radius:24px;padding:13px;font-size:15px;font-weight:800;letter-spacing:-.015em}
+.btn.navy{background:var(--pt-navy);color:#fff}
+.btn.cyan{background:var(--pt-cyan);color:#fff}
+.btn.out{background:#fff;color:var(--pt-text);border:1.5px solid #d4d8de;font-weight:700;font-size:14px}
+.btnrow{display:flex;gap:9px}
+.btnrow .btn{padding:11px}
+
+/* floating scan pill */
+.fab{position:sticky;bottom:10px;margin:8px auto 4px;background:var(--pt-navy);color:#fff;
+  border-radius:26px;padding:12px 26px;display:flex;align-items:center;gap:9px;width:max-content;
+  font-size:14.5px;font-weight:800;box-shadow:0 6px 18px rgba(15,46,126,.35)}
+.fab svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:2}
+
+/* voice listening */
+.mic{background:var(--pt-navy);border-radius:16px;padding:20px 15px;text-align:center;color:#fff}
+.wave{display:flex;gap:4px;justify-content:center;align-items:flex-end;height:34px;margin-bottom:11px}
+.wave i{width:4px;border-radius:2px;background:var(--pt-cyan);display:block}
+.mic .said{font-size:16px;font-weight:700;line-height:1.4;letter-spacing:-.02em}
+.mic .hint{font-size:11px;opacity:.72;margin-top:7px;font-weight:600}
+
+.kv{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--pt-hair);font-size:13.5px}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--pt-sub);font-weight:500}
+.kv span:last-child{font-weight:800;font-variant-numeric:tabular-nums}
+
+/* reminder decision */
+.dec{border-radius:14px;padding:12px 13px;background:var(--pt-card)}
+.dec + .dec{margin-top:9px}
+.dec .tp{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dec .nm{font-size:14.5px;font-weight:800;letter-spacing:-.02em}
+.dec .why{font-size:12px;color:var(--pt-sub);margin-top:6px;line-height:1.5;font-weight:500}
+.dec .why b{color:var(--pt-text);font-weight:800}
+.dec.send{border-left:4px solid var(--pt-cyan)}
+.dec.hold{border-left:4px solid #00a550}
+
+/* bottom sheet */
+.dim{flex:1;padding:0 10px;display:flex;flex-direction:column;gap:11px;opacity:.4}
+.bs{background:#fff;border-radius:20px 20px 0 0;padding:14px 16px 18px;margin-top:auto;
+  box-shadow:0 -8px 28px rgba(16,24,40,.13)}
+.grab{width:36px;height:4px;border-radius:2px;background:#dfe3e8;margin:0 auto 14px}
+.shopline{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.ask{font-size:20px;font-weight:800;letter-spacing:-.03em;line-height:1.28;margin:0 0 6px}
+.asksub{font-size:12.5px;color:var(--pt-sub);margin:0 0 15px;line-height:1.5;font-weight:500}
+
+.led{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--pt-hair);font-size:13px}
+.led:last-child{border-bottom:0}
+.led .t{font-weight:700}
+.led .d{font-size:11px;color:var(--pt-sub);margin-top:2px;font-weight:500}
+.led .v{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.led.dead,.led.dead .v{color:#9aa0aa}
+.led.dead .v{text-decoration:line-through}
+.led.ok .v{color:#00a550}
+
+.tick{width:56px;height:56px;border-radius:50%;background:#e2f6ea;color:#00a550;display:grid;
+  place-items:center;font-size:27px;margin:0 auto 12px;font-weight:800}
+
+/* tab underline like Paytm's All / Payments */
+.tabs{display:flex;gap:22px;padding:0 4px 10px;border-bottom:1px solid var(--pt-hair);margin-bottom:4px}
+.tabs b{font-size:14px;font-weight:800;padding-bottom:8px;border-bottom:2.5px solid var(--pt-cyan);margin-bottom:-11px}
+.tabs span{font-size:14px;font-weight:600;color:var(--pt-sub)}
+
+/* ── chat, modelled on Paytm's own message thread ──────────────────── */
+.chat-hdr{display:flex;align-items:center;gap:10px;padding:4px 12px 12px}
+.chat-hdr .bk{font-size:19px;flex:none}
+.chat-hdr .nm{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.chat-hdr .ph{font-size:11.5px;color:var(--pt-sub);font-weight:600;margin-top:1px}
+.thread{flex:1;padding:0 11px 6px;display:flex;flex-direction:column;gap:9px;background:#eaf5fb}
+.daypill{align-self:center;background:#dbe4ec;color:#5d6773;font-size:10.5px;font-weight:700;
+  padding:4px 11px;border-radius:11px;margin:4px 0}
+
+/* payment / entry bubble — light blue, navy stripe, like Paytm's */
+.bub{max-width:88%;border-radius:13px;overflow:hidden;background:#dceffa;align-self:flex-end}
+.bub .in{padding:11px 13px 9px}
+.bub .amt{font-size:27px;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;gap:7px}
+.bub .amt .ok{width:17px;height:17px;border-radius:50%;background:#00a550;color:#fff;font-size:10px;
+  display:grid;place-items:center;font-weight:800;flex:none}
+.bub .lbl{font-size:14px;font-weight:700;margin-top:1px;letter-spacing:-.02em}
+.bub .tm{font-size:10.5px;color:#6b757f;text-align:right;margin-top:6px;font-weight:600}
+.bub .stripe{height:5px;background:var(--pt-navy)}
+.bub .act{display:inline-block;border:1.5px solid var(--pt-cyan);color:#0077a8;border-radius:16px;
+  padding:5px 15px;font-size:12.5px;font-weight:800;margin-top:8px}
+.bub.disputed{background:#fdf1e0}
+.bub.disputed .stripe{background:var(--pt-amber)}
+
+/* plain text bubbles */
+.msg{max-width:80%;padding:9px 12px;border-radius:13px;font-size:13px;line-height:1.45;font-weight:500}
+.msg .tm{font-size:10px;color:#828c96;margin-top:4px;font-weight:600;text-align:right}
+.msg.them{background:#fff;align-self:flex-start;border-bottom-left-radius:4px}
+.msg.me{background:#dceffa;align-self:flex-end;border-bottom-right-radius:4px}
+
+.quick{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:2px}
+.quick span{border:1px dashed #9fb3c4;border-radius:15px;padding:5px 13px;font-size:12px;
+  font-weight:700;color:#3f4a56;background:#fff}
+
+/* ── chat list (merchant inbox) ────────────────────────────────────── */
+.listhdr{display:flex;align-items:center;gap:12px;padding:4px 14px 12px}
+.listhdr .bk{font-size:20px;flex:none}
+.listhdr h3{font-size:21px;font-weight:800;letter-spacing:-.03em;margin:0;flex:1}
+.listhdr .link{font-size:14.5px;font-weight:800;color:var(--pt-cyan);letter-spacing:-.01em}
+.search{margin:0 14px 12px;border:1.5px solid #d9dee4;border-radius:11px;padding:10px 13px;
+  display:flex;align-items:center;gap:9px;background:#fff}
+.search svg{width:17px;height:17px;stroke:#8d949d;fill:none;stroke-width:2.1;flex:none}
+.search span{font-size:13.5px;color:#98a0a9;font-weight:500}
+.ltabs{display:flex;align-items:center;gap:20px;padding:0 14px;border-bottom:1px solid var(--pt-hair)}
+.ltabs b{font-size:14.5px;font-weight:800;padding-bottom:9px;border-bottom:2.5px solid var(--pt-cyan);margin-bottom:-1px}
+.ltabs span{font-size:14.5px;font-weight:600;color:var(--pt-sub);padding-bottom:9px}
+.ltabs .link{margin-left:auto;font-size:13.5px;font-weight:800;color:var(--pt-cyan);padding-bottom:9px}
+.lrows{background:#fff;flex:1;padding:0 14px}
+.lrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--pt-hair)}
+.lrow:last-child{border-bottom:0}
+.lav{position:relative;flex:none}
+.biz{position:absolute;left:-2px;bottom:-7px;background:var(--pt-green-bg);color:var(--pt-green);
+  font-size:8px;font-weight:800;padding:1.5px 5px;border-radius:4px;letter-spacing:.02em}
+.lmid{flex:1;min-width:0}
+.lmid .n{font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lmid .p{font-size:12.5px;color:var(--pt-sub);margin-top:3px;font-weight:500;display:flex;align-items:center;gap:6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rup{width:15px;height:15px;border-radius:50%;background:#00a550;color:#fff;font-size:9px;
+  display:grid;place-items:center;font-weight:800;flex:none}
+.rup.wait{background:var(--pt-amber)}
+.rup.grey{background:#9aa0aa}
+.lend{text-align:right;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.lend .dt{font-size:11.5px;color:var(--pt-sub);font-weight:600}
+.badge{background:var(--pt-cyan);color:#fff;font-size:10.5px;font-weight:800;min-width:19px;height:19px;
+  border-radius:10px;display:grid;place-items:center;padding:0 5px}
+
+/* bottom compose bar */
+.compose{display:flex;gap:8px;align-items:center;padding:9px 11px;background:#fff;border-top:1px solid var(--pt-hair)}
+.compose .paybtn{background:var(--pt-cyan);color:#fff;border-radius:22px;padding:11px 17px;
+  font-size:13.5px;font-weight:800;white-space:nowrap;flex:none;letter-spacing:-.01em}
+.compose .field{flex:1;border:1.5px solid #d9dee4;border-radius:22px;padding:10px 14px;
+  font-size:12.5px;color:#98a0a9;font-weight:500;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+/* annotations */
+.cap{display:flex;flex-direction:column;gap:7px}
+.cap h4{font-size:14.5px;font-weight:800;margin:0;letter-spacing:-.02em}
+.cap p{font-size:13px;color:var(--muted);margin:0;line-height:1.55}
+.note{font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.55;color:var(--accent);
+  border-left:2px solid var(--accent);padding-left:10px}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+.rc{background:var(--sheet);padding:20px 19px}
+.rc .rl{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.rc h4{font-size:16px;font-weight:800;margin:9px 0;letter-spacing:-.025em}
+.rc p{font-size:13px;color:var(--muted);margin:0 0 11px;line-height:1.55}
+.yes,.no{font-family:"IBM Plex Mono",monospace;font-size:11.5px;display:flex;gap:8px;line-height:1.5;margin-top:5px}
+.yes{color:#0e8a5f}.no{color:#b3261e}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .yes{color:#4ed09c}:root:not([data-theme="light"]) .no{color:#ff8f85}}
+:root[data-theme="dark"] .yes{color:#4ed09c}:root[data-theme="dark"] .no{color:#ff8f85}
+.yes b,.no b{flex:none;font-weight:600}
+
+.beat{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px}
+.step{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:16px 15px}
+.step .t{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);letter-spacing:.06em}
+.step h4{font-size:14px;font-weight:800;margin:8px 0 6px;letter-spacing:-.02em}
+.step p{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5}
+.step .dev{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--faint);margin-top:9px;text-transform:uppercase;letter-spacing:.03em}
+
+footer{margin-top:58px;padding-top:22px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted);line-height:1.6}
+footer b{color:var(--ink);font-weight:700}
+
+@media (max-width:520px){body{padding-inline:16px}.unit{max-width:none}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="kicker">Paytm Build for India · Mumbai · 3 Oct 2026</p>
+  <h1>BAHI screens</h1>
+  <p class="lede">Nine screens drawn in the real Paytm app language — sky-blue ground, floating white cards, black headings, navy tiles, cyan for actions. Neither surface is a new app: these are <strong>screens inside Paytm for Business and the Paytm consumer app</strong>, already on both phones.</p>
+  <div class="meta">
+    <span class="tag"><b>Ground</b> #C8E8F8 sky</span>
+    <span class="tag"><b>Tiles</b> #0F2E7E navy</span>
+    <span class="tag"><b>Actions</b> #00B9F1 cyan</span>
+    <span class="tag"><b>Card radius</b> 16px</span>
+    <span class="tag"><b>Live update</b> 2s poll</span>
+  </div>
+</header>
+
+<!-- ══ A · MERCHANT ═══════════════════════════════════════════════════ -->
+<section>
+  <div class="shead"><span class="snum">A</span><h2>Merchant — inside Paytm for Business</h2></div>
+  <p class="sub">On the laptop during the demo. The Soundbox is the real input in production; on the day it is a browser mic, and we say so.</p>
+
+  <div class="screens">
+
+    <!-- A1 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>3:23</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="topbar">
+          <div class="ava">RK</div>
+          <div class="mark">Paytm <small>for Business</small></div>
+          <svg class="ticon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <svg class="ticon" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+        </div>
+        <div class="scroll">
+          <div class="pcard">
+            <div class="amtblk">
+              <div class="lab">Udhaar outstanding</div>
+              <div class="big">₹14,280</div>
+              <div class="fine">38 customers · ₹3,100 is older than 60 days</div>
+            </div>
+          </div>
+          <div class="pcard">
+            <h5>Who owes you</h5>
+            <div class="row"><div class="circ c-blue">S</div><div class="rmid"><div class="t">Sharma</div><div class="s">Room 19, B wing · day 4</div></div><div class="rend"><div class="v neg">₹200</div><div class="chip g">On rhythm</div></div></div>
+            <div class="row"><div class="circ c-yell">P</div><div class="rmid"><div class="t">Patil</div><div class="s">Auto stand · day 40</div></div><div class="rend"><div class="v neg">₹960</div><div class="chip a">Changed</div></div></div>
+            <div class="row"><div class="circ c-mint">M</div><div class="rmid"><div class="t">Meena Tai</div><div class="s">Opposite lane · day 11</div></div><div class="rend"><div class="v neg">₹340</div><div class="chip g">On rhythm</div></div></div>
+            <div class="row"><div class="circ c-lilac">A</div><div class="rmid"><div class="t">Anil</div><div class="s">Waiting on him · day 2</div></div><div class="rend"><div class="v neg">₹150</div><div class="chip n">Not confirmed</div></div></div>
+          </div>
+          <div class="fab"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3M21 21v.01M17 21h.01M21 17h.01"/></svg> Add by voice</div>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>A1 · The book</h4>
+        <p>Status is a rhythm, not a score — "on rhythm" means this person is inside their own normal gap, whatever that gap happens to be. Anil's unconfirmed entry still counts in the total; the shopkeeper never loses his own record.</p>
+        <p class="note">No red. No "defaulter". Not sorted by who owes most.</p>
+      </div>
+    </div>
+
+    <!-- A2 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>3:23</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Add udhaar</h3><p class="who">Speak it, then check it</p></div></div>
+        <div class="scroll">
+          <div class="mic">
+            <div class="wave"><i style="height:11px"></i><i style="height:24px"></i><i style="height:34px"></i><i style="height:18px"></i><i style="height:29px"></i><i style="height:13px"></i><i style="height:22px"></i></div>
+            <div class="said">"Sharma ko do sau udhaar"</div>
+            <div class="hint">Sarvam saaras:v4 · Hindi + English</div>
+          </div>
+          <div class="pcard">
+            <h5>Heard as</h5>
+            <div class="kv"><span>Customer</span><span>Sharma</span></div>
+            <div class="kv"><span>Tag</span><span>Room 19, B wing</span></div>
+            <div class="kv"><span>Amount</span><span>₹200</span></div>
+            <div class="kv"><span>Date</span><span>22 Sep 2026</span></div>
+          </div>
+          <button class="btn navy">Send to Sharma</button>
+          <button class="btn out">Say it again</button>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>A2 · Speaking the entry</h4>
+        <p>His hands are full and there is a queue, so the whole interaction is one sentence and one tap. The parsed fields are shown before sending — the model transcribes, it never decides the amount.</p>
+        <p class="note">Amount parsed by rule from the transcript, never generated.</p>
+      </div>
+    </div>
+
+    <!-- A3 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>11:02</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Tomorrow</h3><p class="who">Worked out at 11pm · 4 of 38</p></div></div>
+        <div class="scroll">
+          <div class="dec send"><div class="tp"><span class="nm">Patil</span><span class="chip a">Send 10:30 am</span></div><div class="why">Day <b>40</b>. He has never gone past <b>30</b> before. Something has changed — the message asks, it does not chase.</div></div>
+          <div class="dec hold"><div class="tp"><span class="nm">Sharma</span><span class="chip g">Hold</span></div><div class="why">Pays on day <b>9</b> on average across <b>23</b> settled entries. Today is day 4.</div></div>
+          <div class="dec hold"><div class="tp"><span class="nm">Meena Tai</span><span class="chip g">Hold</span></div><div class="why">Her gap is <b>18 days</b>, not 7. Today is day 11.</div></div>
+          <div class="dec send"><div class="tp"><span class="nm">Iqbal bhai</span><span class="chip a">Send 6:00 pm</span></div><div class="why">Day <b>12</b> against a usual <b>6</b>. You noted he is paid on the 10th — first working evening after.</div></div>
+          <div class="pcard tight"><div style="font-size:12.5px;color:var(--pt-sub);font-weight:600;line-height:1.5">34 customers are inside their own normal gap. Nothing is sent to them.</div></div>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>A3 · What the agent decided</h4>
+        <p>The screen that makes the product legible in one look — it shows who it is <em>not</em> messaging, and why. Every figure in the reasoning is arithmetic over that person's own settled history.</p>
+        <p class="note">4 of 38 is the pitch. A tool that messages everyone is what we replace.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ B · CUSTOMER ═══════════════════════════════════════════════════ -->
+<section>
+  <div class="shead"><span class="snum">B</span><h2>Customer — inside the Paytm app</h2></div>
+  <p class="sub">The half nobody has built, and the half a judge will hold. Arrives as a Paytm notification or from the QR at the till.</p>
+
+  <div class="screens">
+
+    <!-- B1 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>3:23</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="topbar" style="opacity:.4">
+          <div class="ava">AS</div><div class="mark">Paytm</div>
+          <svg class="ticon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        </div>
+        <div class="dim">
+          <div class="pcard"><h5>Money Transfer</h5>
+            <div class="grid4">
+              <div class="gcell"><div class="tile solid"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></div><span>Scan &amp; Pay</span></div>
+              <div class="gcell"><div class="tile solid"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div><span>To Mobile</span></div>
+              <div class="gcell"><div class="tile solid"><svg viewBox="0 0 24 24"><path d="M3 10h18M5 10v8M19 10v8M3 18h18M12 3l9 5H3z"/></svg></div><span>To Bank</span></div>
+              <div class="gcell"><div class="tile solid"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></div><span>To Self</span></div>
+            </div>
+          </div>
+          <div class="pcard" style="height:66px"></div>
+        </div>
+        <div class="bs">
+          <div class="grab"></div>
+          <div class="shopline">
+            <div class="circ c-blue">R</div>
+            <div><div style="font-size:14px;font-weight:800;letter-spacing:-.02em">Ramesh Kirana Store</div><div style="font-size:11.5px;color:var(--pt-sub);font-weight:500">Kurla West · 22 Sep, 9:38 am</div></div>
+          </div>
+          <p class="ask">Ramesh has recorded ₹200 udhaar against your name.</p>
+          <p class="asksub">Confirming makes this a shared record you can both see. It does not promise a date.</p>
+          <button class="btn navy">Yes, I owe ₹200</button>
+          <div style="height:9px"></div>
+          <button class="btn out">That's not right</button>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>B1 · The confirmation</h4>
+        <p>The moment the demo turns on. A bottom sheet over whatever he was already doing, because this is a Paytm notification and not a separate app.</p>
+        <p class="note">Button copy is load-bearing — see rule 1.</p>
+      </div>
+    </div>
+
+    <!-- B2 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>3:24</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>My udhaar</h3></div></div>
+        <div class="scroll">
+          <div class="pcard">
+            <div class="amtblk">
+              <div class="lab">You owe, across 3 shops</div>
+              <div class="big">₹1,240</div>
+              <div class="fine">Ramesh Kirana ₹200 · Salim Medical ₹690 · Gupta Dairy ₹350</div>
+            </div>
+          </div>
+          <div class="pcard">
+            <div class="tabs"><b>Ramesh Kirana</b><span>Salim</span><span>Gupta</span></div>
+            <div class="led"><div><div class="t">Groceries</div><div class="d">22 Sep · confirmed by you</div></div><div class="v">₹200</div></div>
+            <div class="led ok"><div><div class="t">Paid in full</div><div class="d">9 Sep · UPI</div></div><div class="v">₹450</div></div>
+            <div class="led ok"><div><div class="t">Paid in full</div><div class="d">31 Aug · UPI</div></div><div class="v">₹310</div></div>
+            <div class="led dead"><div><div class="t">Expired <span class="chip n">No longer claimable</span></div><div class="d">14 Jul 2023</div></div><div class="v">₹180</div></div>
+          </div>
+          <button class="btn cyan">Pay ₹200 now</button>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>B2 · His own book</h4>
+        <p>The total across every shop he owes — a number he has genuinely never seen. The 2023 entry sits there struck through and expired, because we stopped prompting before the three years ran out.</p>
+        <p class="note">Rule 3, made visible. Nobody else shows a debt dying.</p>
+      </div>
+    </div>
+
+    <!-- B3 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>3:25</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Cleared</h3><p class="who">Ramesh Kirana Store</p></div></div>
+        <div class="scroll">
+          <div class="pcard" style="text-align:center;padding:24px 15px">
+            <div class="tick">✓</div>
+            <div style="font-size:23px;font-weight:800;letter-spacing:-.035em;font-variant-numeric:tabular-nums">₹200 paid</div>
+            <div style="font-size:12.5px;color:var(--pt-sub);margin-top:6px;line-height:1.5;font-weight:500">22 September, 3:25 pm · UPI<br>Ramesh has been told.</div>
+          </div>
+          <div class="pcard">
+            <h5>Ramesh Kirana Store</h5>
+            <div class="led"><div><div class="t">Nothing outstanding</div><div class="d">Settled in 9 days</div></div><div class="v">₹0</div></div>
+          </div>
+          <div class="pcard">
+            <h5>Still open elsewhere</h5>
+            <div class="led"><div><div class="t">Salim Medical</div><div class="d">day 6</div></div><div class="v">₹690</div></div>
+            <div class="led"><div><div class="t">Gupta Dairy</div><div class="d">day 3</div></div><div class="v">₹350</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>B3 · Closed on both sides</h4>
+        <p>"Settled in 9 days" is the line that feeds tomorrow's reasoning — every cleared entry sharpens the rhythm the agent times against.</p>
+        <p class="note">Both ledgers update from one write, inside the same 2s tick.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ C · CHAT ═══════════════════════════════════════════════════════ -->
+<section>
+  <div class="shead"><span class="snum">C</span><h2>When it goes wrong — the chat</h2></div>
+  <p class="sub">Two things break the happy path: he disputes the amount, or he simply doesn't pay. Both land in the same place, and Paytm already has the thread to put it in. The customer's side carries the pay button; the shopkeeper's side does not carry a demand button.</p>
+
+  <div class="screens">
+
+    <!-- C1 · merchant inbox -->
+    <div class="unit">
+      <div class="phone plain">
+        <div class="sbar"><span>10:28</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="listhdr"><span class="bk">←</span><h3>Messages</h3><span class="link">New chat</span></div>
+        <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search a customer</span></div>
+        <div class="ltabs"><b>All</b><span>Needs reply</span><span class="link">Mark all read</span></div>
+        <div class="lrows">
+          <div class="lrow">
+            <div class="lav"><div class="circ c-yell">P</div></div>
+            <div class="lmid"><div class="n">Patil</div><div class="p">Bhaiya kaam band tha. 5 tarikh ko…</div></div>
+            <div class="lend"><span class="dt">10:34 am</span><span class="badge">1</span></div>
+          </div>
+          <div class="lrow">
+            <div class="lav"><div class="circ c-lilac">A</div></div>
+            <div class="lmid"><div class="n">Anil</div><div class="p"><span class="rup grey">?</span>₹150 · waiting on him since 20 Sep</div></div>
+            <div class="lend"><span class="dt">2d</span><span class="badge">1</span></div>
+          </div>
+          <div class="lrow">
+            <div class="lav"><div class="circ c-blue">S</div></div>
+            <div class="lmid"><div class="n">Sharma</div><div class="p"><span class="rup">✓</span>₹200 confirmed</div></div>
+            <div class="lend"><span class="dt">9:44 am</span></div>
+          </div>
+          <div class="lrow">
+            <div class="lav"><div class="circ c-mint">I</div></div>
+            <div class="lmid"><div class="n">Iqbal bhai</div><div class="p"><span class="rup wait">!</span>Reminder scheduled · 6:00 pm</div></div>
+            <div class="lend"><span class="dt">Today</span></div>
+          </div>
+          <div class="lrow">
+            <div class="lav"><div class="circ c-pink">M</div><span class="biz">Regular</span></div>
+            <div class="lmid"><div class="n">Meena Tai</div><div class="p"><span class="rup">✓</span>₹340 confirmed</div></div>
+            <div class="lend"><span class="dt">20 Sep</span></div>
+          </div>
+          <div class="lrow">
+            <div class="lav"><div class="circ c-yell">K</div></div>
+            <div class="lmid"><div class="n">Kamla behen</div><div class="p"><span class="rup">✓</span>₹0 · cleared in 6 days</div></div>
+            <div class="lend"><span class="dt">18 Sep</span></div>
+          </div>
+        </div>
+        <div class="fab"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg> Add by voice</div>
+      </div>
+      <div class="cap">
+        <h4>C1 · The inbox, merchant's side</h4>
+        <p>Two unread: Patil replied, and Anil still hasn't confirmed an entry from two days ago. Everyone else is quiet, which is the normal state — 34 of 38 customers never appear here at all.</p>
+        <p class="note">"Needs reply", not "Overdue". The tab sorts by what he owes a person, not what they owe him.</p>
+      </div>
+    </div>
+
+    <!-- C2 · disputed, customer -->
+    <div class="unit">
+      <div class="phone plain">
+        <div class="sbar"><span>3:26</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="chat-hdr">
+          <span class="bk">←</span>
+          <div class="circ c-blue" style="width:34px;height:34px">R</div>
+          <div style="flex:1;min-width:0"><div class="nm">Ramesh Kirana Store</div><div class="ph">Kurla West · Business</div></div>
+          <svg class="ticon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </div>
+        <div class="thread">
+          <div class="daypill">22 September</div>
+          <div class="bub disputed">
+            <div class="in">
+              <div class="amt">₹200</div>
+              <div class="lbl">Udhaar · you said this is wrong</div>
+              <div class="tm">9:38 am</div>
+            </div>
+            <div class="stripe"></div>
+          </div>
+          <div class="msg them">Bhaiya 2 kg atta aur ek tel. 200 hi hua tha na?<div class="tm">9:41 am</div></div>
+          <div class="msg me">Tel nahi liya tha maine. Sirf atta.<div class="tm">9:43 am</div></div>
+          <div class="msg them">Achha haan, galti ho gayi. 150 kar deta hoon.<div class="tm">9:44 am</div></div>
+          <div class="bub">
+            <div class="in">
+              <div class="amt">₹150 <span class="ok">✓</span></div>
+              <div class="lbl">Corrected by Ramesh</div>
+              <span class="act">Yes, I owe ₹150</span>
+              <div class="tm">9:44 am</div>
+            </div>
+            <div class="stripe"></div>
+          </div>
+        </div>
+        <div class="compose">
+          <div class="paybtn">₹ Pay ₹150</div>
+          <div class="field">Message Ramesh…</div>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>C2 · The disputed entry, customer's side</h4>
+        <p>He tapped "That's not right" on the confirmation sheet and landed here. The disputed entry sits at the top in amber, the two of them sort it out in their own words, and the corrected entry arrives as a fresh thing to confirm.</p>
+        <p class="note">This is the screen that proves the record protects him too, not just the shopkeeper.</p>
+      </div>
+    </div>
+
+    <!-- C3 · unpaid thread, merchant -->
+    <div class="unit">
+      <div class="phone plain">
+        <div class="sbar"><span>10:31</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="chat-hdr">
+          <span class="bk">←</span>
+          <div class="circ c-yell" style="width:34px;height:34px">P</div>
+          <div style="flex:1;min-width:0"><div class="nm">Patil</div><div class="ph">Auto stand · day 40</div></div>
+          <svg class="ticon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </div>
+        <div class="thread">
+          <div class="daypill">13 August</div>
+          <div class="bub">
+            <div class="in">
+              <div class="amt">₹960 <span class="ok">✓</span></div>
+              <div class="lbl">Udhaar · confirmed by Patil</div>
+              <div class="tm">6:12 pm</div>
+            </div>
+            <div class="stripe"></div>
+          </div>
+          <div class="daypill">Today</div>
+          <div class="msg me">Patil bhai, ₹960 ka udhaar hai. Koi dikkat ho to bata dena — jaldi nahi hai.<div class="tm">10:30 am</div></div>
+          <div class="msg them">Bhaiya kaam band tha 3 hafte. 5 tarikh ko salary aayegi, tab de dunga.<div class="tm">10:34 am</div></div>
+          <div class="quick"><span>Theek hai 👍</span><span>Koi baat nahi</span></div>
+        </div>
+        <div class="compose">
+          <div class="field" style="flex:1">Message Patil…</div>
+          <svg class="ticon" viewBox="0 0 24 24" style="stroke:var(--pt-cyan)"><path d="M4 12l16-8-6 16-2-6z"/></svg>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>C3 · Still unpaid, shopkeeper's side</h4>
+        <p>Day 40, so the agent scheduled a message and wrote it to ask rather than demand. Patil answers with a reason and a date. Ramesh has a person to talk to instead of a number to chase.</p>
+        <p class="note">No "Request ₹960" button on this side. Rule 4 — the shopkeeper types like a person.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ D · RULES ══════════════════════════════════════════════════════ -->
+<section>
+  <div class="shead"><span class="snum">D</span><h2>Four rules, as UI decisions</h2></div>
+  <p class="sub">Not principles on a slide. Each is a specific thing the interface must say or must never say, and each comes from a statute.</p>
+  <div class="rules">
+    <div class="rc"><div class="rl">Rule 1 · IT Act s.4</div><h4>Acknowledge, never promise</h4>
+      <p>An acknowledgment of debt is recognised electronically. A promise to pay a fixed sum is a promissory note, which falls outside the Act entirely.</p>
+      <div class="yes"><b>Yes</b><span>"Yes, I owe ₹200"</span></div>
+      <div class="no"><b>No</b><span>"I'll pay by Friday"</span></div></div>
+    <div class="rc"><div class="rl">Rule 2 · Money-Lenders Acts</div><h4>Never a rupee above the price</h4>
+      <p>A loan is defined as an advance "at interest". One late fee makes the shopkeeper an unlicensed money-lender in Karnataka and Delhi.</p>
+      <div class="yes"><b>Yes</b><span>"Pay ₹200 now"</span></div>
+      <div class="no"><b>No</b><span>"₹200 + ₹10 late fee"</span></div></div>
+    <div class="rc"><div class="rl">Rule 3 · Limitation Act s.18</div><h4>Let debts die</h4>
+      <p>Every confirmation restarts a fresh three years, with no cap. Prompt forever and a ₹200 debt becomes legally immortal.</p>
+      <div class="yes"><b>Yes</b><span>"Expired · no longer claimable"</span></div>
+      <div class="no"><b>No</b><span>"Outstanding since 2023"</span></div></div>
+    <div class="rc"><div class="rl">Rule 4 · BNS s.308 · CCPA</div><h4>Never shame, never charge</h4>
+      <p>Threatening exposure to extract payment is extortion. A reminder carrying a fee or an upsell supplies the "commercial gain" that makes nagging a dark pattern.</p>
+      <div class="yes"><b>Yes</b><span>"Day 40 — ask, don't chase"</span></div>
+      <div class="no"><b>No</b><span>Defaulter lists · share · leaderboards</span></div></div>
+  </div>
+</section>
+
+<!-- ══ D · BEAT ═══════════════════════════════════════════════════════ -->
+<section>
+  <div class="shead"><span class="snum">E</span><h2>The forty seconds</h2></div>
+  <p class="sub">The order the screens appear in on stage. Two devices, one write, no typing.</p>
+  <div class="beat">
+    <div class="step"><div class="t">0:00 → 0:08</div><h4>He speaks it</h4><p>"Sharma ko do sau udhaar." The parsed fields appear. One tap to send.</p><div class="dev">Laptop · A2</div></div>
+    <div class="step"><div class="t">0:08 → 0:18</div><h4>A phone buzzes</h4><p>On the judges' table. The sheet is already open when they pick it up.</p><div class="dev">Judge's phone · B1</div></div>
+    <div class="step"><div class="t">0:18 → 0:26</div><h4>They tap Confirm</h4><p>Both ledgers update inside one 2-second tick. They watch the laptop change.</p><div class="dev">Both · A1 + B2</div></div>
+    <div class="step"><div class="t">0:26 → 0:40</div><h4>Tomorrow's list</h4><p>"Four of thirty-eight. Sharma is on day 4 and he pays on day 9 — we leave him alone."</p><div class="dev">Laptop · A3</div></div>
+  </div>
+</section>
+
+<footer><b>A build sketch, not final visual design.</b> Spacing, radii, weights and the colour roles here are the ones to copy. Illustrated icons, empty states and error states are still to do. All figures are synthetic demo data for one seeded shop.</footer>
+
+</div>

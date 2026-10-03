@@ -1,0 +1,32 @@
+# secrets — never commit a key
+.env
+.env.local
+*.pem
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# data — regenerate with `make db`
+*.db
+*.sqlite
+*.sqlite3
+
+# the sarvam cache is committed deliberately (the demo runs offline),
+# but never the raw api responses
+api/bahi/audio/raw/
+
+# local tooling
+.agents/
+skills-lock.json
+.DS_Store
