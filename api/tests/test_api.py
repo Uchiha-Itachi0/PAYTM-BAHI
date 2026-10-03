@@ -350,12 +350,12 @@ def test_when_sarvam_refuses_the_screen_gets_a_plain_sentence(
 
 
 @pytest.fixture
-def shubh(monkeypatch: pytest.MonkeyPatch) -> None:
+def default_voice(monkeypatch: pytest.MonkeyPatch) -> None:
     """The voice the committed readbacks were spoken in."""
     monkeypatch.delenv("SARVAM_TTS_SPEAKER", raising=False)
 
 
-@pytest.mark.usefixtures("shubh")
+@pytest.mark.usefixtures("default_voice")
 def test_the_demos_readbacks_play_with_the_wifi_off(api: TestClient) -> None:
     for path in ("/voice/say/22000.wav", "/voice/say/25000.wav", "/voice/ask.wav"):
         r = api.get(path)
@@ -363,7 +363,7 @@ def test_the_demos_readbacks_play_with_the_wifi_off(api: TestClient) -> None:
         assert r.headers["content-type"] == "audio/wav" and r.content[:4] == b"RIFF"
 
 
-@pytest.mark.usefixtures("shubh")
+@pytest.mark.usefixtures("default_voice")
 def test_an_amount_never_spoken_waits_for_sarvam_when_offline(api: TestClient) -> None:
     r = api.get("/voice/say/123400.wav")
     assert r.status_code == 503

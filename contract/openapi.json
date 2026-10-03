@@ -684,6 +684,57 @@
           }
         }
       }
+    },
+    "/voice/say/{paise}.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Say Amount",
+        "description": "The amount said back in Sarvam's voice. An amount only: this route cannot\nsay a name. 503 when voice is offline and it was never spoken; the screen then\nuses the browser's own voice.",
+        "operationId": "say_amount_voice_say__paise__wav_get",
+        "parameters": [
+          {
+            "name": "paise",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Paise"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voice/ask.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Say Ask",
+        "description": "\"किसके लिए?\", in Sarvam's voice.",
+        "operationId": "say_ask_voice_ask_wav_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
     }
   },
   "components": {

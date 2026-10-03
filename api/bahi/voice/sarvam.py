@@ -41,6 +41,8 @@ TRANSLITERATE_TIMEOUT_S = 3.0
 #: An amount takes bulbul:v3 0.4 to 0.6 s; the countdown is 3 s.
 TTS_TIMEOUT_S = 3.0
 TTS_MODEL = "bulbul:v3"
+#: Picked by ear from twelve bulbul:v3 voices on 30 Sep: the clearest readback.
+VOICE = "shreya"
 TTS_SAMPLE_RATE = 24000
 
 
@@ -146,7 +148,7 @@ def transliterate(text: str, *, key: str) -> str:
 
 def speaker() -> str:
     """Which of bulbul:v3's voices says it back. `SARVAM_TTS_SPEAKER` in api/.env."""
-    return os.environ.get("SARVAM_TTS_SPEAKER", "shubh").strip().lower() or "shubh"
+    return os.environ.get("SARVAM_TTS_SPEAKER", VOICE).strip().lower() or VOICE
 
 
 def speak(text: str, *, key: str, voice: str) -> bytes:
