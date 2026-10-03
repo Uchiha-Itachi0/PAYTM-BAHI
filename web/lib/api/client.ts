@@ -30,6 +30,16 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
+  return read<T>(res);
+}
+
+/** A POST of a file (a recording), as multipart form data. */
+export async function apiForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`/api${path}`, { method: "POST", body: form, cache: "no-store" });
+  return read<T>(res);
+}
+
+async function read<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   const data: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {

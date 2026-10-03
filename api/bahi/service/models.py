@@ -145,3 +145,65 @@ class PersonIn(BaseModel):
 class DisputeIn(BaseModel):
     person_id: UUID
     reason: str | None = Field(default=None, max_length=280)
+
+
+# ── voice ────────────────────────────────────────────────────────────────────
+
+
+class HeardIn(BaseModel):
+    """What the shopkeeper said, typed or tapped instead of spoken."""
+
+    text: str = Field(min_length=1, max_length=200)
+
+
+class PersonOut(BaseModel):
+    customer_id: str
+    display_name: str
+    #: His scan, if he is at the counter: the entry should use it.
+    scan_id: str | None
+
+
+class PickedOut(BaseModel):
+    kind: Literal["picked"] = "picked"
+    #: Why him: the only one waiting, his name said at the counter, or in the book.
+    how: Literal["only_one", "at_counter", "in_book"]
+    person: PersonOut
+
+
+class AskOut(BaseModel):
+    kind: Literal["ask"] = "ask"
+    #: who: several waiting, no name. nobody: nobody waiting, no name.
+    #: not_found: the name fits nobody. several: the name fits more than one.
+    why: Literal["who", "nobody", "not_found", "several"]
+    among: list[PersonOut]
+
+
+class ReadbackOut(BaseModel):
+    """The amount said back. Never a name: the Soundbox says only the amount."""
+
+    roman: str
+    devanagari: str
+
+
+#: typed; sarvam (live); sarvam_cached (Sarvam heard this recording before);
+#: clip_script (a demo clip not yet run through Sarvam: its script, not a transcript)
+HeardSource = Literal["typed", "sarvam", "sarvam_cached", "clip_script"]
+
+
+class HeardOut(BaseModel):
+    """What was heard, and what the rules made of it. Nothing is recorded yet."""
+
+    transcript: str
+    source: HeardSource
+    name: str | None
+    amount_paise: int | None
+    amount_words: str | None
+    problem: Literal["no_amount", "unclear_amount"] | None
+    readback: ReadbackOut | None
+    who: PickedOut | AskOut = Field(discriminator="kind")
+
+
+class ClipOut(BaseModel):
+    slug: str
+    label: str
+    shows: str

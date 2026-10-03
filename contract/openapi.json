@@ -517,10 +517,224 @@
           }
         }
       }
+    },
+    "/shops/{shop_id}/heard": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Heard Text",
+        "description": "Words typed or tapped: the same rules as speech, without the recogniser.",
+        "operationId": "heard_text_shops__shop_id__heard_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeardIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeardOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/voice": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Heard Voice",
+        "description": "A recording from the shop's mic. 503 when voice is offline and it isn't a\nrecording we have heard before; the screen then asks him to type it.",
+        "operationId": "heard_voice_shops__shop_id__voice_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_heard_voice_shops__shop_id__voice_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeardOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voice/clips": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "List Clips",
+        "description": "The demo recordings on disk, for playing into /voice with the wifi off.",
+        "operationId": "list_clips_voice_clips_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClipOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Clips Voice Clips Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voice/clips/{slug}.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Get Clip",
+        "operationId": "get_clip_voice_clips__slug__wav_get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AskOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "ask",
+            "title": "Kind",
+            "default": "ask"
+          },
+          "why": {
+            "type": "string",
+            "enum": [
+              "who",
+              "nobody",
+              "not_found",
+              "several"
+            ],
+            "title": "Why"
+          },
+          "among": {
+            "items": {
+              "$ref": "#/components/schemas/PersonOut"
+            },
+            "type": "array",
+            "title": "Among"
+          }
+        },
+        "type": "object",
+        "required": [
+          "why",
+          "among"
+        ],
+        "title": "AskOut"
+      },
+      "Body_heard_voice_shops__shop_id__voice_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio"
+        ],
+        "title": "Body_heard_voice_shops__shop_id__voice_post"
+      },
       "BookOut": {
         "properties": {
           "customer_count": {
@@ -556,6 +770,29 @@
           "lines"
         ],
         "title": "BookOut"
+      },
+      "ClipOut": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "shows": {
+            "type": "string",
+            "title": "Shows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "label",
+          "shows"
+        ],
+        "title": "ClipOut"
       },
       "CounterOut": {
         "properties": {
@@ -792,6 +1029,129 @@
         ],
         "title": "Health"
       },
+      "HeardIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "HeardIn",
+        "description": "What the shopkeeper said, typed or tapped instead of spoken."
+      },
+      "HeardOut": {
+        "properties": {
+          "transcript": {
+            "type": "string",
+            "title": "Transcript"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "typed",
+              "sarvam",
+              "sarvam_cached",
+              "clip_script"
+            ],
+            "title": "Source"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Paise"
+          },
+          "amount_words": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Words"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_amount",
+                  "unclear_amount"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "readback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadbackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "who": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PickedOut"
+              },
+              {
+                "$ref": "#/components/schemas/AskOut"
+              }
+            ],
+            "title": "Who",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "ask": "#/components/schemas/AskOut",
+                "picked": "#/components/schemas/PickedOut"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "transcript",
+          "source",
+          "name",
+          "amount_paise",
+          "amount_words",
+          "problem",
+          "readback",
+          "who"
+        ],
+        "title": "HeardOut",
+        "description": "What was heard, and what the rules made of it. Nothing is recorded yet."
+      },
       "JoinIn": {
         "properties": {
           "person_id": {
@@ -925,6 +1285,83 @@
           "person_id"
         ],
         "title": "PersonIn"
+      },
+      "PersonOut": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "scan_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "display_name",
+          "scan_id"
+        ],
+        "title": "PersonOut"
+      },
+      "PickedOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "picked",
+            "title": "Kind",
+            "default": "picked"
+          },
+          "how": {
+            "type": "string",
+            "enum": [
+              "only_one",
+              "at_counter",
+              "in_book"
+            ],
+            "title": "How"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "how",
+          "person"
+        ],
+        "title": "PickedOut"
+      },
+      "ReadbackOut": {
+        "properties": {
+          "roman": {
+            "type": "string",
+            "title": "Roman"
+          },
+          "devanagari": {
+            "type": "string",
+            "title": "Devanagari"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roman",
+          "devanagari"
+        ],
+        "title": "ReadbackOut",
+        "description": "The amount said back. Never a name: the Soundbox says only the amount."
       },
       "RecordIn": {
         "properties": {

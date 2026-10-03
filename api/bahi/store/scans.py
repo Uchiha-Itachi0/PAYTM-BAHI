@@ -93,6 +93,21 @@ def waiting(con: Conn, shop_id: str, now: datetime) -> list[Waiting]:
         ).fetchall()
 
 
+def waiting_for(con: Conn, customer_id: str, now: datetime) -> str | None:
+    """His scan that is still waiting, if he has one."""
+    row = con.execute(
+        """
+        SELECT id::text FROM scans
+        WHERE customer_id = %(customer)s
+          AND entry_id IS NULL AND left_at IS NULL
+          AND scanned_at > %(since)s AND scanned_at <= %(now)s
+        ORDER BY scanned_at DESC LIMIT 1
+        """,
+        {"customer": customer_id, "since": now - WINDOW, "now": now},
+    ).fetchone()
+    return None if row is None else str(row[0])
+
+
 def claim(con: Conn, scan_id: str, entry_id: str, now: datetime) -> bool:
     """Attach an entry to a waiting scan. True if this call won it.
 

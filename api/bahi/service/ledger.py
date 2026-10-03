@@ -13,6 +13,8 @@ from datetime import datetime
 from uuid import UUID
 
 from bahi.domain.lifecycle import move
+from bahi.domain.parse import Heard, heard
+from bahi.domain.resolve import Ask, Person, Picked, resolve
 from bahi.domain.wording import acknowledgment
 from bahi.service.errors import Conflict, Forbidden, NotFound
 from bahi.store import customers, entries, scans, shops
@@ -87,6 +89,44 @@ def record(
     return entry(con, eid)
 
 
+@dataclass(frozen=True, slots=True)
+class Hearing:
+    heard: Heard
+    who: Picked | Ask
+    #: customer id -> his waiting scan, for everyone at the counter.
+    scans: dict[str, str]
+
+
+def counter_and_book(
+    con: Conn, shop_id: str, now: datetime
+) -> tuple[list[Person], list[Person], dict[str, str]]:
+    """Who could this be: the people waiting, and everyone who can be recorded against.
+
+    Invited customers are left out of the book: nothing is recorded against them
+    until they say yes. A Person's ref is the customer id; his scan is looked up.
+    """
+    waiting = {w.customer_id: w for w in scans.waiting(con, shop_id, now)}
+    at_counter = [Person(w.customer_id, w.display_name) for w in waiting.values()]
+    book = [
+        Person(c.id, c.display_name)
+        for c in customers.of_shop(con, shop_id)
+        if c.joined != "invited"
+    ]
+    return at_counter, book, {cid: w.scan_id for cid, w in waiting.items()}
+
+
+def hear(con: Conn, shop_id: str, transcript: str, now: datetime) -> Hearing:
+    """What was said, and who it is for. Reads only: the entry is still a POST.
+
+    The amount is parsed by rule from the words; the person is picked by rule or
+    asked about. Neither step is a model.
+    """
+    shop(con, shop_id)
+    at_counter, book, waiting_scans = counter_and_book(con, shop_id, now)
+    h = heard(transcript)
+    return Hearing(h, resolve(at_counter, book, h.name), waiting_scans)
+
+
 # ── the customer ─────────────────────────────────────────────────────────────
 
 
@@ -103,7 +143,9 @@ def join(
     """He scanned the shop's udhaar QR.
 
     First time at this shop: he joins its book under the name he gave. Invited
-    earlier: scanning is saying yes. Either way he is now at the counter.
+    earlier: scanning is saying yes. Either way he is now at the counter, once: a
+    second scan while he is still waiting (his phone reloaded the page) is the same
+    visit, so the counter never lists him twice.
     """
     shop(con, shop_id)
     pid = str(person_id)
@@ -120,7 +162,8 @@ def join(
     c = customers.at_shop(con, shop_id, pid)
     assert c is not None
     first = created or not entries.of_customer(con, c.id)
-    return Joined(customer=c, scan_id=scans.add(con, c.id, now), first_time=first)
+    scan_id = scans.waiting_for(con, c.id, now) or scans.add(con, c.id, now)
+    return Joined(customer=c, scan_id=scan_id, first_time=first)
 
 
 def leave(con: Conn, scan_id: str, now: datetime) -> None:

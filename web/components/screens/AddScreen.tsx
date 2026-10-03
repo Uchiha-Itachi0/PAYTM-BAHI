@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MerchantShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
@@ -10,28 +10,44 @@ import { Keypad, press } from "@/components/ui/Keypad";
 import { Notice } from "@/components/ui/Notice";
 import { Pill } from "@/components/ui/Pill";
 import { Row } from "@/components/ui/Row";
+import { Countdown } from "@/components/voice/Countdown";
+import { HeardCard } from "@/components/voice/HeardCard";
+import { VoicePanel } from "@/components/voice/VoicePanel";
 import { api, ApiError, usePoll } from "@/lib/api/client";
-import type { Counter, Customer, Entry } from "@/lib/api/types";
+import type { Counter, Customer, Entry, Heard, HeardPerson } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
+import { KISKE_LIYE, sayAloud } from "@/lib/voice";
 
 /**
  * A2 · Who is at the counter, then how much.
  *
  * Everyone who scanned the udhaar QR in the last three minutes is listed. With
  * one person there, he is the one: that is not a guess. With several, nobody is
- * picked until the shopkeeper taps a name (or says it, once voice lands). The
- * screen never chooses by queue order.
+ * picked until the shopkeeper says a name or taps one. The screen never chooses
+ * by queue order.
  *
- * Someone who is not at the counter can be picked from the book instead.
+ * Spoken: the server reads the amount and the name from the words by rule, and
+ * either picks someone (saying why) or asks. A pick is read back and sent after
+ * three seconds unless he cancels. Typed: the keypad and Send, as before. Both
+ * end in the same POST /entries.
  */
 
 type Pick =
   | { kind: "scan"; scanId: string; name: string }
   | { kind: "customer"; customerId: string; name: string };
 
+/** A spoken amount waiting to go, or waiting to be told who it is for. */
+type Spoken = { paise: number; transcript: string; readback: string | null };
+
 function ago(seconds: number): string {
   return seconds < 60 ? `${seconds}s ago` : `${Math.floor(seconds / 60)}m ago`;
+}
+
+function pickOf(p: HeardPerson): Pick {
+  return p.scan_id
+    ? { kind: "scan", scanId: p.scan_id, name: p.display_name }
+    : { kind: "customer", customerId: p.customer_id, name: p.display_name };
 }
 
 export function AddScreen(): React.ReactElement {
@@ -42,6 +58,10 @@ export function AddScreen(): React.ReactElement {
   const [rupees, setRupees] = useState("");
   const [busy, setBusy] = useState(false);
   const [news, setNews] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+
+  const [heard, setHeard] = useState<Heard | null>(null);
+  const [pending, setPending] = useState<{ who: Pick; spoken: Spoken } | null>(null);
+  const [asking, setAsking] = useState<{ spoken: Spoken; heard: Heard } | null>(null);
 
   // A picked scan that has expired or walked away is no longer a choice.
   const picked =
@@ -67,17 +87,20 @@ export function AddScreen(): React.ReactElement {
 
   const paise = Number(rupees || "0") * 100;
 
-  async function send(): Promise<void> {
-    if (!who || paise <= 0) return;
+  async function record(to: Pick, amount: number, spokenText?: string): Promise<void> {
     setBusy(true);
     try {
       await api<Entry>(`/shops/${SHOP_ID}/entries`, {
-        amount_paise: paise,
-        ...(who.kind === "scan" ? { scan_id: who.scanId } : { customer_id: who.customerId }),
+        amount_paise: amount,
+        spoken_text: spokenText?.slice(0, 200),
+        ...(to.kind === "scan" ? { scan_id: to.scanId } : { customer_id: to.customerId }),
       });
       setNews({
         tone: "ok",
-        text: `Sent to ${who.name}. Their phone now asks them to confirm ${formatPaise(paise)}.`,
+        text:
+          to.kind === "scan"
+            ? `Sent to ${to.name}. Their phone now asks them to confirm ${formatPaise(amount)}.`
+            : `Recorded ${formatPaise(amount)} for ${to.name}.`,
       });
       setRupees("");
       setPicked(null);
@@ -90,6 +113,58 @@ export function AddScreen(): React.ReactElement {
     }
   }
 
+  // ── what was said ──
+
+  const onHeard = useCallback((h: Heard) => {
+    setHeard(h);
+    setNews(null);
+    setPending(null);
+    setAsking(null);
+    if (h.amount_paise === null) {
+      if (h.who.kind === "picked") setPicked(pickOf(h.who.person));
+      setNews({
+        tone: "warn",
+        text:
+          h.problem === "unclear_amount"
+            ? `“${h.amount_words}” is not one clear amount, so nothing was sent. Say it again, or type it.`
+            : "No amount in that. Say it again, or type it.",
+      });
+      return;
+    }
+    const spoken: Spoken = {
+      paise: h.amount_paise,
+      transcript: h.transcript,
+      readback: h.readback?.devanagari ?? null,
+    };
+    if (h.who.kind === "picked") {
+      setPending({ who: pickOf(h.who.person), spoken });
+      if (spoken.readback) sayAloud(spoken.readback);
+    } else {
+      setAsking({ spoken, heard: h });
+      sayAloud(KISKE_LIYE);
+    }
+  }, []);
+
+  const onProblem = useCallback((text: string) => setNews({ tone: "warn", text }), []);
+
+  /** A tap on someone: the answer to "kiske liye?", or the pick for the keypad. */
+  function choose(p: Pick): void {
+    if (asking) {
+      setPending({ who: p, spoken: asking.spoken });
+      setAsking(null);
+      if (asking.spoken.readback) sayAloud(asking.spoken.readback);
+    } else {
+      setPicked(p);
+    }
+  }
+
+  function sendPending(): void {
+    if (!pending) return;
+    const { who: to, spoken } = pending;
+    setPending(null);
+    void record(to, spoken.paise, spoken.transcript);
+  }
+
   const heading =
     waiting.length === 0
       ? "Nobody at the counter"
@@ -97,21 +172,53 @@ export function AddScreen(): React.ReactElement {
         ? "1 person at the counter"
         : `${waiting.length} people at the counter`;
 
+  const askingWho = asking?.heard.who.kind === "ask" ? asking.heard.who : null;
+
   return (
     <MerchantShell heading={{ title: "Add udhaar", sub: heading, back: "/m" }}>
       {news ? <Notice tone={news.tone}>{news.text}</Notice> : null}
 
-      <Card title="At the counter" tight>
+      {pending ? (
+        <Countdown
+          key={`${pending.spoken.transcript}:${pending.who.name}`}
+          name={pending.who.name}
+          paise={pending.spoken.paise}
+          onDone={sendPending}
+          onCancel={() => {
+            setPending(null);
+            setNews({ tone: "warn", text: "Cancelled. Nothing was sent." });
+          }}
+        />
+      ) : null}
+
+      {askingWho?.why === "several" ? (
+        <Card title={`Kiske liye? “${asking?.heard.name}” fits ${askingWho.among.length}`} tight>
+          {askingWho.among.map((p) => (
+            <Row
+              key={p.customer_id}
+              name={p.display_name}
+              sub={p.scan_id ? "At the counter" : "In your book"}
+              onSelect={() => choose(pickOf(p))}
+            />
+          ))}
+        </Card>
+      ) : null}
+
+      <Card title={askingWho?.why === "who" ? "Kiske liye?" : "At the counter"} tight>
+        {asking ? (
+          <p className="mb-2 text-[12px] font-semibold text-cyan-text">
+            Heard {formatPaise(asking.spoken.paise)}. Tap who it is for
+            {askingWho?.why === "who" ? "." : ", or find them below."}
+          </p>
+        ) : null}
         {waiting.length ? (
           waiting.map((w) => (
             <Row
               key={w.scan_id}
               name={w.display_name}
               sub={`${w.first_time ? "New here" : (w.tag ?? "Regular")} · scanned ${ago(w.waited_s)}`}
-              selected={who?.kind === "scan" && who.scanId === w.scan_id}
-              onSelect={() =>
-                setPicked({ kind: "scan", scanId: w.scan_id, name: w.display_name })
-              }
+              selected={!asking && who?.kind === "scan" && who.scanId === w.scan_id}
+              onSelect={() => choose({ kind: "scan", scanId: w.scan_id, name: w.display_name })}
             />
           ))
         ) : (
@@ -119,25 +226,31 @@ export function AddScreen(): React.ReactElement {
             When a customer scans your udhaar QR, they appear here for three minutes.
           </p>
         )}
-        {waiting.length > 1 && !who ? (
+        {waiting.length > 1 && !who && !asking ? (
           <p className="mt-2 text-[12px] font-semibold text-cyan-text">
-            Tap who is in front of you.
+            Say their name with the amount, or tap who is in front of you.
           </p>
         ) : null}
       </Card>
 
-      <Card tight>
+      <VoicePanel onHeard={onHeard} onProblem={onProblem} />
+
+      {heard ? <HeardCard heard={heard} /> : null}
+
+      <Card title="Or type it" tight>
         <Figure
           label={who ? `For ${who.name}` : "Pick who it is for"}
           value={formatPaise(paise)}
-          fine="Type the amount. Voice comes next."
         />
         <div className="mt-3">
           <Keypad onKey={(k) => setRupees((r) => press(r, k))} />
         </div>
       </Card>
 
-      <Pill onClick={() => void send()} disabled={!who || paise <= 0 || busy}>
+      <Pill
+        onClick={() => who && void record(who, paise)}
+        disabled={!who || paise <= 0 || busy || pending !== null}
+      >
         {who ? `Send to ${who.name}` : "Send"}
       </Pill>
 
@@ -156,9 +269,9 @@ export function AddScreen(): React.ReactElement {
                 key={c.id}
                 name={c.display_name}
                 sub={c.joined === "name_only" ? `${c.tag ?? ""} · name only` : (c.tag ?? "")}
-                selected={who?.kind === "customer" && who.customerId === c.id}
+                selected={!asking && who?.kind === "customer" && who.customerId === c.id}
                 onSelect={() =>
-                  setPicked({ kind: "customer", customerId: c.id, name: c.display_name })
+                  choose({ kind: "customer", customerId: c.id, name: c.display_name })
                 }
               />
             ))}
