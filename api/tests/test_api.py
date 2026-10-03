@@ -346,6 +346,115 @@ def test_when_sarvam_refuses_the_screen_gets_a_plain_sentence(
     )
 
 
+# ── the answer to "किसके लिए?" ────────────────────────────────────────────────
+
+
+def answer(api: TestClient, text: str, among: list[str] | None = None) -> Any:
+    r = api.post(f"/shops/{SHOP}/answer", json={"text": text, "among": among or []})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_the_answer_to_how_much_is_read_with_what_came_before(
+    api: TestClient,
+) -> None:
+    r = api.post(f"/shops/{SHOP}/heard", json={"text": "do sau", "before": "Sharma ko"})
+    h = r.json()
+    assert h["transcript"] == "Sharma ko do sau"
+    assert h["amount_paise"] == 20000
+    assert h["who"]["person"]["customer_id"] == SHARMA
+
+
+def test_a_spoken_answer_to_how_much_is_read_with_what_came_before(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    monkeypatch.setattr(sarvam, "transcribe", lambda *a, **kw: "दो सौ रुपये")
+    monkeypatch.setattr(
+        sarvam,
+        "chat_json",
+        lambda *a, **kw: (_ for _ in ()).throw(sarvam.SarvamError("x")),
+    )
+    r = api.post(
+        f"/shops/{SHOP}/voice",
+        files={"audio": ("a.webm", b"answer", "audio/webm")},
+        data={"before": "Sharma ko"},
+    )
+    h = r.json()
+    assert h["transcript"] == "Sharma ko दो सौ रुपये"
+    assert (h["amount_paise"], h["who"]["person"]["customer_id"]) == (20000, SHARMA)
+
+
+def test_an_answer_names_someone_in_the_book(api: TestClient) -> None:
+    a = answer(api, "Sharma ji ke liye")
+    assert a["who"]["kind"] == "picked"
+    assert a["who"]["person"]["customer_id"] == SHARMA
+
+
+@pytest.mark.parametrize(
+    ("said", "tag"),
+    [
+        ("Shukla", "Room 1006, B wing"),
+        ("शुक्ला वाले", "Room 1006, B wing"),
+        ("204 wala", "Room 204, A wing"),
+        ("दो सौ चार वाले", "Room 204, A wing"),
+        ("Jain", "Medical shop"),
+    ],
+)
+def test_the_answer_to_kaunse_anubhav_picks_among_them(
+    api: TestClient, said: str, tag: str
+) -> None:
+    four = anubhavs(api)
+    a = answer(api, said, list(four.values()))
+    assert a["who"]["kind"] == "picked", a["who"]
+    assert a["who"]["person"]["customer_id"] == four[tag]
+
+
+def test_an_answer_is_looked_for_only_among_those_offered(api: TestClient) -> None:
+    a = answer(api, "Sharma", list(anubhavs(api).values()))
+    assert a["who"]["kind"] == "ask"
+
+
+def test_the_one_at_the_counter_answers_to_his_name(api: TestClient) -> None:
+    _, kavita = join(api, "Kavita")
+    join(api, "Ravi")
+    a = answer(api, "Kavita")
+    assert a["who"]["how"] == "at_counter"
+    assert a["who"]["person"]["scan_id"] == kavita["scan_id"]
+
+
+def test_an_answer_records_nothing(api: TestClient, tx: db.Conn) -> None:
+    before = tx.execute("SELECT count(*) FROM entries").fetchone()
+    answer(api, "Sharma")
+    assert tx.execute("SELECT count(*) FROM entries").fetchone() == before
+
+
+def test_a_spoken_answer_is_heard_with_the_names_offered(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    four = anubhavs(api)
+    listened: list[list[str]] = []
+
+    def fake(audio: bytes, content_type: str, *, key: str, keyterms: Any = ()) -> str:
+        listened.append(list(keyterms))
+        return "शुक्ला वाले"
+
+    monkeypatch.setattr(sarvam, "transcribe", fake)
+    r = api.post(
+        f"/shops/{SHOP}/answer/voice",
+        files={"audio": ("a.webm", b"answer", "audio/webm")},
+        data={"among": ",".join(four.values())},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["who"]["person"]["customer_id"] == four["Room 1006, B wing"]
+    assert sorted(listened[0]) == sorted(
+        ["Anubhav", "Anubhav", "Anubhav Jain", "Anubhav Shukla"]
+    )
+
+
 # ── the readback, in Sarvam's voice ─────────────────────────────────────────
 
 
@@ -357,7 +466,13 @@ def default_voice(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.usefixtures("default_voice")
 def test_the_demos_readbacks_play_with_the_wifi_off(api: TestClient) -> None:
-    for path in ("/voice/say/22000.wav", "/voice/say/25000.wav", "/voice/ask.wav"):
+    for path in (
+        "/voice/say/22000.wav",
+        "/voice/say/25000.wav",
+        "/voice/ask/who.wav",
+        "/voice/ask/how_much.wav",
+        "/voice/ask/again.wav",
+    ):
         r = api.get(path)
         assert r.status_code == 200, path
         assert r.headers["content-type"] == "audio/wav" and r.content[:4] == b"RIFF"
@@ -367,6 +482,10 @@ def test_the_demos_readbacks_play_with_the_wifi_off(api: TestClient) -> None:
 def test_an_amount_never_spoken_waits_for_sarvam_when_offline(api: TestClient) -> None:
     r = api.get("/voice/say/123400.wav")
     assert r.status_code == 503
+
+
+def test_the_counter_asks_only_its_three_questions(api: TestClient) -> None:
+    assert api.get("/voice/ask/sharma.wav").status_code == 404
 
 
 @pytest.mark.parametrize("paise", [0, 1250, -500])

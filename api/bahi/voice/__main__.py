@@ -74,13 +74,13 @@ def generate() -> None:
         speak_readbacks()
 
 
-#: What the demo says back: its clips' amounts, and the one question.
+#: What the demo says back: its clips' amounts, and the questions.
 DEMO_READBACKS = (20000, 22000, 25000, 30000, 35000, 10000, 12000)
 
 
 def speak_readbacks() -> None:
     """Sarvam's voice for the demo's readbacks, committed so they play offline."""
-    for text in (said.ASK, *(said.amount_words(p) for p in DEMO_READBACKS)):
+    for text in (*said.ASKS.values(), *(said.amount_words(p) for p in DEMO_READBACKS)):
         if said.cached(text) is None:
             path = said.speech(text, keep_in=said.SAID)
             print(f"spoken     {sarvam.speaker():8} {text}   {path.name}")

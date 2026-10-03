@@ -13,7 +13,13 @@
 
 import type { Heard } from "@/lib/api/types";
 
-export const KISKE_LIYE = "किसके लिए?";
+/** What the counter asks, then listens for the answer. Never a name. */
+export const QUESTIONS = {
+  who: "किसके लिए?",
+  how_much: "कितने रुपये?",
+  again: "फिर से बोलिए।",
+} as const;
+export type Question = keyof typeof QUESTIONS;
 
 let playing: HTMLAudioElement | null = null;
 
@@ -25,32 +31,41 @@ export function hush(): void {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
-function browserVoice(text: string): void {
-  if (!("speechSynthesis" in window)) return;
+function browserVoice(text: string, done: () => void): void {
+  if (!("speechSynthesis" in window)) return done();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "hi-IN";
   const hindi = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("hi"));
   if (hindi) u.voice = hindi;
+  u.onend = () => done();
+  u.onerror = () => done();
   window.speechSynthesis.speak(u);
 }
 
-function play(url: string, words: string): void {
-  if (typeof window === "undefined") return;
+/**
+ * Says it, and resolves when it has finished: the mic opens after, so it never
+ * hears the counter's own voice. Cut off by something newer, it never resolves.
+ */
+function play(url: string, words: string): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
   hush();
-  const audio = new Audio(url);
-  playing = audio;
-  audio.play().catch(() => {
-    if (playing === audio) browserVoice(words);
+  return new Promise((done) => {
+    const audio = new Audio(url);
+    playing = audio;
+    audio.onended = () => done();
+    audio.play().catch(() => {
+      if (playing === audio) browserVoice(words, done);
+    });
   });
 }
 
 /** "दो सौ बीस रुपये", in Sarvam's voice. `words` is the fallback's text. */
-export function sayAmount(paise: number, words: string): void {
-  play(`/api/voice/say/${paise}.wav`, words);
+export function sayAmount(paise: number, words: string): Promise<void> {
+  return play(`/api/voice/say/${paise}.wav`, words);
 }
 
-export function askWho(): void {
-  play("/api/voice/ask.wav", KISKE_LIYE);
+export function ask(question: Question): Promise<void> {
+  return play(`/api/voice/ask/${question}.wav`, QUESTIONS[question]);
 }
 
 /** Where the words came from, said plainly. A demo clip is never passed off as live. */

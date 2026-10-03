@@ -1,20 +1,25 @@
 """Voice at the counter: what was said, and what the rules made of it.
 
-Both endpoints only read. They return the amount, the person (or a question), and
+Every endpoint only reads. They return the amount, the person (or a question), and
 the words to say back; the screen then records the entry with POST /entries, after
 the shopkeeper has had three seconds to cancel. Typing and speaking end in the same
 call, so a spoken entry and a typed one are the same entry.
+
+When the screen asks "किसके लिए?", his answer goes to /answer: only who, among
+the people it offered (or the whole book), and the amount stays the one it heard.
+When it asks "कितने रुपये?", his answer comes back to /heard or /voice with
+`before`, what he said first, and the two are read as one sentence.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from bahi import clock, voice
 from bahi.service import ledger, views
 from bahi.service.deps import Con
-from bahi.service.models import ClipOut, HeardIn, HeardOut
+from bahi.service.models import AnswerIn, AnswerOut, ClipOut, HeardIn, HeardOut
 from bahi.voice import said
 from bahi.voice.clips import BY_SLUG, CLIPS
 
@@ -27,23 +32,62 @@ MAX_AUDIO_BYTES = 2_000_000
 @router.post("/shops/{shop_id}/heard")
 def heard_text(shop_id: str, body: HeardIn, con: Con) -> HeardOut:
     """Words typed or tapped: the same rules as speech, without the recogniser."""
-    hearing = ledger.hear(con, shop_id, body.text, clock.now())
-    return views.heard_out(hearing, body.text, "typed")
+    text = _after(body.before, body.text)
+    hearing = ledger.hear(con, shop_id, text, clock.now())
+    return views.heard_out(hearing, text, "typed")
 
 
 @router.post("/shops/{shop_id}/voice")
-def heard_voice(shop_id: str, audio: UploadFile, con: Con) -> HeardOut:
+def heard_voice(
+    shop_id: str, audio: UploadFile, con: Con, before: str = Form("", max_length=200)
+) -> HeardOut:
     """A recording from the shop's mic. 503 when voice is offline and it isn't a
-    recording we have heard before; the screen then asks him to type it."""
-    data = audio.file.read(MAX_AUDIO_BYTES + 1)
-    if len(data) > MAX_AUDIO_BYTES:
-        raise HTTPException(413, "that recording is too long; an entry is a few words")
+    recording we have heard before; the screen then asks him to type it.
+    `before`: what he said before, when this answers "कितने रुपये?"."""
+    data = _read(audio)
     ledger.shop(con, shop_id)
     at_counter, book, _ = ledger.counter_and_book(con, shop_id, clock.now())
     names = [p.name for p in at_counter + book]  # listen out for these
     t = voice.hear(data, audio.content_type or "", keyterms=names)
-    hearing = ledger.hear(con, shop_id, t.text, clock.now())
-    return views.heard_out(hearing, t.text, t.source)
+    text = _after(before, t.text)
+    hearing = ledger.hear(con, shop_id, text, clock.now())
+    return views.heard_out(hearing, text, t.source)
+
+
+@router.post("/shops/{shop_id}/answer")
+def answer_text(shop_id: str, body: AnswerIn, con: Con) -> AnswerOut:
+    """His answer to "किसके लिए?", typed: who, among `among` (empty: the book)."""
+    among = [str(i) for i in body.among]
+    a = ledger.answer(con, shop_id, body.text, among, clock.now())
+    return views.answer_out(a, body.text, "typed")
+
+
+@router.post("/shops/{shop_id}/answer/voice")
+def answer_voice(
+    shop_id: str, audio: UploadFile, con: Con, among: str = Form("")
+) -> AnswerOut:
+    """His answer to "किसके लिए?", spoken. `among`: the customer ids offered,
+    comma separated; empty for anyone in the book."""
+    data = _read(audio)
+    ids = [i.strip() for i in among.split(",") if i.strip()]
+    ledger.shop(con, shop_id)
+    at_counter, book, _ = ledger.counter_and_book(con, shop_id, clock.now())
+    offered = [p for p in book if p.ref in ids] if ids else at_counter + book
+    t = voice.hear(data, audio.content_type or "", keyterms=[p.name for p in offered])
+    a = ledger.answer(con, shop_id, t.text, ids, clock.now())
+    return views.answer_out(a, t.text, t.source)
+
+
+def _after(before: str | None, text: str) -> str:
+    """ "Sharma ko" and "do sau": one sentence, read and checked as one."""
+    return f"{before.strip()} {text}" if before and before.strip() else text
+
+
+def _read(audio: UploadFile) -> bytes:
+    data = audio.file.read(MAX_AUDIO_BYTES + 1)
+    if len(data) > MAX_AUDIO_BYTES:
+        raise HTTPException(413, "that recording is too long; an entry is a few words")
+    return data
 
 
 @router.get("/voice/clips")
@@ -76,7 +120,11 @@ def say_amount(paise: int) -> FileResponse:
     return FileResponse(said.speech(words), media_type="audio/wav")
 
 
-@router.get("/voice/ask.wav", response_class=FileResponse)
-def say_ask() -> FileResponse:
-    """ "किसके लिए?", in Sarvam's voice."""
-    return FileResponse(said.speech(said.ASK), media_type="audio/wav")
+@router.get("/voice/ask/{question}.wav", response_class=FileResponse)
+def say_ask(question: str) -> FileResponse:
+    """ "किसके लिए?" (who), "कितने रुपये?" (how_much) or "फिर से बोलिए।" (again),
+    in Sarvam's voice."""
+    words = said.ASKS.get(question)
+    if words is None:
+        raise HTTPException(404, f"no question {question}")
+    return FileResponse(said.speech(words), media_type="audio/wav")

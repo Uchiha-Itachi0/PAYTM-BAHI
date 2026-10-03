@@ -1,8 +1,9 @@
 """What the counter says back, in Sarvam's voice, kept on disk.
 
 The Soundbox says only two kinds of thing: an amount ("दो सौ बीस रुपये") and
-"किसके लिए?". Never a name: the customer's name is shown, not spoken aloud. So
-this module takes an amount in paise or the one question, and nothing else.
+one of three questions. Never a name: the customer's name is shown, not spoken
+aloud. So this module takes an amount in paise or a question's name, and nothing
+else.
 
 Each phrase is spoken once by Sarvam's bulbul:v3 and kept, keyed by the voice
 and the words. `make voice` speaks the demo's phrases into `audio/said`, which
@@ -22,7 +23,12 @@ from bahi.voice.cache import AUDIO
 SAID = AUDIO / "said"
 LIVE = AUDIO / "raw" / "said"
 
-ASK = "किसके लिए?"
+#: What the counter asks, then listens for the answer.
+ASKS = {
+    "who": "किसके लिए?",
+    "how_much": "कितने रुपये?",
+    "again": "फिर से बोलिए।",
+}
 
 
 def amount_words(paise: int) -> str:

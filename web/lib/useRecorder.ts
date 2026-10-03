@@ -43,10 +43,13 @@ export function useRecorder(
   state: MicState;
   start: () => Promise<void>;
   stop: () => void;
+  /** Stops and throws the recording away. */
+  cancel: () => void;
 } {
   const [state, setState] = useState<MicState>("idle");
   const recorder = useRef<MediaRecorder | null>(null);
   const cleanup = useRef<(() => void) | null>(null);
+  const discard = useRef(false);
 
   const stop = useCallback(() => {
     cleanup.current?.();
@@ -54,8 +57,13 @@ export function useRecorder(
     if (recorder.current?.state === "recording") recorder.current.stop();
   }, []);
 
-  // Leaving the screen closes the mic.
-  useEffect(() => stop, [stop]);
+  const cancel = useCallback(() => {
+    discard.current = true;
+    stop();
+  }, [stop]);
+
+  // Leaving the screen closes the mic, and sends nothing.
+  useEffect(() => cancel, [cancel]);
 
   const start = useCallback(async () => {
     if (recorder.current?.state === "recording") return;
@@ -74,11 +82,13 @@ export function useRecorder(
     const rec = new MediaRecorder(stream);
     const chunks: Blob[] = [];
     let spoke = true; // unless the listener below says otherwise
+    discard.current = false;
     rec.ondataavailable = (e) => chunks.push(e.data);
     rec.onstop = () => {
       stream.getTracks().forEach((t) => t.stop());
       setState("idle");
       const audio = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+      if (discard.current) return;
       if (!spoke) onNothing();
       else if (audio.size > 0) onDone(audio);
     };
@@ -99,7 +109,7 @@ export function useRecorder(
     }
   }, [onDone, onNothing, stop]);
 
-  return { state, start, stop };
+  return { state, start, stop, cancel };
 }
 
 type Listener = { close: () => void; onSpeech: () => void };

@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Mic } from "@/components/icons";
 import { Card } from "@/components/ui/Card";
 import { api, ApiError, apiForm } from "@/lib/api/client";
-import type { Clip, Heard } from "@/lib/api/types";
+import type { Answer, Clip, Heard } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { useRecorder, type MicState } from "@/lib/useRecorder";
 import { hush } from "@/lib/voice";
@@ -20,7 +20,20 @@ import { hush } from "@/lib/voice";
  *
  * Arriving from the book's Add udhaar (`?listen=1`), the mic is already open:
  * the tap that brought him here was the tap on the mic.
+ *
+ * While the screen is asking "किसके लिए?" (`answering`), what he says or types
+ * is his answer: it goes to /answer, among the people offered, and the amount
+ * stays the one already heard. The screen opens the mic for the answer by
+ * changing `listenSignal`, once its own question has finished playing.
  */
+
+const ANSWER_LINE: Record<MicState | "hearing", [string, string]> = {
+  idle: ["Tap, then say who it is for", "The name, the surname, or the room"],
+  recording: ["Listening… say who it is for", "Stops by itself when you stop speaking"],
+  hearing: ["Hearing…", "Looking for them in your book"],
+  blocked: ["The mic is blocked", "Allow it in the browser, or tap who it is for"],
+  unsupported: ["This browser can't record", "Tap who it is for"],
+};
 
 const MIC_LINE: Record<MicState | "hearing", [string, string]> = {
   idle: ["Tap, then say the amount", "Say the name too if several are waiting"],
@@ -32,10 +45,21 @@ const MIC_LINE: Record<MicState | "hearing", [string, string]> = {
 
 export function VoicePanel({
   onHeard,
+  onAnswer,
   onProblem,
+  answering,
+  before,
+  listenSignal,
 }: {
   onHeard: (h: Heard) => void;
+  onAnswer: (a: Answer) => void;
   onProblem: (message: string) => void;
+  /** Asking who: the customer ids offered, or [] for anyone. null: not asking. */
+  answering: string[] | null;
+  /** What he said before this, when the screen asked "कितने रुपये?". */
+  before: string | null;
+  /** Changes when the screen wants the mic opened. */
+  listenSignal: number;
 }): React.ReactElement {
   const [hearing, setHearing] = useState(false);
   const [text, setText] = useState("");
@@ -54,14 +78,20 @@ export function VoicePanel({
       try {
         const form = new FormData();
         form.append("audio", audio, filename);
-        onHeard(await apiForm<Heard>(`/shops/${SHOP_ID}/voice`, form));
+        if (answering) {
+          form.append("among", answering.join(","));
+          onAnswer(await apiForm<Answer>(`/shops/${SHOP_ID}/answer/voice`, form));
+        } else {
+          if (before) form.append("before", before);
+          onHeard(await apiForm<Heard>(`/shops/${SHOP_ID}/voice`, form));
+        }
       } catch (e) {
         onProblem(e instanceof ApiError ? e.message : "Could not hear that. Type it instead.");
       } finally {
         setHearing(false);
       }
     },
-    [onHeard, onProblem],
+    [answering, before, onAnswer, onHeard, onProblem],
   );
 
   const mic = useRecorder(
@@ -71,11 +101,16 @@ export function VoicePanel({
       [hearAudio],
     ),
     useCallback(
-      () => onProblem("Didn't hear anything. Tap the mic and say the amount."),
-      [onProblem],
+      () =>
+        onProblem(
+          answering
+            ? "Didn't hear a name. Tap who it is for, or tap the mic."
+            : "Didn't hear anything. Tap the mic and say the amount.",
+        ),
+      [answering, onProblem],
     ),
   );
-  const { start: startMic } = mic;
+  const { start: startMic, cancel: cancelMic } = mic;
 
   const listen = useCallback(() => {
     hush();
@@ -90,12 +125,32 @@ export function VoicePanel({
     listen();
   }, [listen]);
 
+  // The screen asked something and has finished saying it: listen for the answer.
+  const lastSignal = useRef(listenSignal);
+  useEffect(() => {
+    if (listenSignal === lastSignal.current) return;
+    lastSignal.current = listenSignal;
+    listen();
+  }, [listenSignal, listen]);
+
+  // The question was answered by a tap: an answer still being recorded is moot.
+  const asked = answering !== null;
+  useEffect(() => {
+    if (!asked) cancelMic();
+  }, [asked, cancelMic]);
+
   async function hearText(): Promise<void> {
     const words = text.trim();
     if (!words) return;
     setHearing(true);
     try {
-      onHeard(await api<Heard>(`/shops/${SHOP_ID}/heard`, { text: words }));
+      if (answering) {
+        onAnswer(
+          await api<Answer>(`/shops/${SHOP_ID}/answer`, { text: words, among: answering }),
+        );
+      } else {
+        onHeard(await api<Heard>(`/shops/${SHOP_ID}/heard`, { text: words, before }));
+      }
       setText("");
     } catch (e) {
       onProblem(e instanceof ApiError ? e.message : "Could not read that.");
@@ -123,7 +178,7 @@ export function VoicePanel({
   }
 
   const recording = mic.state === "recording";
-  const [line, fine] = MIC_LINE[hearing ? "hearing" : mic.state];
+  const [line, fine] = (answering ? ANSWER_LINE : MIC_LINE)[hearing ? "hearing" : mic.state];
 
   return (
     <Card title="Say it" tight>
