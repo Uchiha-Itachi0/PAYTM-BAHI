@@ -685,6 +685,13 @@ def test_three_or_more_are_a_count_until_he_has_been_asked(
     assert named["count"] == counted["count"]
     assert len(named["customers"]) == min(named["count"], 8)
     assert all(c["name"] and "owes" not in c for c in named["customers"])
+    # What he hears is the names alone: he already said the wing.
+    names = [c["name"] for c in named["customers"]]
+    assert named["read_out"] == ", ".join(
+        f"{c['name']} ({c['about']})" if names.count(c["name"]) > 1 else c["name"]
+        for c in named["customers"]
+    )
+    assert "read_out" in named["next"] and "no room or wing" in named["next"]
 
 
 def test_a_long_list_is_read_eight_at_a_time_then_the_rest_after_the_last(
