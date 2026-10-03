@@ -80,13 +80,21 @@ The main flows:
   customer in the real book, asks when it is unsure, and puts a card on screen.
   Only the shopkeeper's yes writes the entry.
 - **Chat and disputes.** One thread per shop and customer. Each entry appears as a
-  live card. The customer can say "That's not right" with a reason, and the
-  shopkeeper corrects it with a new entry he confirms again.
+  live card. The customer answers Yes, **Not mine** or **Wrong amount**, and the
+  shopkeeper takes the entry back or corrects it with a new entry the customer
+  confirms again.
+- **Agreed totals.** What someone owes is what they said yes to. Waiting and
+  disputed amounts are shown apart and aren't in the total. For someone kept by
+  name only, it's what was written, since there's nobody to ask.
 - **The customer's own book.** What he owes across every shop, each entry, and Pay
-  by UPI, all or part.
+  by UPI, all or part. His phone shows his Paytm account: the name on it, its UPI
+  ID and its number.
 - **Tonight.** Every night, plain code decides who gets a reminder tomorrow, and
   names the reason for everyone it leaves alone. On the seed that is 4 people out
-  of 38 who owe.
+  of 38 who owe. The shopkeeper can rewrite a reminder, move its hour, stop it, or
+  pause someone for a week, two weeks or a month.
+- **Any language.** Sarvam detects the language he speaks, and the munshi answers
+  in it: Marathi when he spoke Marathi.
 - **Memory.** Notes, promises and nicknames, kept and searched with Cognee, so
   "Raju said he'll pay on the 6th" holds his reminder until the 7th.
 - **The Soundbox.** Chimes for a scan, a done tone for a yes, and money received
@@ -168,9 +176,9 @@ flowchart LR
 | API types | `contract/openapi.json` → `openapi-typescript` | The frontend's types are generated from the API, never hand-written. |
 | Backend | FastAPI, Uvicorn, psycopg 3, Python 3.13 under `uv` | Small, typed and fast to test. mypy strict and ruff on every file. |
 | Database | PostgreSQL, plain numbered SQL migrations | Rules live in the schema: constraints, `CHECK`s, unique keys and triggers. |
-| Speech to text | Sarvam `saaras:v4` | Built for Indian languages; takes the book's names as keyterms. |
+| Speech to text | Sarvam `saaras:v4`, language detected | Built for Indian languages; takes the book's names as keyterms, and hears whichever of its languages he speaks. |
 | Agent model | Sarvam `sarvam-105b-conversations` (and `sarvam-105b` as a hedge) | Tool calling in Hindi and Hinglish. |
-| Text to speech | Sarvam `bulbul:v3`, voice `shreya` | The munshi's replies and the amount said back. |
+| Text to speech | Sarvam `bulbul:v3`, voice `shreya` | The munshi's replies, in the language of their own script, and the amount said back. |
 | Memory | Cognee 1.6 on the local Postgres (pgvector), OpenAI `text-embedding-3-small` | Search by meaning across what customers said. Sarvam has no embeddings API. |
 | Deployment | Vercel (web) · Render (API, Docker) · Supabase (Postgres), all Singapore | Free plans; the API and database sit in the same region. |
 
@@ -214,7 +222,13 @@ store and write only through the same ledger functions a typed entry uses.
    `POST /shops/{shop}/entries` records it against the person at the counter.
 5. The customer's phone shows the entry. "Yes, I owe ₹200" is
    `POST /entries/{id}/confirm`, stored with the exact words he saw, at most once
-   per entry. "That's not right" is `POST /entries/{id}/dispute`.
+   per entry. **Not mine** or **Wrong amount** is `POST /entries/{id}/dispute`,
+   which keeps which of the two he said.
+6. An entry written by mistake (the wrong person, or nothing was taken) can be
+   taken back by the shop: "Take it back" on the chat card, or by voice ("अनिल
+   वाला डेढ़ सौ गलती से लिखा, हटा दो"). It is kept, marked removed, and claims
+   nothing; both phones show it was taken back. Nothing paid against can be
+   taken back, because the payment names it.
 
 An entry's life is a table, not a web of if-statements (`domain/lifecycle.py`):
 
@@ -225,6 +239,7 @@ recorded ──confirm──▶ confirmed ──settle──▶ settled
     └──────────────settle─────────────────────┘
 
 recorded, confirmed or disputed ──correct──▶ corrected
+recorded, confirmed or disputed ──remove───▶ removed
 ```
 
 Anything not in the table raises, and the API turns that into `409 Conflict`.
@@ -279,6 +294,9 @@ and timing is stored in `turns`, so any conversation can be replayed or traced.
 | `propose_entry` | Puts an udhaar or payment card on screen. |
 | `propose_correction` | A card that corrects an unpaid entry's amount. |
 | `propose_new_customer` | A card for someone who isn't in the book yet. |
+| `propose_removal` | A card that takes back an entry written by mistake. |
+| `propose_details` | A card that changes the shop's name for someone, or how it describes them ("अनुभव शुक्ला actually सी विंग में"). |
+| `propose_message` | A card with words to send to the customer, in the shop's name. |
 | `confirm_entry` / `cancel_entry` | His spoken yes or no on the waiting card. |
 | `remember` | Keeps a note, a promise or a nickname. |
 | `recall` | Searches memory by meaning (Cognee). |
@@ -298,6 +316,11 @@ and timing is stored in `turns`, so any conversation can be replayed or traced.
   entry; जमा is split across the customer's open entries, oldest first. Then the
   munshi says whether it reached the customer's phone, from what the book
   reports.
+- "X को सौ दे दो" is udhaar. It never offers a different amount, never writes a
+  जमा to clear a mistake, and never promises something it can't do. A card the
+  book refuses comes off the screen, and a card shows only what he said for it.
+- Every card that is not money (take back, details, a message) waits for his
+  yes too.
 - Sarvam calls are **hedged**: if an answer is slow (2.5 s), it is asked again and
   the first answer wins. Out of credits (HTTP 402) is said plainly.
 
@@ -326,8 +349,12 @@ The munshi only writes the **words** of a reminder that code has already decided
 to send (`munshi/writer.py`), in the customer's language. Our code then refuses
 any reminder that names a figure other than his exact balance (no other sum, no
 date, no deadline), or that is too long, and falls back to our own sentence.
-The shopkeeper can stop any reminder. `POST /tonight` is the 11 pm run, and
-`POST /tonight/send` sends each one at its hour.
+A reminder never opens with a religious or community greeting guessed from a
+name. On Tomorrow, the shopkeeper can rewrite a reminder's words, move its hour
+(still between 9 am and 8 pm), stop it, or pause the customer for a week, two
+weeks or a month. A pause is a note Tonight waits on, like any other.
+`POST /tonight` is the 11 pm run, and `POST /tonight/send` sends each one at its
+hour.
 
 ### How a customer pays (`domain/pattern.py`)
 
@@ -381,13 +408,29 @@ is shown struck through and claims nothing. The shop hears it on the Soundbox
 ("दो सौ रुपये मिले, तीन सौ चालीस रुपये बाकी") and sees it in the thread with what is
 still open. Cash at the counter is split the same way.
 
+### What someone owes (`domain/book.py`)
+
+One meaning of "owes" everywhere, on both phones and in what the munshi says:
+the entries he said yes to, less what he has paid against them. An entry waiting
+for his answer, or one he says is wrong, is shown apart and isn't in the total.
+For someone kept by name only, it's what was written, since there's nobody to
+ask. A corrected, removed or expired entry claims nothing.
+
 ### Someone who can't scan
 
 A mobile number or UPI ID finds the Paytm account (`bahi/paytm.py`; a synthetic
-directory stands in for Paytm's lookup, and the number is never stored). The
-invite waits on their phone, and nothing can be recorded until they accept. With
-no phone, they are kept by name only, like the notebook, and can be invited later
-on the same row.
+directory stands in for Paytm's lookup). The invite waits on their phone, and
+nothing can be recorded until they accept. With no phone, they are kept by name
+only, like the notebook, and can be invited later on the same row.
+
+### Paytm accounts, simulated
+
+In Paytm the person is signed in, and the name on the account, its UPI ID and
+its number come from there; nobody types them into BAHI or changes them in it.
+For the demo they live in a `paytm` schema of their own, beside the book and not
+in it, so BAHI's tables still hold no phone number. A phone that scans for the
+first time gets an account with the name it gives; its number and UPI ID are
+made up from its id, once. The shop sees the name and UPI ID, never the number.
 
 ### The clock (`bahi/clock.py`)
 
@@ -406,7 +449,7 @@ deliberately missing, is written at the top of each table.
 |---|---|
 | `shops` | a kirana |
 | `customers` | a person *at one shop*: linked to a Paytm account, invited, or kept by name only |
-| `entries` | one udhaar; the amount never changes after it is written |
+| `entries` | one udhaar; the amount never changes after it is written. Recorded, confirmed, disputed (not mine, or wrong amount), corrected, removed or settled |
 | `acknowledgments` | the customer's "Yes, I owe ₹200", at most one per entry |
 | `repayments` | a payment against a named entry |
 | `threads` | one conversation per shopkeeper and customer |
@@ -415,6 +458,7 @@ deliberately missing, is written at the top of each table.
 | `reminders` | a reminder Tonight drafted: its words, its hour, and the shopkeeper's Stop |
 | `conversations`, `turns`, `drafts` | the munshi's conversations, every step, and its cards |
 | `memories` | a note, promise, nickname or remark, and the day to wait until |
+| `paytm.accounts` | the simulated Paytm account: name, UPI ID and number, in its own schema |
 
 What the schema enforces:
 
@@ -424,7 +468,8 @@ What the schema enforces:
 - Only people type messages (`CHECK`).
 - Balances, expiry, payment gaps and Tonight's decisions are computed, never
   stored.
-- We store no phone numbers.
+- BAHI's own tables store no phone numbers; the simulated Paytm accounts are in
+  their own schema.
 - Row level security is on for every table with no policies
   (`010_only_the_api_reads_the_book.sql`), so on Supabase the public Data API
   gets no rows. The API connects as the owner.
@@ -437,14 +482,14 @@ FastAPI, documented at `/docs` when it runs. The schema is exported to
 | Area | Routes |
 |---|---|
 | Shop and book | `GET /shops`, `/shops/{shop}/book`, `/counter`, `/customers`, `/customers/{id}`, `/accounts` |
-| Recording | `POST /shops/{shop}/entries`, `/entries/{id}/correct`, `/voice`, `/heard`, `/answer`, `/answer/voice` |
-| Customer | `POST /join/{shop}`, `/scans/{id}/leave`, `/entries/{id}/confirm`, `/entries/{id}/dispute`; `GET /people/{person}/udhaar` |
+| Recording | `POST /shops/{shop}/entries`, `/entries/{id}/correct`, `/entries/{id}/remove`, `/voice`, `/heard`, `/answer`, `/answer/voice` |
+| Customer | `POST /join/{shop}`, `/scans/{id}/leave`, `/entries/{id}/confirm`, `/entries/{id}/dispute`; `GET /people/{person}/udhaar`, `/people/{person}/account` |
 | Paying | `POST /shops/{shop}/pay` |
 | People | `POST /shops/{shop}/customers`, `/customers/invite`, `/customers/{id}/invite`, `/invite/accept`, `/invite/decline` |
 | Chat | `GET/POST /shops/{shop}/customers/{id}/thread`, `/thread/suggest`, `/thread/read`; `GET /shops/{shop}/inbox`; the customer's side under `/people/{person}/shops/{shop}/thread` |
 | Munshi | `POST /shops/{shop}/munshi`, `/munshi/voice`, `/munshi/{conversation}/cards/{draft}/yes`, `/no`, `/edit` |
 | Memory | `POST /shops/{shop}/customers/{id}/memories`; `DELETE /shops/{shop}/memories/{id}` |
-| Tonight | `GET/POST /shops/{shop}/tonight`, `/tonight/send`, `/tonight/send-now`, `/reminders/{id}/stop`, `/resume` |
+| Tonight | `GET/POST /shops/{shop}/tonight`, `/tonight/send`, `/tonight/send-now`, `POST /reminders/{id}` (words, hour), `/reminders/{id}/stop`, `/resume`, `/customers/{id}/pause` |
 | Soundbox | `GET /shops/{shop}/events`, `/voice/say/{paise}.wav`, `/voice/received/{paid}/{left}.wav`, `/voice/ask/{question}.wav` |
 | System | `GET /health`, `/demo/phones` |
 
@@ -461,7 +506,7 @@ can colour a customer as a defaulter.
 | `/m/add`: record by keypad or voice | `/c/chat/{shop}`: the thread, confirm or dispute |
 | `/m/messages`, `/m/chat/{customer}`: chat | `/c/pay/{shop}`: Pay, Proceed securely, UPI PIN |
 | `/m/customers`, `/m/customers/{id}`, `/m/customers/new` | |
-| `/m/tonight`: tomorrow's reminders, and everyone held | |
+| `/m/tonight`: tomorrow's reminders, edit, stop or pause, and everyone held | |
 
 Both sides poll every two seconds, so the shopkeeper's laptop and the customer's
 phone move together. Annotated screens and the deck are in `docs/`.
