@@ -689,16 +689,38 @@ class Desk:
         waiting = scans.waiting(self.con, self.shop_id, self.now)
         rows = []
         rows_of = [w.customer_id for w in waiting if w.customer_id in self.refs]
+        asked = False
         for w in waiting:
             if w.customer_id in self.refs:
                 said, about = self._say(w.customer_id)
-                rows.append({"id": short(w.customer_id), "name": said, "about": about})
+                row: dict[str, Any] = {
+                    "id": short(w.customer_id),
+                    "name": said,
+                    "about": about,
+                }
+                if w.asked_paise:
+                    # She asked for this herself, on her phone.
+                    row["asked_for"] = amount_words(w.asked_paise) + (
+                        f" ({w.asked_note})" if w.asked_note else ""
+                    )
+                    asked = True
+                rows.append(row)
                 self.seen[w.customer_id] = False
         self.done.append(f"Checked the counter: {len(rows)} waiting")
         out: dict[str, Any] = {"count": len(rows), "customers": rows}
+        hints = []
         if len(rows) == 1:
             self.alone.update(rows_of)
-            out["next"] = "One person is at the counter; if he named nobody, it is them."
+            hints.append("One person is at the counter; if he named nobody, it is them.")
+        if asked:
+            hints.append(
+                "asked_for: that customer asked for this udhaar on their phone. If he "
+                "agrees, propose_entry with exactly that amount: written, it counts as "
+                "their yes too. If he says another amount, propose that one; they "
+                "confirm it on their phone."
+            )
+        if hints:
+            out["next"] = " ".join(hints)
         return out
 
     def customer_card(self, customer_id: str) -> dict[str, Any]:

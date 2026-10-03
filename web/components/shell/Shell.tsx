@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Bell, Person, Search } from "@/components/icons";
 import { Avatar } from "@/components/ui/Row";
 
+import { AskPopup } from "./AskPopup";
 import { Soundbox } from "./Soundbox";
 
 /**
@@ -137,6 +138,7 @@ export function MerchantShell({
   return (
     <Frame fixed={fixed}>
       <Soundbox />
+      <AskPopup />
       {heading ? (
         <BackHeader {...heading} />
       ) : (

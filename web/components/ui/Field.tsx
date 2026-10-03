@@ -13,7 +13,7 @@ export function Field({
   onChange: (v: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
-  inputMode?: "text" | "tel" | "search";
+  inputMode?: "text" | "tel" | "search" | "numeric";
   /** The most it takes; near it, how many characters are left is shown. */
   maxLength?: number;
 }): React.ReactElement {

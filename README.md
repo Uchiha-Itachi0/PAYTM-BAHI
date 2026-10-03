@@ -254,6 +254,23 @@ recorded, confirmed or disputed ──remove───▶ removed
 Anything not in the table raises, and the API turns that into `409 Conflict`.
 "Expired" isn't a state: time moves an entry there, and it is computed.
 
+
+### The customer asks (`POST /scans/{scan}/ask`)
+
+Scanning, the customer can also say how much she is taking and what for ("₹200,
+atta and oil"). Nothing is written. The Soundbox says only the amount ("दो सौ
+रुपये का उधार माँगा है"), never who or what for, and a pop-up rises on whichever
+screen the shopkeeper has open, with her name and note:
+
+- **Yes** writes exactly that amount. Her ask was her yes, so it is agreed by both
+  at once, stored in her own words ("I'm taking ₹200 udhaar from …"), never with
+  her note, which could carry a date.
+- **No** writes nothing, and her phone says so.
+- **Change amount** writes his figure, an ordinary entry she confirms on her phone.
+
+The keypad and the munshi answer it the same way: any amount written for her scan
+goes through `ledger.record`, which treats exactly her amount as yes and any other
+as a change. An ask keeps her at the counter for ten minutes instead of three.
 ### Who is it for? (`domain/who.py`, `domain/sound.py`)
 
 Speech recognition spells a name however it likes: अनुभव, "Anubhav", "Anubaw".
@@ -465,7 +482,7 @@ deliberately missing, is written at the top of each table.
 | `repayments` | a payment against a named entry |
 | `threads` | one conversation per shopkeeper and customer |
 | `messages` | one bubble; no amount column |
-| `scans` | someone at the counter, waiting for three minutes |
+| `scans` | someone at the counter, waiting for three minutes; with what they asked for, if they did, and the shop's answer |
 | `reminders` | a reminder Tonight drafted: its words, its hour, and the shopkeeper's Stop |
 | `conversations`, `turns`, `drafts` | the munshi's conversations, every step, and its cards |
 | `memories` | a note, promise, nickname or remark, and the day to wait until |

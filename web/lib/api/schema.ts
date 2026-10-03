@@ -67,7 +67,8 @@ export interface paths {
         };
         /**
          * Get Counter
-         * @description A2. Everyone who scanned the udhaar QR in the last three minutes.
+         * @description A2. Everyone who scanned the udhaar QR in the last three minutes, and
+         *     anyone still waiting on his answer to what they asked for.
          */
         get: operations["get_counter_shops__shop_id__counter_get"];
         put?: never;
@@ -116,6 +117,27 @@ export interface paths {
          * @description Record udhaar: for a scan at the counter, or a customer from the book.
          */
         post: operations["record_entry_shops__shop_id__entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/scans/{scan_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Ask
+         * @description His answer to what she asked for at the counter. Yes writes exactly that,
+         *     agreed by both; change writes his amount for her own yes; no writes nothing.
+         */
+        post: operations["answer_ask_shops__shop_id__scans__scan_id__answer_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -303,6 +325,27 @@ export interface paths {
         get: operations["get_scan_scans__scan_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{scan_id}/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask
+         * @description She asks for an amount at the counter. Nothing is written: the shopkeeper
+         *     answers on his screen.
+         */
+        post: operations["ask_scans__scan_id__ask_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -520,6 +563,27 @@ export interface paths {
          *     uses the browser's own voice.
          */
         get: operations["say_amount_voice_say__paise__wav_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/voice/asked/{paise}.wav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Say Asked
+         * @description The Soundbox when someone at the counter asks for udhaar: "दो सौ रुपये का
+         *     उधार माँगा है।" The amount only: who, and what for, are on his screen.
+         */
+        get: operations["say_asked_voice_asked__paise__wav_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1224,6 +1288,19 @@ export interface components {
             here: ("linked" | "invited" | "name_only") | null;
         };
         /**
+         * AnswerAskIn
+         * @description His answer on the pop-up: yes, no, or the amount it really is.
+         */
+        AnswerAskIn: {
+            /**
+             * Answer
+             * @enum {string}
+             */
+            answer: "yes" | "no" | "change";
+            /** Amount Rupees */
+            amount_rupees?: number | null;
+        };
+        /**
          * AnswerIn
          * @description His answer to "किसके लिए?", typed.
          */
@@ -1248,6 +1325,21 @@ export interface components {
             source: "typed" | "sarvam" | "sarvam_cached" | "clip_script";
             /** Who */
             who: components["schemas"]["PickedOut"] | components["schemas"]["AskOut"];
+        };
+        /**
+         * AskIn
+         * @description She asks for an amount at the counter: whole rupees, and what for.
+         */
+        AskIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Amount Rupees */
+            amount_rupees: number;
+            /** Note */
+            note?: string | null;
         };
         /** AskOut */
         AskOut: {
@@ -1573,7 +1665,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "scanned" | "confirmed" | "disputed" | "paid" | "message";
+            kind: "scanned" | "asked" | "confirmed" | "disputed" | "paid" | "message";
             /**
              * At
              * Format: date-time
@@ -2265,8 +2357,12 @@ export interface components {
              * State
              * @enum {string}
              */
-            state: "waiting" | "recorded" | "left" | "expired";
+            state: "waiting" | "recorded" | "left" | "expired" | "declined";
             entry: components["schemas"]["EntryOut"] | null;
+            /** Asked Paise */
+            asked_paise?: number | null;
+            /** Answer */
+            answer?: ("yes" | "no" | "changed") | null;
         };
         /** SentOut */
         SentOut: {
@@ -2467,6 +2563,10 @@ export interface components {
             waited_s: number;
             /** First Time */
             first_time: boolean;
+            /** Asked Paise */
+            asked_paise?: number | null;
+            /** Asked Note */
+            asked_note?: string | null;
         };
     };
     responses: never;
@@ -2667,6 +2767,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_ask_shops__shop_id__scans__scan_id__answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerAskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"] | null;
                 };
             };
             /** @description Validation Error */
@@ -3016,6 +3152,41 @@ export interface operations {
             };
         };
     };
+    ask_scans__scan_id__ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     leave_scans__scan_id__leave_post: {
         parameters: {
             query?: never;
@@ -3336,6 +3507,35 @@ export interface operations {
         };
     };
     say_amount_voice_say__paise__wav_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paise: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    say_asked_voice_asked__paise__wav_get: {
         parameters: {
             query?: never;
             header?: never;

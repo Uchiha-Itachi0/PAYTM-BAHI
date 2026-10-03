@@ -720,3 +720,108 @@ def test_offline_a_new_customer_is_kept_by_the_roman_name(
         "SELECT name_hi FROM customers WHERE id = %s", (joined["customer_id"],)
     ).fetchone()
     assert row == (None,)
+
+
+# ── she asks (the customer's own amount) ─────────────────────────────────────
+
+
+def she_asks(
+    api: TestClient, person: str, scan: str, rupees: int, note: str | None = None
+) -> Any:
+    return api.post(
+        f"/scans/{scan}/ask",
+        json={"person_id": person, "amount_rupees": rupees, "note": note},
+    )
+
+
+def he_answers(api: TestClient, scan: str, said: str, rupees: int | None = None) -> Any:
+    return api.post(
+        f"/shops/{SHOP}/scans/{scan}/answer",
+        json={"answer": said, "amount_rupees": rupees},
+    )
+
+
+def test_her_ask_and_his_yes_are_agreed_by_both(api: TestClient, tx: db.Conn) -> None:
+    person, joined = join(api)
+    scan = joined["scan_id"]
+    asked = she_asks(api, person, scan, 200, "atta and oil")
+    assert asked.status_code == 200, asked.text
+    assert asked.json()["state"] == "waiting" and asked.json()["asked_paise"] == 20000
+
+    # The pop-up has it, and the Soundbox is told the amount.
+    (row,) = api.get(f"/shops/{SHOP}/counter").json()["waiting"]
+    assert (row["asked_paise"], row["asked_note"]) == (20000, "atta and oil")
+    since = (clock.now() - timedelta(minutes=1)).isoformat()
+    kinds = api.get(f"/shops/{SHOP}/events", params={"after": since}).json()["events"]
+    assert any(e["kind"] == "asked" and e["amount_paise"] == 20000 for e in kinds)
+
+    e = he_answers(api, scan, "yes").json()
+    assert (e["amount_paise"], e["status"], e["note"]) == (
+        20000,
+        "confirmed",
+        "atta and oil",
+    )
+    wording = tx.execute(
+        "SELECT wording FROM acknowledgments WHERE entry_id = %s", (e["id"],)
+    ).fetchone()
+    assert wording is not None and wording[0].startswith("I'm taking ₹200 udhaar from")
+    state = api.get(f"/scans/{scan}").json()
+    assert (state["state"], state["answer"]) == ("recorded", "yes")
+    assert api.get(f"/shops/{SHOP}/counter").json()["waiting"] == []
+
+
+def test_his_no_writes_nothing(api: TestClient, tx: db.Conn) -> None:
+    person, joined = join(api)
+    scan = joined["scan_id"]
+    she_asks(api, person, scan, 200)
+    assert he_answers(api, scan, "no").status_code == 200
+    assert api.get(f"/scans/{scan}").json()["state"] == "declined"
+    assert api.get(f"/shops/{SHOP}/counter").json()["waiting"] == []
+    assert record(api, scan_id=scan, amount_paise=20000).status_code == 409
+    assert he_answers(api, scan, "yes").status_code == 409
+
+
+def test_a_different_amount_waits_for_her_own_yes(api: TestClient) -> None:
+    person, joined = join(api)
+    scan = joined["scan_id"]
+    she_asks(api, person, scan, 200, "atta and oil")
+    e = he_answers(api, scan, "change", 150).json()
+    assert (e["amount_paise"], e["status"], e["note"]) == (
+        15000,
+        "recorded",
+        "atta and oil",
+    )
+    assert api.get(f"/scans/{scan}").json()["answer"] == "changed"
+
+
+def test_the_keypad_with_her_amount_answers_her_ask(api: TestClient) -> None:
+    person, joined = join(api)
+    she_asks(api, person, joined["scan_id"], 200)
+    e = record(api, scan_id=joined["scan_id"], amount_paise=20000).json()
+    assert e["status"] == "confirmed"
+
+
+def test_only_she_can_ask_on_her_scan(api: TestClient) -> None:
+    _, joined = join(api)
+    r = she_asks(api, str(uuid.uuid4()), joined["scan_id"], 200)
+    assert r.status_code == 403
+
+
+def test_an_ask_keeps_her_at_the_counter_for_ten_minutes(
+    api: TestClient, tx: db.Conn
+) -> None:
+    person, joined = join(api)
+    scan = joined["scan_id"]
+    she_asks(api, person, scan, 200)
+    tx.execute(
+        "UPDATE scans SET scanned_at = scanned_at - interval '5 minutes', "
+        "asked_at = asked_at - interval '5 minutes' WHERE id = %s",
+        (scan,),
+    )
+    assert api.get(f"/scans/{scan}").json()["state"] == "waiting"
+    assert len(api.get(f"/shops/{SHOP}/counter").json()["waiting"]) == 1
+    tx.execute(
+        "UPDATE scans SET asked_at = asked_at - interval '6 minutes' WHERE id = %s",
+        (scan,),
+    )
+    assert api.get(f"/scans/{scan}").json()["state"] == "expired"

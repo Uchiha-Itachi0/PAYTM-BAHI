@@ -34,6 +34,10 @@ SELECT * FROM (
     FROM scans s JOIN customers c ON c.id = s.customer_id
     WHERE c.shop_id = %(shop)s AND s.scanned_at > %(after)s AND s.scanned_at <= %(now)s
   UNION ALL
+    SELECT 'asked', s.asked_at, c.id::text, c.display_name, s.asked_paise
+    FROM scans s JOIN customers c ON c.id = s.customer_id
+    WHERE c.shop_id = %(shop)s AND s.asked_at > %(after)s AND s.asked_at <= %(now)s
+  UNION ALL
     SELECT 'confirmed', a.acknowledged_at, c.id::text, c.display_name, e.amount_paise
     FROM acknowledgments a
     JOIN entries e ON e.id = a.entry_id
