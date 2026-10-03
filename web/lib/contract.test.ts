@@ -13,7 +13,10 @@ const raw = JSON.parse(
 describe("contract/shop.json", () => {
   it("parses: the file make db wrote is one the UI can draw", () => {
     const shop = parseShop(raw);
-    expect(shop.book.lines.length).toBe(shop.book.owing_count);
+    // A row for everyone with something open; "owing" only counts what was agreed.
+    expect(shop.book.lines.filter((l) => l.balance_paise > 0).length).toBe(
+      shop.book.owing_count,
+    );
   });
 
   it("is never sorted by how much anyone owes", () => {

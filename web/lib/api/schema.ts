@@ -377,7 +377,7 @@ export interface paths {
         put?: never;
         /**
          * Dispute
-         * @description B1. "That's not right".
+         * @description B1. "Not mine" or "Wrong amount".
          */
         post: operations["dispute_entries__entry_id__dispute_post"];
         delete?: never;
@@ -817,6 +817,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/entries/{entry_id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove
+         * @description C2. Take back an entry written by mistake: the wrong person, or nothing was
+         *     taken. Kept, marked removed, claiming nothing; his phone shows it.
+         */
+        post: operations["remove_shops__shop_id__entries__entry_id__remove_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shop_id}/events": {
         parameters: {
             query?: never;
@@ -907,6 +928,26 @@ export interface paths {
          * @description B2. What he owes across every shop, each entry, and invitations waiting.
          */
         get: operations["my_udhaar_people__person_id__udhaar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{person_id}/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Account
+         * @description His Paytm account: the name on it, its UPI ID and number. Fixed.
+         */
+        get: operations["my_account_people__person_id__account_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1061,6 +1102,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/reminders/{reminder_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rewrite
+         * @description His own words for tomorrow's reminder, or his own hour for it.
+         */
+        post: operations["rewrite_shops__shop_id__reminders__reminder_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/customers/{customer_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause
+         * @description No reminders to him until the day he chose, and tomorrow's stopped.
+         */
+        post: operations["pause_shops__shop_id__customers__customer_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shop_id}/reminders/{reminder_id}/stop": {
         parameters: {
             query?: never;
@@ -1200,6 +1281,16 @@ export interface components {
             owing_count: number;
             /** Outstanding Paise */
             outstanding_paise: number;
+            /**
+             * Waiting Paise
+             * @default 0
+             */
+            waiting_paise: number;
+            /**
+             * Disputed Paise
+             * @default 0
+             */
+            disputed_paise: number;
             /** Lines */
             lines: components["schemas"]["LineOut"][];
         };
@@ -1238,7 +1329,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "udhaar" | "payment" | "customer" | "correction";
+            kind: "udhaar" | "payment" | "customer" | "correction" | "removal" | "details" | "message";
             /** Corrects Amount Paise */
             corrects_amount_paise?: number | null;
             /** New */
@@ -1249,11 +1340,17 @@ export interface components {
              */
             status: "shown" | "saved" | "replaced" | "cancelled";
             /** Reasons */
-            reasons: ("weak_match" | "one_of_several" | "large" | "unusual" | "new_customer" | "correction")[];
+            reasons: ("weak_match" | "one_of_several" | "large" | "unusual" | "new_customer" | "correction" | "removal" | "details" | "message")[];
             /** Spoken Text */
             spoken_text: string | null;
             /** Called */
             called?: string | null;
+            /** Change Name */
+            change_name?: string | null;
+            /** Change Tag */
+            change_tag?: string | null;
+            /** Message */
+            message?: string | null;
             /** Entry Id */
             entry_id: string | null;
             /** On Bahi */
@@ -1319,8 +1416,19 @@ export interface components {
             invite_pending: boolean;
             /** Invited At */
             invited_at: string | null;
+            paytm?: components["schemas"]["PaytmNameOut"] | null;
             /** Balance Paise */
             balance_paise: number;
+            /**
+             * Waiting Paise
+             * @default 0
+             */
+            waiting_paise: number;
+            /**
+             * Disputed Paise
+             * @default 0
+             */
+            disputed_paise: number;
             /** Day */
             day: number | null;
             /** Entries */
@@ -1388,6 +1496,12 @@ export interface components {
             person_id: string;
             /** Reason */
             reason?: string | null;
+            /**
+             * Disputed As
+             * @default wrong_amount
+             * @enum {string}
+             */
+            disputed_as: "not_mine" | "wrong_amount";
         };
         /** EntryOut */
         EntryOut: {
@@ -1409,7 +1523,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "recorded" | "confirmed" | "disputed" | "corrected" | "settled";
+            status: "recorded" | "confirmed" | "disputed" | "corrected" | "settled" | "removed";
             /**
              * Recorded At
              * Format: date-time
@@ -1637,6 +1751,16 @@ export interface components {
             joined: "linked" | "invited" | "name_only";
             /** Balance Paise */
             balance_paise: number;
+            /**
+             * Waiting Paise
+             * @default 0
+             */
+            waiting_paise: number;
+            /**
+             * Disputed Paise
+             * @default 0
+             */
+            disputed_paise: number;
             /** Day */
             day: number;
             /**
@@ -1761,6 +1885,11 @@ export interface components {
             display_name: string;
             /** Balance Paise */
             balance_paise: number;
+            /**
+             * Waiting Paise
+             * @default 0
+             */
+            waiting_paise: number;
             /** Payable Paise */
             payable_paise: number;
             /** Day */
@@ -1779,6 +1908,7 @@ export interface components {
             today: string;
             /** Person Id */
             person_id: string;
+            account?: components["schemas"]["PaytmAccountOut"] | null;
             /** Total Paise */
             total_paise: number;
             /** Shops */
@@ -1856,6 +1986,14 @@ export interface components {
             /** Disputed */
             disputed: number;
         };
+        /** PauseIn */
+        PauseIn: {
+            /**
+             * Until
+             * Format: date
+             */
+            until: string;
+        };
         /**
          * PayIn
          * @description He pays this shop by UPI: what he owes it, or the part he chose.
@@ -1868,6 +2006,29 @@ export interface components {
             person_id: string;
             /** Amount Paise */
             amount_paise?: number | null;
+        };
+        /**
+         * PaytmAccountOut
+         * @description His own Paytm account, as his phone shows it. Fixed: nobody changes these
+         *     in BAHI.
+         */
+        PaytmAccountOut: {
+            /** Name */
+            name: string;
+            /** Upi */
+            upi: string;
+            /** Phone */
+            phone: string;
+        };
+        /**
+         * PaytmNameOut
+         * @description What the shop sees of someone's Paytm account: never the number.
+         */
+        PaytmNameOut: {
+            /** Name */
+            name: string;
+            /** Upi */
+            upi: string;
         };
         /** PersonIn */
         PersonIn: {
@@ -1958,6 +2119,16 @@ export interface components {
             /** Spoken Text */
             spoken_text?: string | null;
         };
+        /**
+         * ReminderEditIn
+         * @description His own words for it, or his own hour (HH:MM, IST), or both.
+         */
+        ReminderEditIn: {
+            /** Body */
+            body?: string | null;
+            /** At */
+            at?: string | null;
+        };
         /** ReminderOut */
         ReminderOut: {
             /** Id */
@@ -1973,7 +2144,7 @@ export interface components {
              * Written
              * @enum {string}
              */
-            written: "munshi" | "words";
+            written: "munshi" | "words" | "shop";
             /**
              * Status
              * @enum {string}
@@ -2068,7 +2239,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "recorded" | "confirmed" | "disputed" | "corrected" | "settled";
+            status: "recorded" | "confirmed" | "disputed" | "corrected" | "settled" | "removed";
             /**
              * Recorded At
              * Format: date-time
@@ -2082,6 +2253,10 @@ export interface components {
             corrects_amount_paise: number | null;
             /** Disputed At */
             disputed_at: string | null;
+            /** Disputed As */
+            disputed_as?: ("not_mine" | "wrong_amount") | null;
+            /** Removed At */
+            removed_at?: string | null;
             /** Acknowledged At */
             acknowledged_at: string | null;
             /** Last Paid At */
@@ -2119,6 +2294,16 @@ export interface components {
             joined: "linked" | "invited" | "name_only";
             /** Balance Paise */
             balance_paise: number;
+            /**
+             * Waiting Paise
+             * @default 0
+             */
+            waiting_paise: number;
+            /**
+             * Disputed Paise
+             * @default 0
+             */
+            disputed_paise: number;
             /** Day */
             day: number | null;
             /** Messages */
@@ -3331,7 +3516,9 @@ export interface operations {
     };
     say_reply_shops__shop_id__munshi__conversation_id__say__turn_id__wav_get: {
         parameters: {
-            query?: never;
+            query?: {
+                lang?: string;
+            };
             header?: never;
             path: {
                 shop_id: string;
@@ -3586,6 +3773,38 @@ export interface operations {
             };
         };
     };
+    remove_shops__shop_id__entries__entry_id__remove_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_events_shops__shop_id__events_get: {
         parameters: {
             query?: {
@@ -3734,6 +3953,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyUdhaarOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_account_people__person_id__account_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaytmAccountOut"];
                 };
             };
             /** @description Validation Error */
@@ -3980,6 +4230,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SentOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rewrite_shops__shop_id__reminders__reminder_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_shops__shop_id__customers__customer_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PauseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -143,6 +143,12 @@ export function MyUdhaarScreen(): React.ReactElement {
                   : undefined
               }
             />
+            {m.shops.some((s) => (s.waiting_paise ?? 0) > 0) ? (
+              <p className="mt-1 text-[12px] font-semibold text-sub">
+                Not counted until you say yes:{" "}
+                {formatPaise(m.shops.reduce((n, s) => n + (s.waiting_paise ?? 0), 0))} waiting
+              </p>
+            ) : null}
           </Card>
 
           {shop ? (

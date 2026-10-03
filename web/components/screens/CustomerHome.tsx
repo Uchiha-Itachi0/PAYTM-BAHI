@@ -10,7 +10,7 @@ import { Row } from "@/components/ui/Row";
 import { StickyPill } from "@/components/ui/StickyPill";
 import { TileGrid } from "@/components/ui/TileGrid";
 import { api, usePoll } from "@/lib/api/client";
-import type { DemoPhone, MyUdhaar } from "@/lib/api/types";
+import type { DemoPhone, MyUdhaar, PaytmAccount } from "@/lib/api/types";
 import { forgetPerson, usePerson, becomePerson } from "@/lib/person";
 
 /**
@@ -31,6 +31,21 @@ function about(p: DemoPhone): string {
   const shops = p.shops > 1 ? `in ${p.shops} shops' books` : "";
   return [p.tag, shops].filter(Boolean).join(" · ");
 }
+/**
+ * His Paytm account, as Paytm shows it: the name on it, its UPI ID and its
+ * number. Fixed. Shops see the name and UPI ID, never the number.
+ */
+function Account({ account }: { account: PaytmAccount }): React.ReactElement {
+  return (
+    <div className="mt-3 rounded-[12px] bg-tile px-3 py-2.5">
+      <p className="text-[14px] font-extrabold">{account.name}</p>
+      <p className="text-[12.5px] font-semibold text-sub">
+        {account.upi} · +91 {account.phone.slice(0, 5)} {account.phone.slice(5)}
+      </p>
+    </div>
+  );
+}
+
 export function CustomerHome(): React.ReactElement {
   const person = usePerson();
   const [phones, setPhones] = useState<DemoPhone[]>([]);
@@ -74,7 +89,11 @@ export function CustomerHome(): React.ReactElement {
               Change
             </button>
           </div>
-        ) : (
+        ) : null}
+        {person && mine.data?.account ? (
+          <Account account={mine.data.account} />
+        ) : null}
+        {person ? null : (
           <>
             <p className="mb-3 text-[12px] font-medium leading-normal text-sub">
               In Paytm this is your account. Pick any of the {phones.length} customers with a

@@ -29,7 +29,28 @@ import { formatPaise } from "@/lib/money";
 function subline(line: BookLine): string {
   const parts = [line.tag, `day ${line.day}`];
   if (line.joined === "name_only") parts.push("name only");
+  // What isn't agreed yet is named, not added: the amount shown is what they
+  // said yes to, or, owing nothing agreed, what waits on them.
+  const waiting = line.waiting_paise ?? 0;
+  const disputed = line.disputed_paise ?? 0;
+  if (line.balance_paise > 0 && waiting > 0) parts.push(`+${formatPaise(waiting)} waiting`);
+  if (line.balance_paise === 0 && waiting > 0) parts.push("waiting for their yes");
+  if (disputed > 0) parts.push(`says ${formatPaise(disputed)} is wrong`);
   return parts.filter(Boolean).join(" · ");
+}
+
+/** The amount on his row: agreed; with nothing agreed, what waits on them. */
+function shown(line: BookLine): number {
+  if (line.balance_paise > 0) return line.balance_paise;
+  return (line.waiting_paise ?? 0) + (line.disputed_paise ?? 0);
+}
+
+function apart(waiting: number, disputed: number): string | null {
+  const parts = [
+    waiting > 0 ? `${formatPaise(waiting)} waiting for customers' yes` : null,
+    disputed > 0 ? `${formatPaise(disputed)} customers say is wrong` : null,
+  ].filter(Boolean);
+  return parts.length ? `Not counted: ${parts.join(" · ")}` : null;
 }
 
 export function BookScreen(): React.ReactElement {
@@ -43,10 +64,15 @@ export function BookScreen(): React.ReactElement {
         <>
           <Card>
             <Figure
-              label="Udhaar outstanding"
+              label="Udhaar outstanding · agreed"
               value={formatPaise(shop.book.outstanding_paise)}
-              fine={`${shop.book.owing_count} of ${shop.book.customer_count} customers owe something`}
+              fine={`${shop.book.owing_count} of ${shop.book.customer_count} customers owe something they said yes to`}
             />
+            {apart(shop.book.waiting_paise ?? 0, shop.book.disputed_paise ?? 0) ? (
+              <p className="mt-1 text-[12px] font-semibold leading-[1.45] text-sub">
+                {apart(shop.book.waiting_paise ?? 0, shop.book.disputed_paise ?? 0)}
+              </p>
+            ) : null}
           </Card>
           <Card>
             <TileGrid
@@ -71,7 +97,7 @@ export function BookScreen(): React.ReactElement {
                 key={line.customer_id}
                 name={line.display_name}
                 sub={subline(line)}
-                amountPaise={line.balance_paise}
+                amountPaise={shown(line)}
                 chip={line.chip}
                 href={
                   line.joined === "linked"

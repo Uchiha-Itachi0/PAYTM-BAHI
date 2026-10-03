@@ -17,18 +17,23 @@ import { clockTime, dayLabel, dayOf, fullDate } from "@/lib/when";
  * sent on the shop's behalf after the shopkeeper let it go.
  *
  * What each side can do is on the card: the customer answers an entry waiting
- * for him; the shopkeeper corrects one the customer says is wrong.
+ * for him (yes, not mine, or the wrong amount); the shopkeeper corrects one, or
+ * takes back one that should never have been written.
  */
 
 export type Side = "shop" | "customer";
 
+export type DisputedAs = "not_mine" | "wrong_amount";
+
 export interface CardActions {
   /** Customer: "Yes, I owe ₹200". */
   onConfirm?: (entry: ThreadEntry) => void;
-  /** Customer: "That's not right", with his reason if he gives one. */
-  onDispute?: (entry: ThreadEntry, reason: string) => void;
+  /** Customer: "Not mine" or "Wrong amount", with his reason if he gives one. */
+  onDispute?: (entry: ThreadEntry, reason: string, as: DisputedAs) => void;
   /** Shopkeeper: the right amount, in paise. */
   onCorrect?: (entry: ThreadEntry, paise: number) => void;
+  /** Shopkeeper: take it back; it should never have been written. */
+  onRemove?: (entry: ThreadEntry) => void;
 }
 
 function status(e: ThreadEntry, side: Side, name: string, shop: string): string {
@@ -43,16 +48,22 @@ function status(e: ThreadEntry, side: Side, name: string, shop: string): string 
     case "confirmed":
       return `Udhaar · confirmed by ${who}`;
     case "disputed":
-      return side === "shop" ? `Udhaar · ${name} says this is wrong` : "Udhaar · you said this is wrong";
+      if (e.disputed_as === "not_mine")
+        return side === "shop" ? `Udhaar · ${name} says this isn't theirs` : "Udhaar · you said this isn't yours";
+      return side === "shop"
+        ? `Udhaar · ${name} says the amount is wrong`
+        : "Udhaar · you said the amount is wrong";
     case "corrected":
       return `Replaced by ${side === "shop" ? "your" : `${shop}'s`} correction`;
     case "settled":
       return "Udhaar · paid in full";
+    case "removed":
+      return side === "shop" ? "Taken back by you · not owed" : `Taken back by ${shop} · nothing to pay`;
   }
 }
 
 function tone(e: ThreadEntry): string {
-  if (e.expired || e.status === "corrected") return "bg-tile text-sub";
+  if (e.expired || e.status === "corrected" || e.status === "removed") return "bg-tile text-sub";
   if (e.status === "disputed") return "bg-warn-bg";
   return "bg-av-blue";
 }
@@ -72,11 +83,12 @@ function EntryBubble({
   at: string;
   actions: CardActions;
 }): React.ReactElement {
-  const [mode, setMode] = useState<"idle" | "why" | "fix">("idle");
+  const [mode, setMode] = useState<"idle" | "why" | "fix" | "remove">("idle");
+  const [why, setWhy] = useState<DisputedAs>("wrong_amount");
   const [words, setWords] = useState("");
   const [rupees, setRupees] = useState("");
   const done = e.status === "confirmed" || e.status === "settled";
-  const struck = e.expired || e.status === "corrected";
+  const struck = e.expired || e.status === "corrected" || e.status === "removed";
   const answer = side === "customer" && e.status === "recorded" && !e.expired;
   // The shopkeeper can correct any entry nothing has been paid against: one he
   // says is wrong gets the button up front, any other a quieter link.
@@ -86,6 +98,8 @@ function EntryBubble({
     e.paid_paise === 0 &&
     !e.expired;
   const urgent = e.status === "disputed";
+  // "Not mine" puts taking it back first; "wrong amount" puts the correction first.
+  const notTheirs = e.status === "disputed" && e.disputed_as === "not_mine";
   const mine = side === "shop";
 
   return (
@@ -121,13 +135,28 @@ function EntryBubble({
             >
               {e.button}
             </button>
-            <button
-              type="button"
-              onClick={() => setMode("why")}
-              className="text-[12.5px] font-bold text-sub"
-            >
-              That&apos;s not right
-            </button>
+            <div className="flex justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setWhy("not_mine");
+                  setMode("why");
+                }}
+                className="text-[12.5px] font-bold text-sub"
+              >
+                Not mine
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setWhy("wrong_amount");
+                  setMode("why");
+                }}
+                className="text-[12.5px] font-bold text-sub"
+              >
+                Wrong amount
+              </button>
+            </div>
           </div>
         ) : null}
         {answer && mode === "why" ? (
@@ -135,13 +164,18 @@ function EntryBubble({
             className="mt-3 flex flex-col gap-2"
             onSubmit={(ev) => {
               ev.preventDefault();
-              actions.onDispute?.(e, words.trim());
+              actions.onDispute?.(e, words.trim(), why);
             }}
           >
+            <p className="text-[12.5px] font-bold">
+              {why === "not_mine"
+                ? `Tell ${shop} this udhaar isn't yours.`
+                : `Tell ${shop} the amount is wrong.`}
+            </p>
             <input
               value={words}
               onChange={(ev) => setWords(ev.target.value)}
-              placeholder="What's wrong? (optional)"
+              placeholder={why === "not_mine" ? "Anything to add? (optional)" : "What should it be? (optional)"}
               aria-label="What's wrong"
               className="rounded-[11px] border-[1.5px] border-line bg-white px-3 py-2 text-[14px] font-semibold outline-none focus:border-cyan"
             />
@@ -163,18 +197,50 @@ function EntryBubble({
           </form>
         ) : null}
 
-        {fix && mode !== "fix" ? (
-          <button
-            type="button"
-            onClick={() => setMode("fix")}
-            className={
-              urgent
-                ? "mt-3 w-full rounded-pill border-[1.5px] border-cyan bg-white px-4 py-2 text-[14px] font-extrabold text-cyan-text"
-                : "mt-2 text-[12.5px] font-extrabold text-cyan-text"
-            }
-          >
-            Correct the amount
-          </button>
+        {fix && mode === "idle" ? (
+          <div className={urgent ? "mt-3 flex flex-col gap-2" : "mt-2 flex gap-4"}>
+            {(notTheirs
+              ? (["remove", "fix"] as const)
+              : (["fix", "remove"] as const)
+            ).map((what, i) => (
+              <button
+                key={what}
+                type="button"
+                onClick={() => setMode(what)}
+                className={
+                  urgent && i === 0
+                    ? "w-full rounded-pill border-[1.5px] border-cyan bg-white px-4 py-2 text-[14px] font-extrabold text-cyan-text"
+                    : "text-[12.5px] font-extrabold text-cyan-text"
+                }
+              >
+                {what === "fix" ? "Correct the amount" : "Take it back"}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {fix && mode === "remove" ? (
+          <div className="mt-3 flex flex-col gap-2">
+            <p className="text-[12.5px] font-semibold leading-snug">
+              Take back {formatPaise(e.amount_paise)}? {name} won&apos;t owe it. It stays in the
+              thread, marked taken back, and their phone shows it.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => actions.onRemove?.(e)}
+                className="flex-1 rounded-pill bg-navy px-3 py-2 text-[13.5px] font-extrabold text-white"
+              >
+                Take it back
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("idle")}
+                className="rounded-pill px-3 py-2 text-[13px] font-bold text-sub"
+              >
+                Keep it
+              </button>
+            </div>
+          </div>
         ) : null}
         {fix && mode === "fix" ? (
           <form
