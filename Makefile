@@ -97,6 +97,12 @@ voice-list:
 voice-eval:
 	cd api && uv run python -m bahi.voice.replay
 
+# The munshi, tested as it is used: another model plays the shopkeeper with a
+# hidden goal, and each run is scored on the entry the book would hold. Real
+# Sarvam calls on the seeded book, rolled back. Costs credits; never in `check`.
+munshi-eval:
+	cd api && uv run python -m bahi.munshi.eval $(or $(TIMES),2) $(ONLY)
+
 # Only names missing from api/data/names_hi.json are fetched.
 names-hi:
 	cd api && uv run python -m data.names_hi

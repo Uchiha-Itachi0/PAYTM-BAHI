@@ -1,9 +1,9 @@
 """What the counter says back, in Sarvam's voice, kept on disk.
 
 The Soundbox says only two kinds of thing: an amount ("दो सौ बीस रुपये") and
-one of its questions. Never a name: the customer's name is shown, not spoken
-aloud. So this module takes an amount in paise or a question's name, and nothing
-else.
+one of its questions, never a name. The munshi says its own sentences, which can
+name a customer when the shopkeeper has asked it to (`munshi.brain`); those are
+spoken here too, on first use, and kept in `audio/raw/said`.
 
 Each phrase is spoken once by Sarvam's bulbul:v3 and kept, keyed by the voice
 and the words. `make voice` speaks the demo's phrases into `audio/said`, which

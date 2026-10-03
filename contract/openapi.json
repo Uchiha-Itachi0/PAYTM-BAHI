@@ -862,6 +862,294 @@
           }
         }
       }
+    },
+    "/shops/{shop_id}/munshi": {
+      "post": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "Talk Text",
+        "description": "He typed to the munshi.",
+        "operationId": "talk_text_shops__shop_id__munshi_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MunshiIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MunshiOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/munshi/voice": {
+      "post": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "Talk Voice",
+        "description": "He spoke to the munshi. The book's names are Saaras's hints.",
+        "operationId": "talk_voice_shops__shop_id__munshi_voice_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_talk_voice_shops__shop_id__munshi_voice_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MunshiOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/yes": {
+      "post": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "Card Yes",
+        "description": "He tapped हाँ, or the three-second countdown ran out. Saving twice is saving\nonce.",
+        "operationId": "card_yes_shops__shop_id__munshi__conversation_id__cards__draft_id__yes_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MunshiOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/no": {
+      "post": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "Card No",
+        "description": "He tapped नहीं: the card goes, nothing is written.",
+        "operationId": "card_no_shops__shop_id__munshi__conversation_id__cards__draft_id__no_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MunshiOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/munshi/{conversation_id}/say/{turn_id}.wav": {
+      "get": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "Say Reply",
+        "description": "The munshi's reply in Sarvam's voice (Bulbul, shreya). 503 when voice is\noffline; the screen then shows the reply without saying it.",
+        "operationId": "say_reply_shops__shop_id__munshi__conversation_id__say__turn_id__wav_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "turn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Turn Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1009,6 +1297,25 @@
         ],
         "title": "Body_heard_voice_shops__shop_id__voice_post"
       },
+      "Body_talk_voice_shops__shop_id__munshi_voice_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio"
+        ],
+        "title": "Body_talk_voice_shops__shop_id__munshi_voice_post"
+      },
       "BookOut": {
         "properties": {
           "customer_count": {
@@ -1044,6 +1351,112 @@
           "lines"
         ],
         "title": "BookOut"
+      },
+      "CardOut": {
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Draft Id"
+          },
+          "customer_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "udhaar",
+              "payment"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "shown",
+              "saved",
+              "replaced",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "reasons": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "weak_match",
+                "large",
+                "unusual"
+              ]
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "spoken_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken Text"
+          },
+          "entry_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Id"
+          },
+          "on_bahi": {
+            "type": "boolean",
+            "title": "On Bahi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft_id",
+          "customer_id",
+          "display_name",
+          "tag",
+          "amount_paise",
+          "kind",
+          "status",
+          "reasons",
+          "spoken_text",
+          "entry_id",
+          "on_bahi"
+        ],
+        "title": "CardOut",
+        "description": "The entry the munshi proposed, as the card shows it. The amount is the one\nstored on the draft, never the munshi's sentence."
       },
       "CheckOut": {
         "properties": {
@@ -1633,6 +2046,120 @@
           "rhythm"
         ],
         "title": "LineOut"
+      },
+      "MunshiIn": {
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "MunshiIn",
+        "description": "His words, typed. No conversation_id: a new conversation."
+      },
+      "MunshiOut": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "heard": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heard"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "typed",
+              "sarvam",
+              "sarvam_cached",
+              "clip_script",
+              "tap"
+            ],
+            "title": "Source"
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply"
+          },
+          "say_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Say Url"
+          },
+          "done": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Done"
+          },
+          "card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished": {
+            "type": "boolean",
+            "title": "Finished"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "heard",
+          "source",
+          "reply",
+          "say_url",
+          "done",
+          "card",
+          "finished"
+        ],
+        "title": "MunshiOut"
       },
       "PersonIn": {
         "properties": {

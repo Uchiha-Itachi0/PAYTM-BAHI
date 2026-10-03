@@ -1,0 +1,178 @@
+"""The munshi, tested the way it is used: a shopkeeper with something to record.
+
+Another model plays the shopkeeper, with a goal it keeps to itself ("₹200 udhaar
+for Sharma, Room 19, B wing") and only answers what the munshi asks. The munshi
+is the real one: the same brain, tools, checks and ledger, on the seeded book,
+inside a transaction that is rolled back. Each run is scored on the end state,
+the entry the book would hold, not on the munshi's words (the tau-bench method).
+
+Costs Sarvam credits, so it runs on demand, never in `make check`:
+
+    make munshi-eval            # every scenario twice
+    uv run python -m bahi.munshi.eval 1 b_wing_names,doodh
+"""
+
+from __future__ import annotations
+
+import sys
+import time
+from collections import Counter
+from dataclasses import dataclass
+from typing import Any
+
+from bahi import clock, voice
+from bahi.munshi import brain
+from bahi.store import customers, db
+from bahi.store import munshi as store
+from bahi.voice import sarvam
+from data.world import HOME, uid
+
+SHOP = str(uid("shop", HOME))
+SIMULATOR = "sarvam-105b-conversations"
+MOST_TURNS = 6
+
+SHOPKEEPER = """You are playing a busy kirana shopkeeper in Mumbai, talking to your voice
+munshi (assistant). Reply with only the words you say: short spoken Hindi in
+Devanagari, a few words, as a speech recogniser would write them.
+Your hidden goal: {goal}
+Rules: answer only what the munshi asks; don't give every detail at once. When the
+munshi reads back an entry that matches your goal exactly, say exactly: हाँ, लिख दो।
+If anything in it is wrong, correct it briefly. {extra}"""
+
+
+@dataclass(frozen=True, slots=True)
+class Scenario:
+    id: str
+    first: str
+    goal: str
+    #: (customer as the book names them, kind, rupees), or None: nothing may be written.
+    expect: tuple[str, str, int] | None
+    extra: str = ""
+
+
+SCENARIOS = [
+    Scenario(
+        "b_wing_names",
+        "बी विंग में जो रहते हैं, उनके नाम दो सौ लिख दो।",
+        "udhaar ₹200 for Sharma, Room 19, B wing. You don't remember the name until "
+        "you hear it.",
+        ("Sharma", "udhaar", 200),
+        "If the munshi offers to read out the names, say: हाँ, नाम बताओ।",
+    ),
+    Scenario(
+        "b_wing_tell",
+        "बी विंग में जो रहते हैं, उनके नाम दो सौ लिख दो।",
+        "udhaar ₹200 for Sharma, Room 19, B wing.",
+        ("Sharma", "udhaar", 200),
+        "If the munshi offers to read out the names, say instead: नहीं, शर्मा जी को।",
+    ),
+    Scenario(
+        "doodh",
+        "दूध वाले भैया को तीन सौ लिख दो।",
+        "udhaar ₹300 for the milk-van man (Yadav).",
+        ("Yadav", "udhaar", 300),
+    ),
+    Scenario(
+        "misheard",
+        "पटर को दो सौ।",
+        "udhaar ₹200 for Pawar, C wing.",
+        ("Pawar", "udhaar", 200),
+    ),
+    Scenario(
+        "not_in_book",
+        "रमेश को पाँच सौ।",
+        "udhaar ₹500 for Ramesh, a new customer who is NOT in the book yet.",
+        None,
+        "If the munshi says Ramesh is not in the book, say: अच्छा, रहने दो।",
+    ),
+    Scenario(
+        "correction",
+        "मिश्रा जी को चार सौ लिख दो।",
+        "udhaar for Mishra ji (Room 9, B wing). You first said ₹400, but it was really "
+        "₹300: when the munshi reads back ₹400, say नहीं नहीं, तीन सौ था।",
+        ("Mishra ji", "udhaar", 300),
+    ),
+    Scenario(
+        "english",
+        "Sharma took goods for 200, write it",
+        "udhaar ₹200 for Sharma, Room 19, B wing. You speak English.",
+        ("Sharma", "udhaar", 200),
+        "When it matches, say exactly: हाँ, लिख दो।",
+    ),
+]
+
+
+def shopkeeper(s: Scenario, said: list[tuple[str, str]], key: str) -> str:
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": SHOPKEEPER.format(goal=s.goal, extra=s.extra)}
+    ]
+    for who, text in said:  # the munshi is the simulator's "user"
+        messages.append(
+            {"role": "assistant" if who == "shop" else "user", "content": text}
+        )
+    body = {"model": SIMULATOR, "temperature": 0, "messages": messages}
+    reply = sarvam._post_json(sarvam.CHAT_URL, body, key=key, timeout=30)
+    return str(reply["choices"][0]["message"].get("content") or "").strip()
+
+
+def run(s: Scenario, key: str) -> dict[str, Any]:
+    chat = lambda m, t: sarvam.munshi(m, t, key=key)  # noqa: E731
+    with db.connect() as con:
+        conversation: str | None = None
+        said: list[tuple[str, str]] = []
+        line, seconds, written = s.first, [], None
+        for _ in range(MOST_TURNS):
+            said.append(("shop", line))
+            if "रहने दो" in line:
+                break
+            started = time.monotonic()
+            o = brain.talk(con, SHOP, conversation, line, clock.now(), chat)
+            seconds.append(time.monotonic() - started)
+            conversation = o.conversation_id
+            said.append(("munshi", o.reply or ""))
+            if o.finished:
+                break
+            line = shopkeeper(s, said, key)
+        d = store.latest_draft(con, conversation) if conversation else None
+        if d is not None and d.status == "saved":
+            c = customers.get(con, d.customer_id)
+            written = (
+                c.display_name if c else d.customer_id,
+                d.kind,
+                d.amount_paise // 100,
+            )
+        con.rollback()
+    return {
+        "id": s.id,
+        "ok": written == s.expect,
+        "written": written,
+        "said": said,
+        "s": seconds,
+    }
+
+
+def main() -> None:
+    key = voice.api_key()
+    if key is None:
+        sys.exit("needs SARVAM_API_KEY in api/.env")
+    times = int(sys.argv[1]) if len(sys.argv) > 1 else 2
+    only = set(sys.argv[2].split(",")) if len(sys.argv) > 2 else None
+    results = [
+        run(s, key) for s in SCENARIOS if not only or s.id in only for _ in range(times)
+    ]
+    for r in results:
+        print(f"\n{'✓' if r['ok'] else '✗'} {r['id']}  written: {r['written']}")
+        for who, text in r["said"]:
+            print(f"   {'दुकानदार' if who == 'shop' else 'मुंशी'}: {text}")
+    per = Counter(r["id"] for r in results if r["ok"])
+    turn_s = sorted(x for r in results for x in r["s"])
+    steady = sum(1 for s in {r["id"] for r in results} if per[s] == times)
+    print(
+        f"\n{sum(r['ok'] for r in results)}/{len(results)} right · "
+        f"median reply {turn_s[len(turn_s) // 2]:.1f}s · "
+        f"every run right: {steady}"
+    )
+
+
+if __name__ == "__main__":
+    main()

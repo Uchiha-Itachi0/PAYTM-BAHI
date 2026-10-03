@@ -1,0 +1,478 @@
+"""The munshi's tools: what it can look up, and the only way it can change anything.
+
+Reading tools look at the real book. `propose_entry` puts a draft card on the
+screen, and it is checked here, in code:
+
+- the customer came back from a search in this conversation, is in this shop, and
+  has not been invited without saying yes;
+- the amount is whole rupees above zero, and a जमा is no more than he owes;
+- the card needs an explicit yes (no three-second countdown) when the name only
+  sounded a little like his, the amount is ₹5,000 or more, or it is three times
+  what he usually takes.
+
+`confirm_entry` turns the waiting card into the entry, once, and only after the
+shopkeeper has answered it. Every result is plain JSON the munshi reads, and
+tells it what to do next when that isn't obvious.
+
+Customers are named to the munshi by the first six letters of their id: short
+enough to copy without a slip, and looked up again here in this shop's book.
+"""
+
+from __future__ import annotations
+
+import json
+import statistics
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from bahi.domain import book as book_domain
+from bahi.domain.find import Found, find
+from bahi.domain.who import Person
+from bahi.service import ledger
+from bahi.service.errors import Conflict
+from bahi.store import book as book_store
+from bahi.store import customers, entries, scans
+from bahi.store import munshi as store
+from bahi.store.customers import CustomerRef
+from bahi.store.db import Conn
+from bahi.voice.said import amount_words
+
+#: A card at or above this waits for an explicit yes.
+LARGE_PAISE = 5_000_00
+#: A card this many times his usual udhaar waits for an explicit yes.
+UNUSUAL_TIMES = 3
+#: His usual needs at least this many past entries.
+USUAL_FROM = 3
+#: Nothing this large is taken from a conversation at all.
+MOST_PAISE = 1_00_000_00
+#: A search lists at most this many.
+LISTED = 8
+SHORT = 6
+
+#: The munshi's words for the two kinds. Not "जमा": that also means "deposit",
+#: and "put it on his account" was read as one.
+KIND = {"udhaar": "udhaar", "paid_back": "payment"}
+KIND_HI = {"udhaar": "उधार", "payment": "जमा"}
+#: How a search result says it only half fits.
+WEAK_MATCHES = ("name sounds a little like it", "description partly fits")
+
+TOOLS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "find_customer",
+            "description": "Look up customers in the shop's book by name and/or "
+            "description. Returns who fits, how well, and what to do next.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The person's name or surname as heard, "
+                        "e.g. 'शर्मा'. Only a name, never a place or work.",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Where they live or what they do, in the "
+                        "book's words, e.g. 'B wing', 'Room 19', 'Pan stall'. Numbers as "
+                        "digits.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "counter",
+            "description": "Who is at the counter now: customers who scanned the shop's "
+            "udhaar QR in the last few minutes.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "customer_card",
+            "description": "What one customer owes, and how long since they last paid. "
+            "Only when the shopkeeper asks about it.",
+            "parameters": {
+                "type": "object",
+                "properties": {"customer_id": {"type": "string"}},
+                "required": ["customer_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_entry",
+            "description": "Show the entry on the shopkeeper's screen for his yes. "
+            "Only when exactly one customer, the amount and उधार-or-जमा are clear. "
+            "Nothing is written yet.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {"type": "string"},
+                    "kind": {
+                        "type": "string",
+                        "enum": ["udhaar", "paid_back"],
+                        "description": "udhaar: the customer takes goods now and pays "
+                        "later. paid_back: the customer handed money to the shop to "
+                        "clear what he owes. If his words don't say which, ask first.",
+                    },
+                    "amount_rupees": {"type": "number"},
+                },
+                "required": ["customer_id", "kind", "amount_rupees"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "confirm_entry",
+            "description": "The shopkeeper said yes to the card on screen: write it "
+            "and send it to the customer's phone. Returns what happened.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_entry",
+            "description": "The shopkeeper said no to the card on screen: take it away.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+]
+
+
+def short(customer_id: str) -> str:
+    return customer_id.replace("-", "")[:SHORT]
+
+
+@dataclass
+class Desk:
+    """One request's view of the shop, for the tools to work on."""
+
+    con: Conn
+    shop_id: str
+    conversation_id: str
+    now: datetime
+    #: Seq of his latest turn. A card shown before it has been answered.
+    his_seq: int
+    #: Everything he has said in this conversation, for the entry's spoken_text.
+    his_words: str
+    refs: dict[str, CustomerRef] = field(default_factory=dict)
+    people: list[Person] = field(default_factory=list)
+    #: Customer ids a search or the counter has shown the munshi, and whether
+    #: only by a weak match.
+    seen: dict[str, bool] = field(default_factory=dict)
+    #: What happened, for the screen: "Looked for 'B wing': 8".
+    done: list[str] = field(default_factory=list)
+
+    @classmethod
+    def open(cls, con: Conn, shop_id: str, conversation_id: str, now: datetime) -> Desk:
+        turns = store.turns(con, conversation_id)
+        his = [t for t in turns if t.role == "user"]
+        desk = cls(
+            con,
+            shop_id,
+            conversation_id,
+            now,
+            his_seq=his[-1].seq if his else -1,
+            his_words=" · ".join(
+                str(t.message.get("content") or "")
+                for t in his
+                if t.message.get("content")
+            )[-400:],
+        )
+        desk.refs = {
+            c.id: c for c in customers.of_shop(con, shop_id) if c.joined != "invited"
+        }
+        desk.people = [
+            Person(c.id, c.display_name, c.tag, c.name_hi, c.tag_hi)
+            for c in desk.refs.values()
+        ]
+        for t in turns:
+            if t.role == "tool":
+                desk._remember(t.message.get("content"))
+        return desk
+
+    def _remember(self, content: Any) -> None:
+        try:
+            result = json.loads(content) if isinstance(content, str) else None
+        except json.JSONDecodeError:
+            return
+        if not isinstance(result, dict):
+            return
+        for c in result.get("customers", []) or []:
+            cid = self.resolve(str(c.get("id", "")))
+            if cid:
+                weak = c.get("match") in WEAK_MATCHES
+                self.seen[cid] = self.seen.get(cid, True) and weak
+
+    def resolve(self, given: str) -> str | None:
+        """A short id (or a full one) back to the customer's id, in this shop only."""
+        given = given.strip().lower().replace("-", "")
+        if len(given) < SHORT:
+            return None
+        hits = [cid for cid in self.refs if cid.replace("-", "").startswith(given)]
+        return hits[0] if len(hits) == 1 else None
+
+    # ── the tools ────────────────────────────────────────────────────────────
+
+    def run(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        tools: dict[str, Callable[..., dict[str, Any]]] = {
+            "find_customer": self.find_customer,
+            "counter": self.counter,
+            "customer_card": self.customer_card,
+            "propose_entry": self.propose_entry,
+            "confirm_entry": self.confirm_entry,
+            "cancel_entry": self.cancel_entry,
+        }
+        tool = tools.get(name)
+        if tool is None:
+            return {"error": f"there is no tool {name}"}
+        try:
+            return tool(**args)
+        except TypeError as e:
+            return {"error": f"wrong arguments for {name}: {e}"}
+
+    def _say(self, cid: str) -> tuple[str, str]:
+        c = self.refs[cid]
+        return c.name_hi or c.display_name, c.tag_hi or c.tag or ""
+
+    def _owes(self, cid: str) -> tuple[int, int | None]:
+        """(what he owes in paise, days since he last paid), from the book's own
+        arithmetic."""
+        for c in book_store.load(self.con, self.shop_id):
+            if c.id == cid:
+                ln = book_domain.line(c, self.now.date())
+                return (ln.balance_paise, ln.day) if ln else (0, None)
+        return 0, None
+
+    def _counter_ids(self) -> set[str]:
+        return {w.customer_id for w in scans.waiting(self.con, self.shop_id, self.now)}
+
+    def find_customer(
+        self, name: str | None = None, description: str | None = None
+    ) -> dict[str, Any]:
+        search = find(self.people, name, description)
+        here = self._counter_ids()
+        found = search.found
+        out: dict[str, Any] = {"count": len(found)}
+
+        def row(f: Found) -> dict[str, Any]:
+            cid = f.person.ref
+            said, about = self._say(cid)
+            r: dict[str, Any] = {"id": short(cid), "name": said, "about": about}
+            if f.name_score:
+                r["match"] = (
+                    "name sounds the same"
+                    if f.name_strong
+                    else "name sounds a little like it"
+                )
+            elif f.fits:
+                r["match"] = (
+                    "description fits" if f.fits >= 1 else "description partly fits"
+                )
+            if cid in here:
+                r["at_counter"] = True
+            # What he owes is only in customer_card, asked for on purpose: a search
+            # said aloud at the counter must not carry anyone's balance.
+            return r
+
+        out["customers"] = [row(f) for f in found[:LISTED]]
+        for f in found[:LISTED]:
+            weak = not f.strong
+            self.seen[f.person.ref] = self.seen.get(f.person.ref, True) and weak
+        if len(found) > LISTED:
+            out["more"] = len(found) - LISTED
+        if search.note:
+            out["note"] = search.note
+        if len(found) == 1 and not found[0].strong:
+            out["next"] = (
+                "Only a weak match: say his name and place back and ask if that's "
+                "who he means."
+            )
+        elif len(found) == 2:
+            out["next"] = "Two fit: name both with what tells them apart, and ask which."
+        elif len(found) >= 3:
+            out["next"] = (
+                f"{len(found)} fit. Don't read them yet: say how many fit and ask "
+                "whether he wants the names read out or will say who. If he wants "
+                "them, read each name with its place only, never what they owe."
+            )
+        looked = " · ".join(x for x in (name, description) if x)
+        self.done.append(f"Looked for {looked}: {len(found)} found")
+        return out
+
+    def counter(self) -> dict[str, Any]:
+        waiting = scans.waiting(self.con, self.shop_id, self.now)
+        rows = []
+        for w in waiting:
+            if w.customer_id in self.refs:
+                said, about = self._say(w.customer_id)
+                rows.append({"id": short(w.customer_id), "name": said, "about": about})
+                self.seen[w.customer_id] = False
+        self.done.append(f"Checked the counter: {len(rows)} waiting")
+        out: dict[str, Any] = {"count": len(rows), "customers": rows}
+        if len(rows) == 1:
+            out["next"] = "One person is at the counter; if he named nobody, it is them."
+        return out
+
+    def customer_card(self, customer_id: str) -> dict[str, Any]:
+        cid = self.resolve(customer_id)
+        if cid is None:
+            return {"error": "no such customer here; use an id from find_customer"}
+        said, about = self._say(cid)
+        owed, day = self._owes(cid)
+        self.done.append(f"Opened {self.refs[cid].display_name}'s card")
+        return {
+            "name": said,
+            "about": about,
+            "owes": amount_words(owed) if owed else "कुछ बाकी नहीं",
+            "days_since_last_paid": day,
+        }
+
+    def propose_entry(
+        self, customer_id: str, kind: str, amount_rupees: float
+    ) -> dict[str, Any]:
+        cid = self.resolve(customer_id)
+        if cid is None:
+            return {
+                "ok": False,
+                "problem": "no such customer here; look them up with find_customer",
+            }
+        if cid not in self.seen:
+            return {
+                "ok": False,
+                "problem": "look this customer up with find_customer first",
+            }
+        kind_en = KIND.get(kind)
+        if kind_en is None:
+            return {"ok": False, "problem": "kind must be udhaar or paid_back; ask him"}
+        try:
+            rupees = float(amount_rupees)
+        except (TypeError, ValueError):
+            return {"ok": False, "problem": "the amount must be a number of rupees"}
+        paise = round(rupees * 100)
+        if rupees <= 0 or paise % 100:
+            return {
+                "ok": False,
+                "problem": "the amount must be whole rupees above zero; ask him",
+            }
+        if paise > MOST_PAISE:
+            return {
+                "ok": False,
+                "problem": "that is too large to take by voice; ask him to check",
+            }
+        owed, _ = self._owes(cid)
+        if kind_en == "payment" and paise > owed:
+            words = amount_words(owed) if owed else "कुछ नहीं"
+            return {
+                "ok": False,
+                "problem": f"he owes only {words}; tell the shopkeeper and ask",
+            }
+        reasons = []
+        if self.seen.get(cid):
+            reasons.append("weak_match")
+        if paise >= LARGE_PAISE:
+            reasons.append("large")
+        usual = self._usual(cid)
+        if kind_en == "udhaar" and usual and paise >= UNUSUAL_TIMES * usual:
+            reasons.append("unusual")
+        d = store.show(
+            self.con,
+            self.conversation_id,
+            cid,
+            kind_en,
+            paise,
+            self.his_words or None,
+            reasons,
+            self.his_seq,
+            self.now,
+        )
+        said, about = self._say(cid)
+        self.done.append(
+            f"Showed a card: {self.refs[cid].display_name} ₹{paise // 100} "
+            f"{KIND_HI[kind_en]}"
+        )
+        return {
+            "ok": True,
+            "card": f"{said}, {about}, {amount_words(d.amount_paise)} {KIND_HI[kind_en]}",
+            "needs_clear_yes": bool(reasons),
+            "next": "The card is waiting for his yes. Read it back in one short "
+            "sentence and ask पक्का?",
+        }
+
+    def _usual(self, cid: str) -> int | None:
+        past = [e.amount_paise for e in entries.of_customer(self.con, cid)]
+        return int(statistics.median(past)) if len(past) >= USUAL_FROM else None
+
+    def confirm_entry(self) -> dict[str, Any]:
+        d = store.latest_draft(self.con, self.conversation_id)
+        if d is None or d.status != "shown":
+            return {"ok": False, "problem": "there is no card waiting; propose one first"}
+        if d.shown_seq >= self.his_seq:
+            return {
+                "ok": False,
+                "problem": "he hasn't answered the card yet; read it back and ask पक्का?",
+            }
+        return save(self.con, self.shop_id, d.id, self.now, self.done)
+
+    def cancel_entry(self) -> dict[str, Any]:
+        d = store.latest_draft(self.con, self.conversation_id)
+        if d is None or d.status != "shown":
+            return {"ok": False, "problem": "there is no card waiting"}
+        store.decide(self.con, d.id, "cancelled", self.now)
+        self.done.append("Took the card away")
+        return {"ok": True, "cancelled": True}
+
+
+def save(
+    con: Conn, shop_id: str, draft_id: str, now: datetime, done: list[str]
+) -> dict[str, Any]:
+    """The waiting card becomes the entry, once. Used by confirm_entry and by his
+    tap on the card, so a spoken yes and a tapped one are the same yes."""
+    d = store.claim(con, draft_id)
+    if d is None:
+        return {"ok": False, "problem": "that card is no longer waiting"}
+    c = customers.get(con, d.customer_id)
+    assert c is not None
+    entry_id: str | None = None
+    try:
+        if d.kind == "udhaar":
+            scan_id = scans.waiting_for(con, d.customer_id, now)
+            e = ledger.record(
+                con,
+                shop_id,
+                d.amount_paise,
+                now,
+                scan_id=UUID(scan_id) if scan_id else None,
+                customer_id=None if scan_id else UUID(d.customer_id),
+                spoken_text=d.spoken_text,
+            )
+            entry_id = e.id
+        else:
+            ledger.pay_cash(con, d.customer_id, d.amount_paise, now)
+    except Conflict as e:
+        return {"ok": False, "problem": f"the book refused it: {e}"}
+    store.decide(con, d.id, "saved", now, entry_id)
+    sent = c.joined == "linked"
+    done.append(f"Wrote it: {c.display_name} ₹{d.amount_paise // 100}")
+    return {
+        "saved": True,
+        "customer": c.name_hi or c.display_name,
+        "kind": KIND_HI[d.kind],
+        "amount": amount_words(d.amount_paise),
+        "sent_to_customer_phone": sent,
+        "why_not_sent": None
+        if sent
+        else "this customer is not on BAHI, so there is no phone to send to",
+    }

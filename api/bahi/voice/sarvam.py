@@ -65,7 +65,11 @@ _POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="sarvam")
 
 
 def hedged[T](
-    call: Callable[[], T], *, timeout: float, after: float = HEDGE_AFTER_S
+    call: Callable[[], T],
+    *,
+    timeout: float,
+    after: float = HEDGE_AFTER_S,
+    again: Callable[[], T] | None = None,
 ) -> T:
     """The call's answer, asked a second time if the first is slow.
 
@@ -73,14 +77,15 @@ def hedged[T](
     the slow one would leave the shopkeeper standing there; asking again after
     `after` seconds and taking whichever answers first costs one extra request,
     only when it's needed ("hedged requests", The Tail at Scale, 2013). A refusal
-    that comes back quickly is not asked again.
+    that comes back quickly is not asked again. `again`, if given, is what is
+    asked the second time: the munshi asks a second model rather than the same one.
     """
     deadline = time.monotonic() + timeout
     first = _POOL.submit(call)
     done, _ = wait([first], timeout=min(after, timeout))
     if done:
         return first.result()
-    pending: set[Future[T]] = {first, _POOL.submit(call)}
+    pending: set[Future[T]] = {first, _POOL.submit(again or call)}
     failure: SarvamError | None = None
     while pending:
         left = max(0.0, deadline - time.monotonic())
@@ -172,6 +177,50 @@ def chat_json(
     if not isinstance(answer, dict):
         raise SarvamError("Sarvam-105B's reply was not a JSON object")
     return answer
+
+
+#: The munshi's model: Sarvam's own model for voice agents. In our test of 12
+#: shop conversations it was right 24 of 24 times, replying in about half a
+#: second; thinking modes were ten times slower and made mistakes.
+MUNSHI_MODEL = "sarvam-105b-conversations"
+#: Asked too when the munshi's model is slow, with thinking off.
+MUNSHI_SECOND = "sarvam-105b"
+#: Room for a reply of a sentence or two, or a tool call.
+MUNSHI_MAX_TOKENS = 400
+
+
+def munshi(
+    messages: list[dict[str, Any]], tools: list[dict[str, Any]], *, key: str
+) -> dict[str, Any]:
+    """The munshi's next message: a reply, or tool calls. If its model hasn't
+    answered in HEDGE_AFTER_S, sarvam-105b is asked the same, and the first answer
+    is used."""
+
+    def ask(model_name: str) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "model": model_name,
+            "temperature": 0.2,
+            "reasoning_effort": None,
+            "max_tokens": MUNSHI_MAX_TOKENS,
+            "messages": messages,
+        }
+        if tools:
+            body["tools"] = tools
+        reply = _post_json(CHAT_URL, body, key=key, timeout=CHAT_TIMEOUT_S)
+        try:
+            message = reply["choices"][0]["message"]
+        except (KeyError, IndexError, TypeError) as e:
+            raise SarvamError(f"Sarvam sent no message: {e}") from e
+        if not isinstance(message, dict):
+            raise SarvamError("Sarvam's message was not an object")
+        return message
+
+    model_name = os.environ.get("SARVAM_MUNSHI_MODEL", MUNSHI_MODEL)
+    return hedged(
+        lambda: ask(model_name),
+        timeout=CHAT_TIMEOUT_S,
+        again=lambda: ask(MUNSHI_SECOND),
+    )
 
 
 def transliterate(text: str, *, key: str) -> str:
