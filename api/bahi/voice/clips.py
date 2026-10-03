@@ -31,7 +31,13 @@ class Clip:
 
 
 CLIPS = (
-    Clip("do-sau", "दो सौ", "do sau", "One person at the counter: the amount is enough"),
+    # Not "दो सौ" alone: Sarvam hears the Mac voice's दो सौ as दूसरा ("second").
+    Clip(
+        "do-sau",
+        "दो सौ रुपये",
+        "do sau rupaye",
+        "One person at the counter: the amount is enough",
+    ),
     Clip(
         "iqbal-teen-sau",
         "इक़बाल भाई, तीन सौ",
@@ -49,6 +55,18 @@ CLIPS = (
         "साढ़े तीन सौ दे दो",
         "saade teen sau de do",
         "A fraction word, and 'do' that means 'give'",
+    ),
+    Clip(
+        "anubhav-do-sau-bees",
+        "अनुभव को दो सौ बीस रुपये दे दो",
+        "Anubhav ko do sau bees",
+        "Four Anubhavs in the book: Kaunse Anubhav?",
+    ),
+    Clip(
+        "anubhav-shukla",
+        "अनुभव शुक्ला को दो सौ बीस",
+        "Anubhav Shukla ko do sau bees",
+        "The surname picks one of the four",
     ),
 )
 

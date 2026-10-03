@@ -10,7 +10,7 @@ import { SHOP_ID } from "@/lib/config";
 import { useRecorder, type MicState } from "@/lib/useRecorder";
 
 /**
- * Three ways to say it, all ending in the same rules on the server:
+ * Three ways to say it, all ending in the same reading and checks on the server:
  *
  * - the mic, sent to /voice (Sarvam when online);
  * - typing the words, sent to /heard;
@@ -21,7 +21,7 @@ import { useRecorder, type MicState } from "@/lib/useRecorder";
 const MIC_LINE: Record<MicState | "hearing", [string, string]> = {
   idle: ["Tap, then say the amount", "Say the name too if several are waiting"],
   recording: ["Listening… tap to stop", "Stops by itself after six seconds"],
-  hearing: ["Hearing…", "Reading the amount from the words"],
+  hearing: ["Hearing…", "Sarvam reads it, our code checks it"],
   blocked: ["The mic is blocked", "Allow it in the browser, or type below"],
   unsupported: ["This browser can't record", "Type below instead"],
 };
@@ -131,7 +131,7 @@ export function VoicePanel({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="or type it: Sharma ko do sau"
+          placeholder="or type it: Anubhav Shukla ko do sau"
           aria-label="What he said"
           className="min-w-0 flex-1 rounded-[11px] border-[1.5px] border-line bg-white px-3 py-2 text-[14px] font-bold outline-none placeholder:font-medium placeholder:text-sub focus:border-cyan"
         />

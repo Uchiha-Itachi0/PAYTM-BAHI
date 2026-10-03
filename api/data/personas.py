@@ -224,7 +224,8 @@ CAST: tuple[Persona, ...] = (
     ),
 )
 
-#: Background customers: (name, tag). Generated around the cast.
+#: Background customers: (name, tag). Generated around the cast. Four are named
+#: Anubhav, as a real book has namesakes: "Anubhav ko do sau" must ask which one.
 CROWD: tuple[tuple[str, str], ...] = (
     ("Deshmukh", "Building 2"),
     ("Farida", "Room 14, A wing"),
@@ -250,7 +251,7 @@ CROWD: tuple[tuple[str, str], ...] = (
     ("Qureshi", "Butcher lane"),
     ("Sawant", "Chawl 2"),
     ("Rekha", "Room 4, A wing"),
-    ("Tiwari", "Building 3"),
+    ("Anubhav", "Room 311, B wing"),
     ("Mishra ji", "Room 9, B wing"),
     ("Jadhav", "Chawl 4"),
     ("Sunita", "Room 15, C wing"),
@@ -268,12 +269,12 @@ CROWD: tuple[tuple[str, str], ...] = (
     ("Pandey", "Room 5, A wing"),
     ("Rizwan", "Room 18, B wing"),
     ("Shetty", "Hotel, corner"),
-    ("Thakur", "Building 12"),
+    ("Anubhav Shukla", "Room 1006, B wing"),
     ("Usha", "Room 10, C wing"),
     ("Vora", "Building 6"),
     ("Wagh", "Chawl 1"),
     ("Zainab", "Room 16, A wing"),
-    ("Ghosh", "Building 7"),
+    ("Anubhav", "Room 204, A wing"),
     ("Kamat", "Room 13, B wing"),
-    ("Menon", "Building 4"),
+    ("Anubhav Jain", "Medical shop"),
 )

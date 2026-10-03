@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from bahi import clock
 from bahi.service import app
 from bahi.service.deps import connection
+from bahi.voice import sarvam
 from data import contract, db
 from data.world import HOME, uid
 
@@ -207,13 +208,6 @@ def test_an_invited_customer_who_scans_has_said_yes(api: TestClient, tx: db.Conn
 # ── voice ────────────────────────────────────────────────────────────────────
 
 
-@pytest.fixture
-def offline(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Voice as it runs on the day: no key, Sarvam switched off."""
-    monkeypatch.setenv("SARVAM_OFFLINE", "1")
-    monkeypatch.delenv("SARVAM_API_KEY", raising=False)
-
-
 def hear(api: TestClient, text: str) -> Any:
     r = api.post(f"/shops/{SHOP}/heard", json={"text": text})
     assert r.status_code == 200, r.text
@@ -253,6 +247,7 @@ def test_a_name_not_at_the_counter_is_found_in_the_book(api: TestClient) -> None
     assert h["who"]["person"] == {
         "customer_id": SHARMA,
         "display_name": "Sharma",
+        "tag": "Room 19, B wing",
         "scan_id": None,
     }
 
@@ -285,7 +280,6 @@ def test_what_was_heard_records_like_anything_typed(api: TestClient) -> None:
     )
 
 
-@pytest.mark.usefixtures("offline")
 def test_a_demo_clip_is_heard_with_the_wifi_off(api: TestClient) -> None:
     join(api)
     wav = api.get("/voice/clips/do-sau.wav")
@@ -299,7 +293,6 @@ def test_a_demo_clip_is_heard_with_the_wifi_off(api: TestClient) -> None:
     assert h["amount_paise"] == 20000 and h["who"]["how"] == "only_one"
 
 
-@pytest.mark.usefixtures("offline")
 def test_a_new_recording_with_voice_offline_is_refused_not_guessed(
     api: TestClient,
 ) -> None:
@@ -314,3 +307,181 @@ def test_a_new_recording_with_voice_offline_is_refused_not_guessed(
 def test_the_demo_clips_are_listed(api: TestClient) -> None:
     slugs = [c["slug"] for c in api.get("/voice/clips").json()]
     assert "do-sau" in slugs and "sharma-dhaai-sau" in slugs
+
+
+# ── four Anubhavs (offline: our parser reads, our code decides) ──────────────
+
+
+def anubhavs(api: TestClient) -> dict[str, str]:
+    """tag -> customer id, for the seed's four Anubhavs."""
+    book = api.get(f"/shops/{SHOP}/customers").json()
+    return {c["tag"]: c["id"] for c in book if c["display_name"].startswith("Anubhav")}
+
+
+def test_a_name_four_customers_have_asks_which_one(api: TestClient) -> None:
+    h = hear(api, "Anubhav ko do sau bees")
+    assert h["reader"] == "rules" and h["fallback"] == "offline"
+    assert h["amount_paise"] == 22000
+    assert h["who"]["kind"] == "ask" and h["who"]["why"] == "several"
+    among = {p["customer_id"]: p["tag"] for p in h["who"]["among"]}
+    assert among == {v: k for k, v in anubhavs(api).items()}
+
+
+@pytest.mark.parametrize(
+    ("said", "tag"),
+    [
+        ("Anubhav Shukla ko do sau bees", "Room 1006, B wing"),
+        ("अनुभव शुक्ला को दो सौ बीस", "Room 1006, B wing"),
+        ("Anubhav Jain ko teen sau", "Medical shop"),
+    ],
+)
+def test_a_surname_or_a_room_picks_one_anubhav(
+    api: TestClient, said: str, tag: str
+) -> None:
+    h = hear(api, said)
+    assert h["who"]["kind"] == "picked", h["who"]
+    assert h["who"]["person"]["customer_id"] == anubhavs(api)[tag]
+
+
+def test_offline_a_room_number_is_an_amount_to_our_parser_so_it_asks(
+    api: TestClient,
+) -> None:
+    """Our parser reads 204 and sau as two amounts, so it refuses rather than
+    guess, and asks which Anubhav. Sarvam-105B tells a room from an amount."""
+    h = hear(api, "204 wale Anubhav ko sau")
+    assert (h["problem"], h["amount_paise"]) == ("unclear_amount", None)
+    assert h["who"]["why"] == "several"
+
+
+def test_the_anubhav_at_the_counter_is_the_one(api: TestClient) -> None:
+    _, joined = join(api, "Anubhav")
+    h = hear(api, "Anubhav ko do sau")
+    assert h["who"]["how"] == "at_counter"
+    assert h["who"]["person"]["scan_id"] == joined["scan_id"]
+
+
+# ── online: Sarvam-105B reads, faked here; our checks are real ───────────────
+
+
+@pytest.fixture
+def sarvam_105b(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """Voice online with a fake Sarvam-105B. Append the answers it should give."""
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    answers: list[dict[str, Any]] = []
+
+    def fake(system: str, user: str, schema: Any, *, key: str, name: str) -> Any:
+        assert "SHORTLIST" in system and json.loads(user)["transcript"]
+        if not answers:
+            raise sarvam.SarvamError("could not reach Sarvam: faked")
+        return answers.pop(0)
+
+    monkeypatch.setattr(sarvam, "chat_json", fake)
+    return answers
+
+
+def reading(**kw: Any) -> dict[str, Any]:
+    return {
+        "intent": "udhaar",
+        "customer_id": None,
+        "candidates": [],
+        "amount_words": "do sau bees",
+        "amount_rupees": 220,
+        "person_words": "Anubhav Shukla",
+        "reason": "",
+    } | kw
+
+
+def test_sarvam_reads_and_our_checks_pass_it(
+    api: TestClient, sarvam_105b: list[dict[str, Any]]
+) -> None:
+    sarvam_105b.append(reading())
+    h = hear(api, "Anubhav Shukla ko do sau bees de do")
+    assert (h["reader"], h["fallback"], h["intent"]) == ("sarvam", None, "udhaar")
+    assert h["amount_paise"] == 22000 and h["problem"] is None
+    assert h["who"]["person"]["tag"] == "Room 1006, B wing"
+    assert [(c["kind"], c["ok"]) for c in h["checks"]] == [
+        ("amount_said", True),
+        ("amount_read", True),
+        ("person_said", True),
+        ("person_fits", True),
+    ]
+    assert h["checks"][1]["says"] == "our parser reads “do sau bees” as ₹220 too"
+
+
+def test_online_a_room_number_said_picks_one_anubhav(
+    api: TestClient, sarvam_105b: list[dict[str, Any]]
+) -> None:
+    sarvam_105b.append(
+        reading(amount_words="sau", amount_rupees=100, person_words="204 wale Anubhav")
+    )
+    h = hear(api, "204 wale Anubhav ko sau")
+    assert h["amount_paise"] == 10000
+    assert h["who"]["person"]["customer_id"] == anubhavs(api)["Room 204, A wing"]
+
+
+def test_an_amount_sarvam_states_that_is_not_in_the_words_is_never_sent(
+    api: TestClient, sarvam_105b: list[dict[str, Any]]
+) -> None:
+    sarvam_105b.append(reading(amount_words="teen sau", amount_rupees=300))
+    h = hear(api, "Anubhav Shukla ko do sau bees de do")
+    assert (h["problem"], h["amount_paise"], h["readback"]) == (
+        "amount_not_said",
+        None,
+        None,
+    )
+
+
+def test_a_customer_sarvam_was_never_shown_is_refused(
+    api: TestClient, sarvam_105b: list[dict[str, Any]]
+) -> None:
+    sarvam_105b.append(reading(customer_id="c99"))
+    h = hear(api, "Anubhav Shukla ko do sau bees de do")
+    assert (h["problem"], h["amount_paise"]) == ("invented_customer", None)
+
+
+def test_a_payment_is_read_as_a_payment(
+    api: TestClient, sarvam_105b: list[dict[str, Any]]
+) -> None:
+    sarvam_105b.append(
+        reading(
+            intent="payment",
+            amount_words="do sau",
+            amount_rupees=200,
+            person_words="Sharma",
+        )
+    )
+    h = hear(api, "Sharma ne do sau diye")
+    assert (h["intent"], h["amount_paise"]) == ("payment", 20000)
+    assert h["who"]["person"]["customer_id"] == SHARMA
+
+
+def test_when_sarvam_does_not_answer_our_parser_reads(
+    api: TestClient, sarvam_105b: list[dict[str, Any]]
+) -> None:
+    h = hear(api, "Sharma ko dhaai sau udhaar")
+    assert (h["reader"], h["fallback"]) == ("rules", "no_answer")
+    assert h["amount_paise"] == 25000 and h["who"]["person"]["customer_id"] == SHARMA
+
+
+def test_a_new_customer_is_kept_in_devanagari_too(
+    api: TestClient, tx: db.Conn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    monkeypatch.setattr(sarvam, "transliterate", lambda text, *, key: "कविता")
+    _, joined = join(api, "Kavita")
+    row = tx.execute(
+        "SELECT name_hi FROM customers WHERE id = %s", (joined["customer_id"],)
+    ).fetchone()
+    assert row == ("कविता",)
+
+
+def test_offline_a_new_customer_is_kept_by_the_roman_name(
+    api: TestClient, tx: db.Conn
+) -> None:
+    _, joined = join(api, "Kavita")
+    row = tx.execute(
+        "SELECT name_hi FROM customers WHERE id = %s", (joined["customer_id"],)
+    ).fetchone()
+    assert row == (None,)

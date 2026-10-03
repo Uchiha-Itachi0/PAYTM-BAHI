@@ -17,7 +17,7 @@ import { api, ApiError, usePoll } from "@/lib/api/client";
 import type { Counter, Customer, Entry, Heard, HeardPerson } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
-import { KISKE_LIYE, sayAloud } from "@/lib/voice";
+import { KISKE_LIYE, PROBLEM_LINE, sayAloud } from "@/lib/voice";
 
 /**
  * A2 · Who is at the counter, then how much.
@@ -27,10 +27,14 @@ import { KISKE_LIYE, sayAloud } from "@/lib/voice";
  * picked until the shopkeeper says a name or taps one. The screen never chooses
  * by queue order.
  *
- * Spoken: the server reads the amount and the name from the words by rule, and
- * either picks someone (saying why) or asks. A pick is read back and sent after
- * three seconds unless he cancels. Typed: the keypad and Send, as before. Both
- * end in the same POST /entries.
+ * Spoken: Sarvam-105B reads the words and our code checks the reading: the
+ * amount must be in the words, and the words that name the person must fit
+ * exactly one customer, or the screen asks "Kaunse Anubhav?". A pick is read
+ * back and sent after three seconds unless he cancels. When our parser read it
+ * instead (offline, or Sarvam didn't answer), nothing goes by itself: the amount
+ * and the person are filled in and he taps Send, because that reader was wrong
+ * five times as often in the test. Typed: the keypad and Send, as before. All of
+ * it ends in the same POST /entries.
  */
 
 type Pick =
@@ -60,6 +64,8 @@ export function AddScreen(): React.ReactElement {
   const [news, setNews] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
 
   const [heard, setHeard] = useState<Heard | null>(null);
+  /** What our parser heard, kept with the amount it filled in for him to check. */
+  const [prefilled, setPrefilled] = useState<Spoken | null>(null);
   const [pending, setPending] = useState<{ who: Pick; spoken: Spoken } | null>(null);
   const [asking, setAsking] = useState<{ spoken: Spoken; heard: Heard } | null>(null);
 
@@ -104,6 +110,7 @@ export function AddScreen(): React.ReactElement {
       });
       setRupees("");
       setPicked(null);
+      setPrefilled(null);
       setSearch("");
       counter.refresh();
     } catch (e) {
@@ -120,14 +127,21 @@ export function AddScreen(): React.ReactElement {
     setNews(null);
     setPending(null);
     setAsking(null);
+    setPrefilled(null);
     if (h.amount_paise === null) {
       if (h.who.kind === "picked") setPicked(pickOf(h.who.person));
+      const why = h.problem ? PROBLEM_LINE[h.problem] : "No amount in that.";
+      setNews({ tone: "warn", text: `${why} Nothing was sent. Say it again, or type it.` });
+      return;
+    }
+    if (h.intent !== "udhaar") {
+      const from = h.who.kind === "picked" ? ` from ${h.who.person.display_name}` : "";
       setNews({
         tone: "warn",
         text:
-          h.problem === "unclear_amount"
-            ? `“${h.amount_words}” is not one clear amount, so nothing was sent. Say it again, or type it.`
-            : "No amount in that. Say it again, or type it.",
+          h.intent === "payment"
+            ? `Heard a payment of ${formatPaise(h.amount_paise)}${from}. Recording payments by voice comes next, so nothing was sent.`
+            : `Heard ${formatPaise(h.amount_paise)}, but not whether it is udhaar. Nothing was sent. Say it again, or type it.`,
       });
       return;
     }
@@ -136,12 +150,31 @@ export function AddScreen(): React.ReactElement {
       transcript: h.transcript,
       readback: h.readback?.devanagari ?? null,
     };
-    if (h.who.kind === "picked") {
+    if (h.who.kind === "picked" && h.reader === "rules") {
+      const to = pickOf(h.who.person);
+      setPicked(to);
+      setRupees(String(spoken.paise / 100));
+      setPrefilled(spoken);
+      if (spoken.readback) sayAloud(spoken.readback);
+      setNews({
+        tone: "warn",
+        text: `${h.fallback === "no_answer" ? "Sarvam-105B didn't answer" : "Voice is offline"}, so our parser read this. Check ${formatPaise(spoken.paise)} for ${to.name}, then tap Send.`,
+      });
+    } else if (h.who.kind === "picked") {
       setPending({ who: pickOf(h.who.person), spoken });
       if (spoken.readback) sayAloud(spoken.readback);
     } else {
       setAsking({ spoken, heard: h });
       sayAloud(KISKE_LIYE);
+      if (h.who.why === "not_found" || h.who.why === "not_said") {
+        setNews({
+          tone: "warn",
+          text:
+            h.who.why === "not_found"
+              ? `“${h.name}” is not in your book. Tap who it is for, or find them below.`
+              : "The name Sarvam read isn't in the words. Tap who it is for, or find them below.",
+        });
+      }
     }
   }, []);
 
@@ -191,16 +224,32 @@ export function AddScreen(): React.ReactElement {
         />
       ) : null}
 
-      {askingWho?.why === "several" ? (
-        <Card title={`Kiske liye? “${asking?.heard.name}” fits ${askingWho.among.length}`} tight>
+      {askingWho?.why === "several" || askingWho?.why === "maybe" ? (
+        <Card
+          title={
+            askingWho.why === "several" ? `Kaunse ${asking?.heard.name}?` : `${asking?.heard.name}?`
+          }
+          tight
+        >
+          <p className="mb-2 text-[12px] font-semibold text-cyan-text">
+            {askingWho.why === "several"
+              ? `“${asking?.heard.name}” fits ${askingWho.among.length} people. Tap the one in front of you.`
+              : "Only a close sound, so nobody was picked. Is it one of these?"}
+          </p>
           {askingWho.among.map((p) => (
             <Row
               key={p.customer_id}
               name={p.display_name}
-              sub={p.scan_id ? "At the counter" : "In your book"}
+              sub={
+                [p.tag, p.scan_id ? "At the counter" : null].filter(Boolean).join(" · ") ||
+                "In your book"
+              }
               onSelect={() => choose(pickOf(p))}
             />
           ))}
+          <p className="mt-2 text-[11.5px] font-medium text-sub">
+            Someone else? Find them in your book below.
+          </p>
         </Card>
       ) : null}
 
@@ -248,7 +297,9 @@ export function AddScreen(): React.ReactElement {
       </Card>
 
       <Pill
-        onClick={() => who && void record(who, paise)}
+        onClick={() =>
+          who && void record(who, paise, prefilled?.paise === paise ? prefilled.transcript : undefined)
+        }
         disabled={!who || paise <= 0 || busy || pending !== null}
       >
         {who ? `Send to ${who.name}` : "Send"}

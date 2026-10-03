@@ -1,7 +1,8 @@
-"""The voice rules: number words, the parse, the readback, and who it's for.
+"""The voice rules: number words, the parse, the readback, and the scripts.
 
 None of this touches speech recognition. The transcript is a string; from there
-to an amount and a person is these rules, and these tests pin them.
+to an amount is these rules, and these tests pin them. Who it is for is
+tests/test_voice_who.py.
 """
 
 from __future__ import annotations
@@ -10,7 +11,6 @@ import pytest
 
 from bahi.domain.numerals import numeral
 from bahi.domain.parse import heard
-from bahi.domain.resolve import Ask, Person, Picked, resolve
 from bahi.domain.script import fold, to_roman, tokens
 from bahi.domain.speak import say
 
@@ -147,70 +147,3 @@ def test_numbers_that_sound_alike_do_not_meet() -> None:
 
 def test_devanagari_words_are_not_split_at_their_vowel_signs() -> None:
     assert tokens("शर्मा को ₹२००, ok") == ["शर्मा", "को", "200", "ok"]
-
-
-# ── who it's for ─────────────────────────────────────────────────────────────
-
-KAVITA, IQBAL = Person("scan-k", "Kavita"), Person("scan-i", "Iqbal bhai")
-BOOK = [
-    Person("c-sharma", "Sharma"),
-    Person("c-iqbal", "Iqbal bhai"),
-    Person("c-chhotu", "Chhotu"),
-    Person("c-meena", "Meena Tai"),
-    Person("c-shinde", "Shinde"),
-    Person("c-shaikh", "Shaikh bhai"),
-    Person("c-shaikh2", "Rukhsar Shaikh"),
-]
-
-
-def test_one_person_waiting_and_no_name_is_that_person() -> None:
-    assert resolve([KAVITA], BOOK, None) == Picked(KAVITA, "only_one")
-
-
-def test_several_waiting_and_no_name_is_a_question_not_the_first_in_line() -> None:
-    assert resolve([KAVITA, IQBAL], BOOK, None) == Ask("who", (KAVITA, IQBAL))
-
-
-def test_nobody_waiting_and_no_name_is_a_question() -> None:
-    assert resolve([], BOOK, None) == Ask("nobody", ())
-
-
-@pytest.mark.parametrize("said", ["Iqbal", "iqbal bhai", "इक़बाल", "Iqbaal"])
-def test_a_name_said_is_looked_for_at_the_counter_first(said: str) -> None:
-    assert resolve([KAVITA, IQBAL], BOOK, said) == Picked(IQBAL, "at_counter")
-
-
-@pytest.mark.parametrize(
-    ("said", "ref"),
-    [
-        ("Sharma", "c-sharma"),
-        ("शर्मा", "c-sharma"),
-        ("Meena", "c-meena"),
-        ("Chhotu chai", "c-chhotu"),
-    ],
-)
-def test_a_name_not_at_the_counter_is_found_in_the_book(said: str, ref: str) -> None:
-    picked = resolve([KAVITA], BOOK, said)
-    assert isinstance(picked, Picked)
-    assert (picked.person.ref, picked.how) == (ref, "in_book")
-
-
-def test_a_whole_name_beats_part_of_one() -> None:
-    """ "Shaikh" is Shaikh bhai (all of his name), not Rukhsar Shaikh (part of hers)."""
-    assert resolve([], BOOK, "Shaikh") == Picked(BOOK[5], "in_book")
-
-
-def test_a_name_that_fits_two_people_equally_is_a_question() -> None:
-    book = [Person("c-rukhsar", "Rukhsar Shaikh"), Person("c-salim", "Salim Shaikh")]
-    assert resolve([], book, "Shaikh") == Ask("several", tuple(book))
-
-
-def test_a_near_miss_counts_at_the_counter_but_never_across_the_book() -> None:
-    assert resolve([Person("scan-s", "Shinde")], BOOK, "Shindey") == Picked(
-        Person("scan-s", "Shinde"), "at_counter"
-    )
-    assert resolve([], BOOK, "Shindey") == Ask("not_found", ())
-
-
-def test_a_name_that_fits_nobody_is_a_question_even_with_one_person_waiting() -> None:
-    assert resolve([KAVITA], BOOK, "Ramesh") == Ask("not_found", (KAVITA,))

@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from bahi.domain.book import Book, Line
-from bahi.domain.resolve import Person, Picked
+from bahi.domain.check import Check, Checked
+from bahi.domain.money import rupees
 from bahi.domain.speak import say
+from bahi.domain.who import Ask, Person, Picked
 from bahi.domain.wording import button
 from bahi.service.ledger import Hearing
 from bahi.service.models import (
     AskOut,
     BookOut,
+    CheckOut,
     EntryOut,
     HeardOut,
     HeardSource,
@@ -78,29 +81,61 @@ def entry_out(e: EntryRef) -> EntryOut:
     )
 
 
+def _says(c: Check, checked: Checked) -> str:
+    words, name = checked.amount_words, checked.person_words
+    who = checked.who
+    if c.kind == "amount_said":
+        return f"“{words}” was said" if c.ok else f"“{words}” is not in what was said"
+    if c.kind == "amount_read":
+        if c.ok and checked.amount_paise is not None:
+            return f"our parser reads “{words}” as {rupees(checked.amount_paise)} too"
+        if checked.reader == "rules":
+            return f"“{words}” is not one clear amount"
+        return f"our parser reads “{words}” as a different amount"
+    if c.kind == "person_said":
+        return f"“{name}” was said" if c.ok else f"“{name}” is not in what was said"
+    if isinstance(who, Picked):
+        return f"“{name}” fits one customer: {who.person.name}"
+    assert isinstance(who, Ask)
+    if who.why == "several":
+        return f"“{name}” fits {len(who.among)} customers"
+    if who.why == "maybe":
+        return f"“{name}” only sounds a little like " + ", ".join(
+            p.name for p in who.among
+        )
+    return f"“{name}” fits nobody in your book"
+
+
 def heard_out(hearing: Hearing, transcript: str, source: HeardSource) -> HeardOut:
-    h = hearing.heard
+    c = hearing.checked
 
     def person(p: Person) -> PersonOut:
         return PersonOut(
-            customer_id=p.ref, display_name=p.name, scan_id=hearing.scans.get(p.ref)
+            customer_id=p.ref,
+            display_name=p.name,
+            tag=p.tag,
+            scan_id=hearing.scans.get(p.ref),
         )
 
-    who = hearing.who
+    who = c.who
     readback = None
-    if h.amount_paise is not None:
+    if c.amount_paise is not None:
         try:
-            said = say(h.amount_paise)
+            said = say(c.amount_paise)
             readback = ReadbackOut(roman=said.roman, devanagari=said.devanagari)
         except ValueError:
             readback = None  # beyond what is said aloud; the figure still shows
     return HeardOut(
         transcript=transcript,
         source=source,
-        name=h.name,
-        amount_paise=h.amount_paise,
-        amount_words=h.amount_words,
-        problem=h.problem,
+        reader=c.reader,
+        fallback=hearing.fallback,
+        intent=c.intent,
+        name=c.person_words,
+        amount_paise=c.amount_paise,
+        amount_words=c.amount_words,
+        problem=c.problem,
+        checks=[CheckOut(kind=k.kind, ok=k.ok, says=_says(k, c)) for k in c.checks],
         readback=readback,
         who=(
             PickedOut(how=who.how, person=person(who.person))

@@ -30,6 +30,31 @@ export const SOURCE_LABEL: Record<Heard["source"], string> = {
   clip_script: "Demo clip · its script (not yet run through Sarvam)",
 };
 
+type Reader = Heard["reader"] | NonNullable<Heard["fallback"]>;
+
+/** Who read the words: Sarvam-105B, or our parser and why. */
+export const READER_LABEL: Record<Reader, string> = {
+  sarvam: "read by Sarvam-105B, checked by our code",
+  rules: "read by our parser",
+  offline: "voice offline, read by our parser",
+  no_answer: "Sarvam-105B didn't answer, read by our parser",
+};
+
+export const INTENT_LABEL: Record<Heard["intent"], string> = {
+  udhaar: "udhaar",
+  payment: "a payment",
+  unclear: "udhaar or payment?",
+};
+
+/** Why nothing was sent, said plainly. */
+export const PROBLEM_LINE: Record<NonNullable<Heard["problem"]>, string> = {
+  no_amount: "No amount in that.",
+  unclear_amount: "That is not one clear amount.",
+  amount_not_said: "Sarvam read an amount that isn't in the words.",
+  amount_mismatch: "Sarvam's amount and our parser's don't match.",
+  invented_customer: "Sarvam named someone it wasn't shown.",
+};
+
 type How = Extract<Heard["who"], { kind: "picked" }>["how"];
 
 /** Why this person, in the words the shopkeeper would use. */
@@ -38,8 +63,3 @@ export const HOW_LABEL: Record<How, string> = {
   at_counter: "at the counter",
   in_book: "from your book",
 };
-
-/** "from voice" or "typed": which way the words came in. */
-export function via(source: Heard["source"]): string {
-  return source === "typed" ? "typed" : "from voice";
-}

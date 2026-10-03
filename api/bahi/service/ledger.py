@@ -8,13 +8,15 @@ written, the entry goes too.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from bahi import voice
+from bahi.domain.check import Checked
 from bahi.domain.lifecycle import move
-from bahi.domain.parse import Heard, heard
-from bahi.domain.resolve import Ask, Person, Picked, resolve
+from bahi.domain.who import Person
 from bahi.domain.wording import acknowledgment
 from bahi.service.errors import Conflict, Forbidden, NotFound
 from bahi.store import customers, entries, scans, shops
@@ -91,8 +93,9 @@ def record(
 
 @dataclass(frozen=True, slots=True)
 class Hearing:
-    heard: Heard
-    who: Picked | Ask
+    checked: Checked
+    #: Why our parser read it instead of Sarvam-105B, if it did.
+    fallback: voice.Fallback | None
     #: customer id -> his waiting scan, for everyone at the counter.
     scans: dict[str, str]
 
@@ -105,12 +108,15 @@ def counter_and_book(
     Invited customers are left out of the book: nothing is recorded against them
     until they say yes. A Person's ref is the customer id; his scan is looked up.
     """
-    waiting = {w.customer_id: w for w in scans.waiting(con, shop_id, now)}
-    at_counter = [Person(w.customer_id, w.display_name) for w in waiting.values()]
     book = [
-        Person(c.id, c.display_name)
+        Person(c.id, c.display_name, c.tag, c.name_hi)
         for c in customers.of_shop(con, shop_id)
         if c.joined != "invited"
+    ]
+    by_id = {p.ref: p for p in book}
+    waiting = {w.customer_id: w for w in scans.waiting(con, shop_id, now)}
+    at_counter = [
+        by_id.get(cid) or Person(cid, w.display_name) for cid, w in waiting.items()
     ]
     return at_counter, book, {cid: w.scan_id for cid, w in waiting.items()}
 
@@ -118,13 +124,14 @@ def counter_and_book(
 def hear(con: Conn, shop_id: str, transcript: str, now: datetime) -> Hearing:
     """What was said, and who it is for. Reads only: the entry is still a POST.
 
-    The amount is parsed by rule from the words; the person is picked by rule or
-    asked about. Neither step is a model.
+    Sarvam-105B reads the words (our parser, offline) and `domain.check` holds
+    that reading to them: the amount must be in the words, and who it is for is
+    decided by code from the words that name him, or asked.
     """
     shop(con, shop_id)
     at_counter, book, waiting_scans = counter_and_book(con, shop_id, now)
-    h = heard(transcript)
-    return Hearing(h, resolve(at_counter, book, h.name), waiting_scans)
+    checked, fallback = voice.understand(transcript, at_counter, book)
+    return Hearing(checked, fallback, waiting_scans)
 
 
 # ── the customer ─────────────────────────────────────────────────────────────
@@ -138,7 +145,12 @@ class Joined:
 
 
 def join(
-    con: Conn, shop_id: str, person_id: UUID, name: str | None, now: datetime
+    con: Conn,
+    shop_id: str,
+    person_id: UUID,
+    name: str | None,
+    now: datetime,
+    hindi: Callable[[str], str | None] = lambda _: None,
 ) -> Joined:
     """He scanned the shop's udhaar QR.
 
@@ -146,6 +158,9 @@ def join(
     earlier: scanning is saying yes. Either way he is now at the counter, once: a
     second scan while he is still waiting (his phone reloaded the page) is the same
     visit, so the counter never lists him twice.
+
+    `hindi` writes a new customer's name in Devanagari, so a transcript in either
+    script finds him. It may say None; the roman name still matches.
     """
     shop(con, shop_id)
     pid = str(person_id)
@@ -154,7 +169,15 @@ def join(
     if c is None:
         if not name:
             raise Conflict("first visit to this shop: tell us the name to use")
-        customers.add(con, shop_id, name.strip(), now, person_id=pid, linked=True)
+        customers.add(
+            con,
+            shop_id,
+            name.strip(),
+            now,
+            person_id=pid,
+            linked=True,
+            name_hi=hindi(name.strip()),
+        )
         created = True
     elif not c.linked:
         customers.link(con, c.id, now)
