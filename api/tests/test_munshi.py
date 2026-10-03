@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterator
+from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
@@ -345,6 +346,85 @@ def test_tomorrows_list_is_read_from_the_code_not_made_up(
     assert (seen["owing"], seen["left_alone"]) == (38, 34)
 
 
+def test_the_munshi_corrects_an_entry_rather_than_writing_a_new_one(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    before = sharmas_entries(tx)
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_correction",
+            lambda found: {
+                "customer_id": first_found(found),
+                "wrong_amount_rupees": 200,
+                "right_amount_rupees": 150,
+            },
+        ),
+        reply("शर्मा, दो सौ की जगह एक सौ पचास, पक्का?"),
+    )
+    out = say(api, "शर्मा का दो सौ गलत लिखा, एक सौ पचास था")
+    card = out["card"]
+    assert (card["kind"], card["amount_paise"], card["corrects_amount_paise"]) == (
+        "correction",
+        150_00,
+        200_00,
+    )
+    assert card["reasons"] == ["correction"], "a correction always waits for a yes"
+    assert sharmas_entries(tx) == before, "a card corrects nothing"
+
+    model.then(reply("सुधार दिया, शर्मा जी अपने फोन पर हाँ करेंगे।"))
+    done = tap(api, out)
+    assert done["card"]["status"] == "saved"
+    after = {e.id: e for e in entries.of_customer(tx, SHARMA)}
+    new = after[done["card"]["entry_id"]]
+    assert (new.amount_paise, new.status) == (150_00, "recorded")
+    assert new.corrects_entry_id is not None
+    assert after[new.corrects_entry_id].status == "corrected"
+    assert len(after) == len(before) + 1, "one new entry: the correction"
+
+
+def test_with_no_wrong_amount_and_one_open_entry_that_is_the_one(
+    api: TestClient, model: Script
+) -> None:
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_correction",
+            lambda found: {"customer_id": first_found(found), "right_amount_rupees": 250},
+        ),
+        reply("पक्का?"),
+    )
+    card = say(api, "शर्मा वाला ढाई सौ था")["card"]
+    assert (card["corrects_amount_paise"], card["amount_paise"]) == (200_00, 250_00)
+
+
+def test_a_wrong_amount_he_never_wrote_is_asked_about(
+    api: TestClient, model: Script
+) -> None:
+    seen: dict[str, Any] = {}
+
+    def remember(result: Any) -> dict[str, Any]:
+        seen.update(result)
+        return {}
+
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_correction",
+            lambda found: {
+                "customer_id": first_found(found),
+                "wrong_amount_rupees": 700,
+                "right_amount_rupees": 300,
+            },
+        ),
+        tool("counter", remember),
+        reply("शर्मा के नाम सात सौ नहीं, दो सौ लिखा है।"),
+    )
+    assert say(api, "शर्मा का सात सौ गलत है")["card"] is None
+    assert seen["ok"] is False
+    assert [e["amount"] for e in seen["open_entries"]] == ["दो सौ रुपये"]
+
+
 # ── money back, oldest first ─────────────────────────────────────────────────
 
 
@@ -352,13 +432,16 @@ def test_cash_pays_the_oldest_open_entry_first(tx: db.Conn) -> None:
     now = clock.now()
     cid = customers.add(tx, SHOP, "Naya grahak", now)
     first = ledger.record(tx, SHOP, 100_00, now, customer_id=UUID(cid))
-    second = ledger.record(tx, SHOP, 50_00, now, customer_id=UUID(cid))
-    assert ledger.pay_cash(tx, cid, 120_00, now) == [first.id, second.id]
+    second = ledger.record(
+        tx, SHOP, 50_00, now + timedelta(seconds=1), customer_id=UUID(cid)
+    )
+    later = now + timedelta(seconds=2)
+    assert ledger.pay_cash(tx, cid, 120_00, later) == [first.id, second.id]
     after = {e.id: e for e in entries.of_customer(tx, cid)}
     assert after[first.id].status == "settled"
     assert after[second.id].status == "recorded" and after[second.id].paid_paise == 20_00
     with pytest.raises(Conflict):
-        ledger.pay_cash(tx, cid, 31_00, now)
+        ledger.pay_cash(tx, cid, 31_00, now + timedelta(seconds=2))
 
 
 # ── the search ───────────────────────────────────────────────────────────────

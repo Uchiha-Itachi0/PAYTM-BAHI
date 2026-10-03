@@ -41,9 +41,15 @@ def disputed(customer_name: str, amount_paise: int) -> str:
     return f"{customer_name} says {rupees(amount_paise)} is not right."
 
 
-def paid(amount_paise: int, method: str) -> str:
+def paid(amount_paise: int, method: str, left_paise: int | None = None) -> str:
+    """ "Paid ₹100 by UPI. ₹100 still open." What is left is at this shop, after it."""
     how = "by UPI" if method == "upi" else "in cash"
-    return f"Paid {rupees(amount_paise)} {how}."
+    said = f"Paid {rupees(amount_paise)} {how}."
+    if left_paise is None:
+        return said
+    if left_paise == 0:
+        return f"{said} Nothing left to pay."
+    return f"{said} {rupees(left_paise)} still open."
 
 
 def reminder(customer_name: str, shop_name: str, balance_paise: int) -> str:

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, Response
 from bahi import clock
 from bahi.service import chat, ledger, views
 from bahi.service.deps import Con, etagged
-from bahi.service.models import DemoPhoneOut, MyUdhaarOut, PaidOut, PersonIn
+from bahi.service.models import DemoPhoneOut, MyUdhaarOut, PaidOut, PayIn, PersonIn
 from bahi.store import customers
 from data import directory
 
@@ -25,15 +25,17 @@ def my_udhaar(person_id: str, request: Request, con: Con) -> Response:
 
 
 @router.post("/shops/{shop_id}/pay")
-def pay(shop_id: str, body: PersonIn, con: Con) -> PaidOut:
-    """B3. He paid this shop everything he owes it, by UPI. Paytm moves the
-    money; the book records which entries it paid, and the shop is told."""
+def pay(shop_id: str, body: PayIn, con: Con) -> PaidOut:
+    """B3. He paid this shop by UPI: everything he owes it, or the part he chose.
+    Paytm moves the money; the book records which entries it paid, oldest first,
+    and the shop is told with what is still open."""
     now = clock.now()
-    p = ledger.pay_upi(con, body.person_id, shop_id, now)
+    p = ledger.pay_upi(con, body.person_id, shop_id, now, body.amount_paise)
     mine = chat.my_udhaar(con, str(body.person_id), now.date())
     return PaidOut(
         shop=views.shop_out(p.shop),
         amount_paise=p.amount_paise,
+        left_paise=p.left_paise,
         paid_at=now,
         method="upi",
         settled_in=p.settled_in,

@@ -14,14 +14,17 @@ from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from bahi import voice
+from bahi.domain import book as book_domain
 from bahi.domain import wording
 from bahi.domain.book import OPEN
 from bahi.domain.check import Checked
 from bahi.domain.lifecycle import move
 from bahi.domain.limitation import expired
+from bahi.domain.money import rupees
 from bahi.domain.who import Ask, Person, Picked, who
 from bahi.domain.wording import acknowledgment
 from bahi.service.errors import Conflict, Forbidden, NotFound
+from bahi.store import book as book_store
 from bahi.store import customers, entries, scans, shops, threads
 from bahi.store.customers import CustomerRef
 from bahi.store.db import Conn
@@ -107,25 +110,60 @@ def _card(con: Conn, e: EntryRef, body: str, now: datetime) -> None:
 
 
 def correct(
-    con: Conn, shop_id: str, entry_id: str, amount_paise: int, now: datetime
+    con: Conn,
+    shop_id: str,
+    entry_id: str,
+    amount_paise: int,
+    now: datetime,
+    *,
+    spoken_text: str | None = None,
 ) -> EntryRef:
-    """The shopkeeper's answer to a dispute: the right amount, as a new entry.
+    """The right amount for an entry, as a new entry.
 
-    The disputed entry is kept, marked corrected, and counts for nothing. The
-    correction points at it, is recorded like any entry, and needs the customer's
-    own yes. Nothing is rubbed out: the thread shows both.
+    The shopkeeper's, whether the customer said it was wrong or he found it
+    himself. The old entry is kept, marked corrected, and counts for nothing.
+    The correction points at it, is recorded like any entry, and needs the
+    customer's own yes. Nothing is rubbed out: the thread shows both. Refused for
+    an entry anything has been paid against (the payment names it), or one past
+    the limitation line.
     """
     old = entry(con, entry_id)
     if old.shop_id != shop_id:
         raise NotFound(f"no entry {entry_id} at this shop")
+    if old.paid_paise > 0:
+        raise Conflict(
+            "part of this entry is already paid, so it can't be corrected; "
+            "record the difference as a new entry instead"
+        )
+    if expired(
+        old.recorded_at.date(),
+        old.acknowledged_at.date() if old.acknowledged_at else None,
+        now.date(),
+    ):
+        raise Conflict("this entry is past the limitation line; it claims nothing")
+    if amount_paise == old.amount_paise:
+        raise Conflict("that is the amount it already says")
     status = move(old.status, "correct")
     new_id = entries.record(
-        con, old.customer_id, amount_paise, now, note=old.note, corrects=old.id
+        con,
+        old.customer_id,
+        amount_paise,
+        now,
+        note=old.note,
+        spoken_text=spoken_text,
+        corrects=old.id,
     )
     entries.set_status(con, old.id, status)
     new = entry(con, new_id)
     _card(con, new, wording.corrected(new.shop_name, amount_paise), now)
     return new
+
+
+def balance(con: Conn, shop_id: str, customer_id: str, today: date) -> int:
+    """What he owes this shop, as the book counts it."""
+    found = book_store.load(con, shop_id, customer_id)
+    ln = book_domain.line(found[0], today) if found else None
+    return ln.balance_paise if ln else 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,7 +270,9 @@ def pay_cash(con: Conn, customer_id: str, amount_paise: int, now: datetime) -> l
         left -= take
         paid.append(e.id)
     if paid:
-        _card(con, entry(con, paid[-1]), wording.paid(amount_paise, "cash"), now)
+        last = entry(con, paid[-1])
+        left = balance(con, last.shop_id, customer_id, today)
+        _card(con, last, wording.paid(amount_paise, "cash", left), now)
     return paid
 
 
@@ -340,8 +380,10 @@ class Paid:
     shop: Shop
     customer_id: str
     amount_paise: int
-    #: The entries it paid, oldest first. Each is now settled.
+    #: The entries it paid, oldest first. Those paid in full are settled.
     entry_ids: list[str]
+    #: What he still owes this shop after it.
+    left_paise: int
     #: From the oldest entry it paid to today, in days.
     settled_in: int
 
@@ -363,29 +405,47 @@ def payable(con: Conn, customer_id: str, today: date) -> list[EntryRef]:
     ]
 
 
-def pay_upi(con: Conn, person_id: UUID, shop_id: str, now: datetime) -> Paid:
-    """He tapped Pay in his own app: everything he owes this shop, by UPI, each
-    entry named. Paytm moves the money; the book records which entries it paid."""
+def pay_upi(
+    con: Conn,
+    person_id: UUID,
+    shop_id: str,
+    now: datetime,
+    amount_paise: int | None = None,
+) -> Paid:
+    """He paid in his own app, by UPI: everything he owes this shop, or the part
+    he chose. Split across his entries oldest first, each one named; an entry paid
+    in full is settled. Paytm moves the money; the book records which entries it
+    paid, and the shop is told in the thread with what is still open."""
     s = shop(con, shop_id)
     c = customers.at_shop(con, shop_id, str(person_id))
     if c is None or not c.linked:
         raise NotFound("you are not in this shop's book")
     owed = payable(con, c.id, now.date())
-    if not owed:
-        raise Conflict(f"you owe {s.name} nothing right now")
-    total = 0
+    most = sum(e.amount_paise - e.paid_paise for e in owed)
+    if most == 0:
+        raise Conflict(f"you owe {s.name} nothing you can pay right now")
+    amount = most if amount_paise is None else amount_paise
+    if amount > most:
+        raise Conflict(f"that is more than the {rupees(most)} you owe {s.name}")
+    left, paid = amount, []
     for e in owed:
-        left = e.amount_paise - e.paid_paise
-        entries.pay(con, e.id, left, "upi", now)
-        entries.set_status(con, e.id, move(e.status, "settle"))
-        total += left
-    _card(con, entry(con, owed[-1].id), wording.paid(total, "upi"), now)
-    oldest = min(e.recorded_at for e in owed)
+        if left == 0:
+            break
+        take = min(left, e.amount_paise - e.paid_paise)
+        entries.pay(con, e.id, take, "upi", now)
+        if take == e.amount_paise - e.paid_paise:
+            entries.set_status(con, e.id, move(e.status, "settle"))
+        left -= take
+        paid.append(e)
+    still = balance(con, shop_id, c.id, now.date())
+    _card(con, entry(con, paid[-1].id), wording.paid(amount, "upi", still), now)
+    oldest = min(e.recorded_at for e in paid)
     return Paid(
         shop=s,
         customer_id=c.id,
-        amount_paise=total,
-        entry_ids=[e.id for e in owed],
+        amount_paise=amount,
+        entry_ids=[e.id for e in paid],
+        left_paise=still,
         settled_in=max(0, (now.date() - oldest.date()).days),
     )
 

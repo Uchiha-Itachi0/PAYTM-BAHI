@@ -45,6 +45,8 @@ class Draft:
     #: Someone the munshi would add to the book: name and description.
     new_name: str | None
     new_tag: str | None
+    #: A correction: the entry it corrects. amount_paise is the right amount.
+    corrects_entry_id: str | None
 
 
 def start(con: Conn, shop_id: str, now: datetime) -> str:
@@ -123,7 +125,8 @@ def add_turn(
 
 COLUMNS = """id::text AS id, conversation_id::text AS conversation_id,
        customer_id::text AS customer_id, kind, amount_paise, spoken_text, reasons,
-       status, shown_seq, entry_id::text AS entry_id, new_name, new_tag"""
+       status, shown_seq, entry_id::text AS entry_id, new_name, new_tag,
+       corrects_entry_id::text AS corrects_entry_id"""
 DRAFT = f"SELECT {COLUMNS} FROM drafts"
 
 
@@ -154,6 +157,7 @@ def show(
     *,
     new_name: str | None = None,
     new_tag: str | None = None,
+    corrects: str | None = None,
 ) -> Draft:
     """The new card. A card already waiting in this conversation is replaced."""
     with con.cursor(row_factory=class_row(Draft)) as cur:
@@ -166,8 +170,8 @@ def show(
             f"""
             INSERT INTO drafts (conversation_id, customer_id, kind, amount_paise,
                                 spoken_text, reasons, shown_seq, created_at,
-                                new_name, new_tag)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                new_name, new_tag, corrects_entry_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING {COLUMNS}
             """,
             (
@@ -181,6 +185,7 @@ def show(
                 now,
                 new_name,
                 new_tag,
+                corrects,
             ),
         ).fetchone()
     assert row is not None

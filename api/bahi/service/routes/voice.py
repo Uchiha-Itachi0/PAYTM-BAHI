@@ -120,6 +120,18 @@ def say_amount(paise: int) -> FileResponse:
     return FileResponse(said.speech(words), media_type="audio/wav")
 
 
+@router.get("/voice/received/{paid}/{left}.wav", response_class=FileResponse)
+def say_received(paid: int, left: int) -> FileResponse:
+    """The Soundbox when money arrives: "सौ रुपये मिले, सौ रुपये बाकी।" Amounts
+    only: this route cannot say a name. 503 when voice is offline and it was never
+    spoken; the Soundbox then plays its tone."""
+    try:
+        words = said.received(paid, left)
+    except ValueError as e:
+        raise HTTPException(404, "that is not said aloud") from e
+    return FileResponse(said.speech(words), media_type="audio/wav")
+
+
 @router.get("/voice/ask/{question}.wav", response_class=FileResponse)
 def say_ask(question: str) -> FileResponse:
     """ "किसके लिए?" (who), "कितने रुपये?" (how_much), "उधार या जमा?" (kind) or

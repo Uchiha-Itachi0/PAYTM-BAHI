@@ -20,7 +20,7 @@ from bahi.service import ledger
 from bahi.service.deps import Con
 from bahi.service.models import CardOut, MunshiIn, MunshiOut
 from bahi.service.routes.voice import _read
-from bahi.store import customers
+from bahi.store import customers, entries
 from bahi.store import munshi as store
 from bahi.store.db import Conn
 from bahi.voice import said, sarvam
@@ -55,6 +55,11 @@ def _conversation(
     return cid
 
 
+def _was(con: Conn, entry_id: str | None) -> int | None:
+    e = entries.get(con, entry_id) if entry_id else None
+    return e.amount_paise if e else None
+
+
 def _out(
     con: Conn, shop_id: str, o: brain.Outcome, heard: str | None, source: str
 ) -> MunshiOut:
@@ -72,6 +77,7 @@ def _out(
             amount_paise=d.amount_paise,
             kind=d.kind,  # type: ignore[arg-type]
             new=d.new_name is not None,
+            corrects_amount_paise=_was(con, d.corrects_entry_id),
             status=d.status,  # type: ignore[arg-type]
             reasons=d.reasons,  # type: ignore[arg-type]
             spoken_text=d.spoken_text,

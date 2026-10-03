@@ -151,17 +151,24 @@ customer's phone move together.
 customer. People type; BAHI posts each entry's card, drawn from the entry as it
 is now, so ₹200 posted this morning shows ✓ the moment he confirms. The customer
 answers an entry in the thread: "Yes, I owe ₹200", or "That's not right" with his
-reason. The shopkeeper answers a dispute with Correct the amount, which records a
-new entry that points at the old one; the old one is kept, marked corrected, and
-the customer confirms the new one himself. When the customer wrote last, the
+reason. The shopkeeper can Correct the amount of any entry nothing has been paid
+against, whether the customer disputed it, wrote about it in the chat, or it was
+his own slip. That records a new entry pointing at the old one; the old one is
+kept, marked corrected, and the customer confirms the new one himself. The munshi
+does the same by voice ("जाधव का पाँच सौ नहीं, तीन सौ था"), on a card that waits
+for a clear हाँ. When the customer wrote last, the
 munshi suggests two replies in his language, and nothing goes until the
 shopkeeper taps one. A message has nowhere to carry an amount: the Pay button
 comes from the customer's own entries.
 
 **The customer's own book** (`/c/udhaar`). What he owes across every shop he is
-in the book of, each entry, and Pay: everything he owes that shop, by UPI, each
-entry named. A disputed entry waits until it is agreed, and an expired one is
-shown struck through, claiming nothing. Then Cleared, and what is still open
+in the book of, each entry, and Pay (also beside the message box in his chat).
+Pay opens the payment screen with what he owes that shop filled in; he can pay
+less. Then Proceed securely, then the UPI PIN (the demo takes any four digits and
+never sends them anywhere). The book takes the payment from his oldest entries
+first, each one named, and tells the shop in the thread with what is still open.
+A disputed entry waits until it is agreed, and an expired one is shown struck
+through, claiming nothing. Then Cleared, or what is still open, and what is open
 elsewhere. The demo's customer side asks whose phone it is: Sharma owes three
 shops.
 
@@ -174,8 +181,9 @@ puts "Ramesh · New · Chawl 7 · ₹500" on a card that waits for a clear ह�
 
 **The Soundbox.** The shopkeeper's screens ask `/events` every two seconds: a
 scan chimes, a yes plays a done tone, a dispute asks its question tone, a message
-pings, and money arriving is said aloud ("दो सौ रुपये"). It never says a name; the
-strip on the screen shows who.
+pings, and money arriving is said aloud with what is still open ("दो सौ रुपये
+मिले, तीन सौ चालीस रुपये बाकी"). It never says a name; the strip on the screen
+shows who.
 
 **Tomorrow** (`/m/tonight`, and "कल किसको याद दिलाना है?" to the munshi). Code
 decides, from each customer's own history (`domain/tonight.py`): a reminder goes

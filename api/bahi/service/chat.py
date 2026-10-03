@@ -145,7 +145,9 @@ def shop_says(
 def inbox(con: Conn, shop_id: str, today: date) -> InboxOut:
     ledger.shop(con, shop_id)
     rows = threads.of_shop(con, shop_id)
-    by_id = entries.by_ids(con, [r.entry_id for r in rows if r.entry_id])
+    ids = [r.entry_id for r in rows if r.entry_id]
+    by_id = entries.by_ids(con, ids)
+    first = threads.cards(con, ids)
     disputed = entries.disputed_at_shop(con, shop_id)
     planned = {
         cid: r.send_at
@@ -164,6 +166,7 @@ def inbox(con: Conn, shop_id: str, today: date) -> InboxOut:
             body=r.body,
             sent_at=r.sent_at,
             entry=card(by_id[r.entry_id], today) if r.entry_id in by_id else None,
+            card=r.entry_id is not None and first.get(r.entry_id) == r.message_id,
             unread=r.unread,
             needs_reply=r.author == "customer" or r.customer_id in disputed,
             reminder_at=planned.get(r.customer_id),
@@ -186,6 +189,9 @@ def _my_shop(con: Conn, c: CustomerRef, today: date, unread: int) -> MyShopOut:
         customer_id=c.id,
         display_name=c.display_name,
         balance_paise=owed,
+        payable_paise=sum(
+            e.amount_paise - e.paid_paise for e in ledger.payable(con, c.id, today)
+        ),
         day=day,
         entries=sorted(live + paid, key=lambda e: e.recorded_at, reverse=True),
         unread=unread,

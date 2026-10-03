@@ -983,6 +983,51 @@
         }
       }
     },
+    "/voice/received/{paid}/{left}.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Say Received",
+        "description": "The Soundbox when money arrives: \"सौ रुपये मिले, सौ रुपये बाकी।\" Amounts\nonly: this route cannot say a name. 503 when voice is offline and it was never\nspoken; the Soundbox then plays its tone.",
+        "operationId": "say_received_voice_received__paid___left__wav_get",
+        "parameters": [
+          {
+            "name": "paid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Paid"
+            }
+          },
+          {
+            "name": "left",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Left"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/voice/ask/{question}.wav": {
       "get": {
         "tags": [
@@ -1914,7 +1959,7 @@
           "customer"
         ],
         "summary": "Pay",
-        "description": "B3. He paid this shop everything he owes it, by UPI. Paytm moves the\nmoney; the book records which entries it paid, and the shop is told.",
+        "description": "B3. He paid this shop by UPI: everything he owes it, or the part he chose.\nPaytm moves the money; the book records which entries it paid, oldest first,\nand the shop is told with what is still open.",
         "operationId": "pay_shops__shop_id__pay_post",
         "parameters": [
           {
@@ -1932,7 +1977,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PersonIn"
+                "$ref": "#/components/schemas/PayIn"
               }
             }
           }
@@ -2639,9 +2684,21 @@
             "enum": [
               "udhaar",
               "payment",
-              "customer"
+              "customer",
+              "correction"
             ],
             "title": "Kind"
+          },
+          "corrects_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Amount Paise"
           },
           "new": {
             "type": "boolean",
@@ -2664,7 +2721,8 @@
                 "weak_match",
                 "large",
                 "unusual",
-                "new_customer"
+                "new_customer",
+                "correction"
               ]
             },
             "type": "array",
@@ -3088,6 +3146,17 @@
               }
             ],
             "title": "Amount Paise"
+          },
+          "left_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left Paise"
           }
         },
         "type": "object",
@@ -3430,6 +3499,10 @@
               }
             ]
           },
+          "card": {
+            "type": "boolean",
+            "title": "Card"
+          },
           "unread": {
             "type": "integer",
             "title": "Unread"
@@ -3462,6 +3535,7 @@
           "body",
           "sent_at",
           "entry",
+          "card",
           "unread",
           "needs_reply",
           "reminder_at"
@@ -3829,6 +3903,10 @@
             "type": "integer",
             "title": "Balance Paise"
           },
+          "payable_paise": {
+            "type": "integer",
+            "title": "Payable Paise"
+          },
           "day": {
             "anyOf": [
               {
@@ -3858,6 +3936,7 @@
           "customer_id",
           "display_name",
           "balance_paise",
+          "payable_paise",
           "day",
           "entries",
           "unread"
@@ -3940,6 +4019,10 @@
             "type": "integer",
             "title": "Amount Paise"
           },
+          "left_paise": {
+            "type": "integer",
+            "title": "Left Paise"
+          },
           "paid_at": {
             "type": "string",
             "format": "date-time",
@@ -3973,6 +4056,7 @@
         "required": [
           "shop",
           "amount_paise",
+          "left_paise",
           "paid_at",
           "method",
           "settled_in",
@@ -3980,6 +4064,33 @@
           "elsewhere"
         ],
         "title": "PaidOut"
+      },
+      "PayIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Paise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id"
+        ],
+        "title": "PayIn",
+        "description": "He pays this shop by UPI: what he owes it, or the part he chose."
       },
       "PersonIn": {
         "properties": {

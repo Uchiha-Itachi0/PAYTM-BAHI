@@ -37,6 +37,15 @@ def amount_words(paise: int) -> str:
     return f"{say(paise).devanagari} रुपये"
 
 
+def received(paid_paise: int, left_paise: int) -> str:
+    """What the Soundbox says when money arrives: the sum, and what is still open
+    after it. Amounts only, never a name. ValueError beyond what is said aloud."""
+    got = f"{amount_words(paid_paise)} मिले"
+    if left_paise == 0:
+        return f"{got}, हिसाब पूरा।"
+    return f"{got}, {amount_words(left_paise)} बाकी।"
+
+
 def _name(text: str, voice: str) -> str:
     raw = f"{sarvam.TTS_MODEL}|{voice}|{text}".encode()
     return hashlib.sha256(raw).hexdigest()[:24] + ".wav"

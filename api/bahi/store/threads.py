@@ -48,6 +48,7 @@ class Last:
     shop_id: str
     display_name: str
     tag: str | None
+    message_id: str
     author: str
     kind: str
     body: str
@@ -145,7 +146,7 @@ def read_all(con: Conn, shop_id: str, now: datetime) -> None:
 
 LAST = """
 SELECT t.id::text AS thread_id, c.id::text AS customer_id, c.shop_id::text AS shop_id,
-       c.display_name, c.tag,
+       c.display_name, c.tag, m.id::text AS message_id,
        m.author, m.kind, m.body, m.entry_id::text AS entry_id, m.sent_at,
        (SELECT count(*) FROM messages u
         WHERE u.thread_id = t.id AND u.author = ANY(%(other)s)
@@ -176,3 +177,18 @@ def of_person(con: Conn, person_id: str) -> list[Last]:
             # to him, the shop's words and BAHI's cards and reminders are all news
             {"other": ["shop", "bahi"], "key": person_id},
         ).fetchall()
+
+
+def cards(con: Conn, entry_ids: list[str]) -> dict[str, str]:
+    """Each entry's first message: its card. Later ones about it are lines."""
+    if not entry_ids:
+        return {}
+    rows = con.execute(
+        """
+        SELECT DISTINCT ON (entry_id) entry_id::text, id::text
+        FROM messages WHERE entry_id = ANY(%s::uuid[])
+        ORDER BY entry_id, sent_at, id
+        """,
+        (entry_ids,),
+    ).fetchall()
+    return {str(e): str(m) for e, m in rows}

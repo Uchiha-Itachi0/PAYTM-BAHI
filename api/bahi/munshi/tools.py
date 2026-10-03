@@ -10,9 +10,12 @@ screen, and it is checked here, in code:
   sounded a little like his, the amount is ₹5,000 or more, or it is three times
   what he usually takes.
 
-`propose_new_customer` puts someone who isn't in the book yet on the card, only
-after a search found nobody by that name; his yes adds them by name only, then
-writes the entry. `tonight` reads out tomorrow's reminders, decided by code.
+`propose_correction` puts the right amount for an entry already written on the
+card; his yes records it as a new entry pointing at the wrong one, and the
+customer confirms it. `propose_new_customer` puts someone who isn't in the book
+yet on the card, only after a search found nobody by that name; his yes adds them
+by name only, then writes the entry. `tonight` reads out tomorrow's reminders,
+decided by code.
 
 `confirm_entry` turns the waiting card into the entry, once, and only after the
 shopkeeper has answered it. Every result is plain JSON the munshi reads, and
@@ -34,6 +37,7 @@ from uuid import UUID
 
 from bahi import voice
 from bahi.domain import book as book_domain
+from bahi.domain import limitation
 from bahi.domain.find import Found, find
 from bahi.domain.who import Person
 from bahi.service import ledger
@@ -61,7 +65,7 @@ SHORT = 6
 #: The munshi's words for the two kinds. Not "जमा": that also means "deposit",
 #: and "put it on his account" was read as one.
 KIND = {"udhaar": "udhaar", "paid_back": "payment"}
-KIND_HI = {"udhaar": "उधार", "payment": "जमा"}
+KIND_HI = {"udhaar": "उधार", "payment": "जमा", "correction": "सुधार"}
 #: How a search result says it only half fits.
 WEAK_MATCHES = ("name sounds a little like it", "description partly fits")
 
@@ -134,6 +138,31 @@ TOOLS: list[dict[str, Any]] = [
                     "amount_rupees": {"type": "number"},
                 },
                 "required": ["customer_id", "kind", "amount_rupees"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_correction",
+            "description": "An entry already written for this customer has the wrong "
+            "amount: show the correction on his screen for his yes. Only when he says "
+            "an earlier entry was wrong. Never write a new udhaar for a mistake. "
+            "Nothing is written yet.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {"type": "string"},
+                    "right_amount_rupees": {
+                        "type": "number",
+                        "description": "What the entry should have said.",
+                    },
+                    "wrong_amount_rupees": {
+                        "type": "number",
+                        "description": "What was written by mistake, if he said it.",
+                    },
+                },
+                "required": ["customer_id", "right_amount_rupees"],
             },
         },
     },
@@ -281,6 +310,7 @@ class Desk:
             "counter": self.counter,
             "customer_card": self.customer_card,
             "propose_entry": self.propose_entry,
+            "propose_correction": self.propose_correction,
             "propose_new_customer": self.propose_new_customer,
             "tonight": self.tonight,
             "confirm_entry": self.confirm_entry,
@@ -459,6 +489,92 @@ class Desk:
             "sentence and ask पक्का?",
         }
 
+    def propose_correction(
+        self,
+        customer_id: str,
+        right_amount_rupees: float,
+        wrong_amount_rupees: float | None = None,
+    ) -> dict[str, Any]:
+        cid = self.resolve(customer_id)
+        if cid is None or cid not in self.seen:
+            return {"ok": False, "problem": "look this customer up with find_customer"}
+        right, problem = _paise(right_amount_rupees)
+        if problem is not None:
+            return {"ok": False, "problem": problem}
+        today = self.now.date()
+        open_ = [
+            e
+            for e in reversed(entries.of_customer(self.con, cid))
+            if e.status in ("recorded", "confirmed", "disputed")
+            and not limitation.expired(
+                e.recorded_at.date(),
+                e.acknowledged_at.date() if e.acknowledged_at else None,
+                today,
+            )
+        ]
+        fixable = [e for e in open_ if e.paid_paise == 0]
+
+        def listed() -> list[dict[str, Any]]:
+            return [
+                {"amount": amount_words(e.amount_paise), "on": f"{e.recorded_at:%d %b}"}
+                for e in open_[:LISTED]
+            ]
+
+        if wrong_amount_rupees is not None:
+            wrong, problem = _paise(wrong_amount_rupees)
+            if problem is not None:
+                return {"ok": False, "problem": problem}
+            hits = [e for e in fixable if e.amount_paise == wrong]
+            if not hits:
+                paid = [e for e in open_ if e.amount_paise == wrong]
+                return {
+                    "ok": False,
+                    "problem": "part of that entry is already paid, so it can't be "
+                    "corrected; ask whether to write the difference instead"
+                    if paid
+                    else f"no open entry of {amount_words(wrong)} for this customer; "
+                    "tell him which entries there are and ask which one",
+                    "open_entries": listed(),
+                }
+            e = hits[0]
+        elif len(fixable) == 1:
+            e = fixable[0]
+        else:
+            return {
+                "ok": False,
+                "problem": "nothing open to correct for this customer"
+                if not fixable
+                else "more than one entry is open: ask which amount was wrong",
+                "open_entries": listed(),
+            }
+        if right == e.amount_paise:
+            return {"ok": False, "problem": "that is already what the entry says; ask"}
+        store.show(
+            self.con,
+            self.conversation_id,
+            cid,
+            "correction",
+            right,
+            self.his_words or None,
+            ["correction"],
+            self.his_seq,
+            self.now,
+            corrects=e.id,
+        )
+        said, about = self._say(cid)
+        self.done.append(
+            f"Showed a card: correct {self.refs[cid].display_name} "
+            f"₹{e.amount_paise // 100} → ₹{right // 100}"
+        )
+        return {
+            "ok": True,
+            "card": f"{said}, {about}: {amount_words(e.amount_paise)} की जगह "
+            f"{amount_words(right)}",
+            "needs_clear_yes": True,
+            "next": "The correction is waiting for his yes. Read back the wrong and "
+            "the right amount in one short sentence and ask पक्का?",
+        }
+
     def propose_new_customer(
         self,
         name: str,
@@ -598,6 +714,37 @@ def save(
             assert found is not None
             c = found
         entry_id: str | None = None
+        if d.kind == "correction":
+            assert d.amount_paise is not None and d.corrects_entry_id is not None
+            wrong = entries.get(con, d.corrects_entry_id)
+            e = ledger.correct(
+                con,
+                shop_id,
+                d.corrects_entry_id,
+                d.amount_paise,
+                now,
+                spoken_text=d.spoken_text,
+            )
+            store.decide(con, d.id, "saved", now, e.id, customer_id=c.id)
+            sent = c.joined == "linked"
+            done.append(
+                f"Corrected {c.display_name}: "
+                f"₹{(wrong.amount_paise if wrong else 0) // 100} → "
+                f"₹{d.amount_paise // 100}"
+            )
+            return {
+                "saved": True,
+                "corrected": True,
+                "customer": c.name_hi or c.display_name,
+                "was": amount_words(wrong.amount_paise) if wrong else None,
+                "now": amount_words(d.amount_paise),
+                "sent_to_customer_phone": sent,
+                "next": "Say it is corrected, and that the customer confirms the new "
+                "amount on their phone."
+                if sent
+                else "Say it is corrected. This customer is not on BAHI, so nothing "
+                "was sent.",
+            }
         if d.kind == "udhaar":
             assert d.amount_paise is not None
             scan_id = scans.waiting_for(con, c.id, now)

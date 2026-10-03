@@ -281,14 +281,17 @@ class CardOut(BaseModel):
     tag: str | None
     #: None on a card that only adds someone.
     amount_paise: int | None
-    #: customer: only adds someone new to the book, by name.
-    kind: Literal["udhaar", "payment", "customer"]
+    #: customer: only adds someone new to the book, by name. correction: the
+    #: right amount for an entry already written.
+    kind: Literal["udhaar", "payment", "customer", "correction"]
+    #: A correction: what the entry said.
+    corrects_amount_paise: int | None = None
     #: Someone not in the book yet: his yes adds them, by name only.
     new: bool
     #: shown: waiting for his yes. saved: written. cancelled: he said no.
     status: Literal["shown", "saved", "replaced", "cancelled"]
     #: Why it waits for a clear yes; empty means the three-second countdown.
-    reasons: list[Literal["weak_match", "large", "unusual", "new_customer"]]
+    reasons: list[Literal["weak_match", "large", "unusual", "new_customer", "correction"]]
     #: What he said, shown under the amount.
     spoken_text: str | None
     entry_id: UUID | None
@@ -380,6 +383,8 @@ class InboxRowOut(BaseModel):
     sent_at: datetime
     #: The last message's entry, for the row's status line.
     entry: ThreadEntryOut | None
+    #: The last message is that entry's card, not a line about it (a payment).
+    card: bool
     unread: int
     #: He wrote last, or he says an entry is wrong.
     needs_reply: bool
@@ -420,6 +425,8 @@ class MyShopOut(BaseModel):
     #: What the shop calls him.
     display_name: str
     balance_paise: int
+    #: What he can pay now: his balance less anything he says is wrong.
+    payable_paise: int
     #: Days since he last paid here, when he owes something.
     day: int | None
     entries: list[ThreadEntryOut]
@@ -441,9 +448,19 @@ class MyUdhaarOut(BaseModel):
     invites: list[InviteOut]
 
 
+class PayIn(BaseModel):
+    """He pays this shop by UPI: what he owes it, or the part he chose."""
+
+    person_id: UUID
+    #: None pays everything he owes this shop.
+    amount_paise: int | None = Field(default=None, gt=0)
+
+
 class PaidOut(BaseModel):
     shop: ShopOut
     amount_paise: int
+    #: What he still owes this shop after it.
+    left_paise: int
     paid_at: datetime
     method: Literal["upi"]
     #: From the oldest entry it paid to today.
@@ -551,6 +568,8 @@ class EventOut(BaseModel):
     customer_id: str
     display_name: str
     amount_paise: int | None
+    #: After a payment: what he still owes the shop now.
+    left_paise: int | None = None
 
 
 class EventsOut(BaseModel):

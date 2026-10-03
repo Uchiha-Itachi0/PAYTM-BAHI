@@ -2,8 +2,16 @@
 
     recorded ──confirm──▶ confirmed ──settle──▶ settled
         │                                         ▲
-        ├──dispute──▶ disputed ──correct──▶ corrected
+        ├──dispute──▶ disputed                    │
         └──────────────settle─────────────────────┘
+
+    recorded, confirmed or disputed ──correct──▶ corrected
+
+A correction is the shopkeeper's: he finds the amount was wrong, whether the
+customer said so (disputed), hasn't answered yet (recorded), or already said yes
+(confirmed). The entry is kept, marked corrected, and a new entry with the right
+amount takes its place, needing the customer's own yes. Nothing that has been
+paid against is corrected: the payment names that entry.
 
 A table, not a web of if-statements, so the whole rule fits on one screen and a
 test can walk every pair. Anything not in the table raises, and the API turns
@@ -33,6 +41,9 @@ MOVES: dict[tuple[Status, Action], Status] = {
     ("recorded", "confirm"): "confirmed",
     ("recorded", "dispute"): "disputed",
     ("disputed", "correct"): "corrected",
+    # He found the mistake himself, before or after the customer said yes.
+    ("recorded", "correct"): "corrected",
+    ("confirmed", "correct"): "corrected",
     # Paid before he answered, or kept by name only and paid in cash.
     ("recorded", "settle"): "settled",
     ("confirmed", "settle"): "settled",

@@ -112,6 +112,9 @@ def get_events(shop_id: str, con: Con, after: datetime | None = None) -> EventsO
                 customer_id=e.customer_id,
                 display_name=e.display_name,
                 amount_paise=e.amount_paise,
+                left_paise=ledger.balance(con, shop_id, e.customer_id, now.date())
+                if e.kind == "paid"
+                else None,
             )
             for e in found
         ],

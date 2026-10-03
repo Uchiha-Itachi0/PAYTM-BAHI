@@ -45,7 +45,8 @@ class Scenario:
     id: str
     first: str
     goal: str
-    #: (customer as the book names them, kind, rupees), or None: nothing may be written.
+    #: (customer as the book names them, kind, rupees), or None: nothing may be
+    #: written. kind is udhaar, payment or correction.
     expect: tuple[str, str, int] | None
     extra: str = ""
 
@@ -99,6 +100,13 @@ SCENARIOS = [
         "udhaar for Mishra ji (Room 9, B wing). You first said ₹400, but it was really "
         "₹300: when the munshi reads back ₹400, say नहीं नहीं, तीन सौ था।",
         ("Mishra ji", "udhaar", 300),
+    ),
+    Scenario(
+        "fix_written",
+        "शर्मा जी का दो सौ गलत लिख दिया था, डेढ़ सौ था। ठीक कर दो।",
+        "Sharma (Room 19, B wing) already has ₹200 written, but it was really ₹150. "
+        "You want that entry corrected, not a new one.",
+        ("Sharma", "correction", 150),
     ),
     Scenario(
         "english",

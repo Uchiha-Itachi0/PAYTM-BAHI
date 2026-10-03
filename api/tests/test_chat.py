@@ -170,10 +170,32 @@ def test_that_is_not_right_then_a_correction_he_confirms(api: TestClient) -> Non
     assert shop_thread(api, ANIL)["balance_paise"] == 10000
 
 
-def test_only_a_disputed_entry_can_be_corrected(api: TestClient) -> None:
+def test_the_shop_can_correct_an_entry_nobody_disputed(api: TestClient) -> None:
+    """He finds the mistake himself, before Anil has answered."""
     entry = anils_entry(api)
     r = api.post(
-        f"/shops/{SHOP}/entries/{entry['id']}/correct", json={"amount_paise": 100}
+        f"/shops/{SHOP}/entries/{entry['id']}/correct", json={"amount_paise": 10000}
+    )
+    assert r.status_code == 201, r.text
+    cards = [m["entry"] for m in shop_thread(api, ANIL)["messages"] if m["card"]]
+    assert (cards[-2]["status"], cards[-1]["amount_paise"]) == ("corrected", 10000)
+
+
+def test_an_entry_paid_against_is_not_corrected(api: TestClient) -> None:
+    sharma = [m["entry"] for m in shop_thread(api, SHARMA)["messages"] if m["card"]][-1]
+    api.post(
+        f"/shops/{SHOP}/pay", json={"person_id": SHARMA_PERSON, "amount_paise": 5000}
+    )
+    r = api.post(
+        f"/shops/{SHOP}/entries/{sharma['id']}/correct", json={"amount_paise": 100}
+    )
+    assert r.status_code == 409 and "paid" in r.json()["detail"]
+
+
+def test_a_correction_to_the_same_amount_is_refused(api: TestClient) -> None:
+    entry = anils_entry(api)
+    r = api.post(
+        f"/shops/{SHOP}/entries/{entry['id']}/correct", json={"amount_paise": 15000}
     )
     assert r.status_code == 409
 
@@ -226,7 +248,8 @@ def test_paying_settles_what_he_owes_here_and_the_shop_hears_it(
         "Gupta Dairy",
     }
     assert shop_thread(api, SHARMA)["balance_paise"] == 0
-    assert shop_thread(api, SHARMA)["messages"][-1]["body"] == "Paid ₹200 by UPI."
+    body = shop_thread(api, SHARMA)["messages"][-1]["body"]
+    assert body == "Paid ₹200 by UPI. Nothing left to pay."
     heard = [(e["kind"], e["amount_paise"]) for e in events(api, start)]
     assert ("paid", 20000) in heard
     # nothing left here to pay
@@ -234,6 +257,29 @@ def test_paying_settles_what_he_owes_here_and_the_shop_hears_it(
         api.post(f"/shops/{SHOP}/pay", json={"person_id": SHARMA_PERSON}).status_code
         == 409
     )
+
+
+def test_he_can_pay_part_and_the_shop_hears_what_is_left(api: TestClient) -> None:
+    start = clock.now().isoformat()
+    r = api.post(
+        f"/shops/{SHOP}/pay", json={"person_id": SHARMA_PERSON, "amount_paise": 5000}
+    )
+    assert r.status_code == 200, r.text
+    assert (r.json()["amount_paise"], r.json()["left_paise"]) == (5000, 15000)
+    t = shop_thread(api, SHARMA)
+    assert t["balance_paise"] == 15000
+    assert t["messages"][-1]["body"] == "Paid ₹50 by UPI. ₹150 still open."
+    card = [m["entry"] for m in t["messages"] if m["card"]][-1]
+    assert (card["status"], card["paid_paise"]) == ("confirmed", 5000)
+    paid = [e for e in events(api, start) if e["kind"] == "paid"]
+    assert [(e["amount_paise"], e["left_paise"]) for e in paid] == [(5000, 15000)]
+
+
+def test_he_cannot_pay_more_than_he_owes(api: TestClient) -> None:
+    r = api.post(
+        f"/shops/{SHOP}/pay", json={"person_id": SHARMA_PERSON, "amount_paise": 50000}
+    )
+    assert r.status_code == 409 and "₹200" in r.json()["detail"]
 
 
 def test_a_disputed_entry_is_not_paid_until_it_is_agreed(api: TestClient) -> None:
