@@ -37,7 +37,7 @@ import logging
 import statistics
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -48,7 +48,7 @@ from bahi.domain.find import Found, find
 from bahi.domain.money import rupees
 from bahi.domain.who import Person
 from bahi.memory import cognee_client
-from bahi.service import ledger
+from bahi.service import ledger, pattern
 from bahi.service import memory as keeping
 from bahi.service import tonight as tonight_service
 from bahi.service.errors import Conflict, NotFound
@@ -269,6 +269,25 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "expected_payments",
+            "description": "Who is likely to pay in the next few days, worked out now "
+            "from the book: their own rhythm, their promises in chat, and your notes. "
+            "For 'who pays this week?'. Never guess dates yourself.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "How many days ahead, from today. Default 7.",
+                    }
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "recall",
             "description": "Search what BAHI remembers in this shop (his notes, "
             "customers' promises in chat, nicknames) by meaning, for a question like "
@@ -415,6 +434,7 @@ class Desk:
             "tonight": self.tonight,
             "remember": self.remember,
             "recall": self.recall,
+            "expected_payments": self.expected_payments,
             "confirm_entry": self.confirm_entry,
             "cancel_entry": self.cancel_entry,
         }
@@ -581,12 +601,19 @@ class Desk:
             "days_since_last_paid": day,
         }
         kept = memories.of_customer(self.con, cid)
+        told = sum(1 for m in kept if m.kind == "said")
+        p = pattern.of_customer(self.con, self.shop_id, cid, self.now.date())
+        out["how_they_pay"] = pattern.facts(p, told)
         if kept:
             out["remembered"] = [_remembered(m) for m in kept[:RECALLED]]
-            out["next"] = (
-                "If something remembered bears on what he asked, say it in one short "
-                "sentence, as said (आपने बताया था…, उन्होंने लिखा था…)."
-            )
+        out["next"] = (
+            "Answer what he asked from this. If he asks when they will pay, give your "
+            "best guess, as a guess (मेरे हिसाब से…), with the reason in a few words; "
+            "never promise it. Their promise, or a note about when they get money, "
+            "outranks their rhythm. Never give a date that has passed: if they are "
+            "late by their rhythm, say so. If something remembered bears on it, say "
+            "it as said (आपने बताया था…, उन्होंने लिखा था…)."
+        )
         return out
 
     def propose_entry(
@@ -896,6 +923,51 @@ class Desk:
             "customer.",
         }
 
+    def expected_payments(self, days: int = 7) -> dict[str, Any]:
+        days = min(max(_whole(days) or 7, 1), 31)
+        today = self.now.date()
+        end = today + timedelta(days=days)
+        owing = {
+            c.id: ln
+            for c in book_store.load(self.con, self.shop_id)
+            if (ln := book_domain.line(c, today)) is not None and ln.balance_paise > 0
+        }
+        waiting = memories.waits(self.con, self.shop_id, today)
+        promised, due, late = [], [], []
+        for cid, p in pattern.of_shop(self.con, self.shop_id, today).items():
+            if cid not in owing or cid not in self.refs:
+                continue
+            said, about = self._say(cid)
+            who = {"name": said, "about": about}
+            wait = waiting.get(cid)
+            if wait is not None and wait.until is not None and wait.until >= today:
+                who["note"] = f"{wait.body} (quiet until {wait.until:%d %b})"
+            if p.promised and p.promised <= end:
+                promised.append({**who, "promised_by": f"{p.promised:%d %b}"})
+            elif p.now == "due" or (
+                p.now == "early" and p.expect_from and p.expect_from <= end
+            ):
+                assert p.expect_from and p.expect_by
+                due.append(
+                    {
+                        **who,
+                        "usual_window": f"{p.expect_from:%d %b} to {p.expect_by:%d %b}",
+                    }
+                )
+            elif p.now == "late":
+                late.append({**who, "days_since_paid": p.rhythm.day})
+        self.done.append(f"Worked out who is likely to pay in {days} days")
+        return {
+            "from": f"{today:%d %b}",
+            "to": f"{end:%d %b}",
+            "promised_in_chat": promised[:LISTED],
+            "due_by_their_rhythm": due[:LISTED],
+            "late_by_their_rhythm": late[:LISTED],
+            "next": "Say who is likely, in one or two sentences: promises first, then "
+            "those due by their rhythm; mention the late ones briefly. Names and "
+            "places only, never amounts. It is a guess from the book, and you say so.",
+        }
+
     def recall(self, question: str) -> dict[str, Any]:
         question = (question or "").strip()
         if not question:
@@ -999,6 +1071,8 @@ class Desk:
 def _remembered(m: Memory) -> dict[str, Any]:
     """A memory as the munshi is shown it."""
     by = {"shop": "you (the shopkeeper)", "customer": "the customer, in chat"}
+    if m.kind == "said":
+        by = {**by, "customer": "the customer's chat, as the munshi read it"}
     out: dict[str, Any] = {"said": m.body, "by": by[m.said_by], "kind": m.kind}
     if m.kind == "nickname":
         out["said"] = f"you call them {m.body}"

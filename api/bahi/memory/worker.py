@@ -1,11 +1,13 @@
 """Memory's background work, a few seconds after the fact, in a thread of the API.
 
-1. Read each new chat message from a customer for a day he promises to pay by
-   (writer.promise, Sarvam). A promise is remembered, with his own words and the
-   message it came from; everything else is only marked read.
-2. Give each new memory to Cognee, as a sentence that says who and when, so a
-   question can find it by meaning later.
-3. Take each forgotten one out of Cognee.
+1. Read each new chat message from a customer (writer.read, Sarvam): a day he
+   promises to pay by (kept with his own words) and one line worth remembering
+   (a complaint, a hardship, a request), each with the message it came from.
+2. Work out each customer's payment pattern again (pure arithmetic, once a
+   minute) and keep it as a sentence where it changed.
+3. Give each new memory and changed pattern to Cognee, as sentences that say who
+   and when, so a question can find them by meaning later.
+4. Take each forgotten memory, and each pattern's old copy, out of Cognee.
 
 Nothing here is on the way of a reply: saving a note, sending a chat message and
 Tonight all work from the book's own table, with or without this. When Cognee
@@ -19,16 +21,19 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime
+from collections.abc import Collection
+from datetime import date, datetime
 
 from bahi import clock, voice
 from bahi.memory import cognee_client
 from bahi.memory.cognee_client import Memory
 from bahi.munshi import writer
 from bahi.service import memory as keeping
+from bahi.service import pattern
 from bahi.service.errors import Conflict, NotFound
-from bahi.store import db, memories
+from bahi.store import customers, db, memories, profiles
 from bahi.store.db import Conn
+from bahi.store.memories import Kind
 from bahi.store.memories import Memory as Kept
 
 log = logging.getLogger(__name__)
@@ -41,9 +46,13 @@ BACK_OFF_S = 120.0
 TO_STORE = 3
 TO_READ = 10
 
+#: How often each customer's pattern is worked out again (pure arithmetic).
+PROFILE_EVERY_S = 60.0
+
 _started = False
 _start_lock = threading.Lock()
 _quiet_until = 0.0
+_profiled_at = -PROFILE_EVERY_S
 
 
 def text_of(m: Kept) -> str:
@@ -60,32 +69,73 @@ def text_of(m: Kept) -> str:
         )
     if m.kind == "nickname":
         return f'The shopkeeper calls customer {who} "{m.body}".'
+    if m.kind == "said":
+        return f"From customer {who}'s chat on {on}: {m.body}"
     wait = f" The shop stays quiet about his udhaar until {until}." if until else ""
     return f"The shopkeeper's note about customer {who}, on {on}: {m.body}{wait}"
 
 
 def read_chat(con: Conn, now: datetime, limit: int = TO_READ) -> int:
-    """Reads new customer messages for promises. The number read."""
+    """Reads new customer messages for a promise and for anything worth
+    remembering. The number read."""
     unread = memories.unread(con, limit)
     for u in unread:
-        day = writer.promise(u.body, now.astimezone(clock.IST).date())
-        if day is not None:
+        got = writer.read(u.body, now.astimezone(clock.IST).date())
+        kept: list[tuple[Kind, str, date | None]] = []
+        if got.pay_by is not None:  # a promise keeps his own words
+            kept.append(("promise", u.body[:300], got.pay_by))
+        if got.said is not None:
+            kept.append(("said", got.said, None))
+        for kind, body, until in kept:
             try:
                 keeping.keep(
                     con,
                     u.shop_id,
                     u.customer_id,
-                    "promise",
-                    u.body[:300],
+                    kind,
+                    body,
                     "customer",
                     now,
-                    until=day,
+                    until=until,
                     message_id=u.message_id,
                 )
             except (Conflict, NotFound) as e:
-                log.info("not remembered as a promise: %s", e)
+                log.info("not remembered: %s", e)
         memories.read(con, u.message_id, now)
     return len(unread)
+
+
+def write_profiles(con: Conn, now: datetime, only: Collection[str] | None = None) -> int:
+    """Each customer's payment pattern, as a sentence, where it changed. Pure
+    arithmetic over the book (service/pattern.py): cheap. The number changed.
+    `only`: just these customers (the live check)."""
+    today = now.astimezone(clock.IST).date()
+    changed = 0
+    for (shop_id,) in con.execute("SELECT id::text FROM shops").fetchall():
+        people = {c.id: c for c in customers.of_shop(con, shop_id)}
+        for cid, p in pattern.of_shop(con, shop_id, today).items():
+            c = people.get(cid)
+            if c is None or (not p.entries and not p.rhythm.last_paid):
+                continue
+            if only is not None and cid not in only:
+                continue
+            who = c.display_name + (f" / {c.name_hi}" if c.name_hi else "")
+            who += f" ({c.tag})" if c.tag else ""
+            changed += profiles.write(con, shop_id, cid, pattern.sentence(p, who), now)
+    return changed
+
+
+def store_profiles(
+    con: Conn, memory: Memory, now: datetime, limit: int = TO_STORE
+) -> int:
+    """Gives changed patterns to Cognee, then takes out the copy it had before."""
+    todo = profiles.to_store(con, limit)
+    for p in todo:
+        cognee_id = memory.remember(p.shop_id, p.body, p.customer_id)
+        if p.stale_cognee_id and p.stale_cognee_id != cognee_id:
+            memory.forget(p.shop_id, p.stale_cognee_id)
+        profiles.stored(con, p.customer_id, cognee_id, now)
+    return len(todo)
 
 
 def store(con: Conn, memory: Memory, now: datetime, limit: int = TO_STORE) -> int:
@@ -114,12 +164,16 @@ def unstore(con: Conn, memory: Memory, limit: int = TO_STORE) -> int:
 
 
 def run_once() -> int:
-    """One round of all three. The amount of work done."""
-    global _quiet_until
+    """One round of all of it. The amount of work done."""
+    global _quiet_until, _profiled_at
     done = 0
     with db.connect() as con:
         done += read_chat(con, clock.now())
         con.commit()
+        if time.monotonic() - _profiled_at >= PROFILE_EVERY_S:
+            write_profiles(con, clock.now())
+            con.commit()
+            _profiled_at = time.monotonic()
         memory = cognee_client.get()
         if memory is None or time.monotonic() < _quiet_until:
             return done
@@ -127,6 +181,8 @@ def run_once() -> int:
             done += store(con, memory, clock.now())
             con.commit()
             done += unstore(con, memory)
+            con.commit()
+            done += store_profiles(con, memory, clock.now())
             con.commit()
         except Exception:
             con.rollback()

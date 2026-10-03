@@ -1325,6 +1325,7 @@ export interface components {
             entries: components["schemas"]["ThreadEntryOut"][];
             /** Memories */
             memories?: components["schemas"]["MemoryOut"][];
+            pattern?: components["schemas"]["PatternOut"] | null;
         };
         /** CustomerOut */
         CustomerOut: {
@@ -1672,7 +1673,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "note" | "promise" | "nickname";
+            kind: "note" | "promise" | "nickname" | "said";
             /** Body */
             body: string;
             /**
@@ -1813,6 +1814,45 @@ export interface components {
             entry_ids: string[];
             /** Elsewhere */
             elsewhere: components["schemas"]["MyShopOut"][];
+        };
+        /**
+         * PatternOut
+         * @description How he pays, from his own book (domain/pattern.py).
+         */
+        PatternOut: {
+            /** Payments */
+            payments: number;
+            /** Usual Gap */
+            usual_gap: number | null;
+            /** Usually Within */
+            usually_within: number | null;
+            /** Longest Gap */
+            longest_gap: number | null;
+            /** Recent Gaps */
+            recent_gaps: number[];
+            /** Last Paid */
+            last_paid: string | null;
+            /** Expect From */
+            expect_from: string | null;
+            /** Expect By */
+            expect_by: string | null;
+            /**
+             * Now
+             * @enum {string}
+             */
+            now: "early" | "due" | "late" | "unknown";
+            /** Usual Time */
+            usual_time: string | null;
+            /** Promised */
+            promised: string | null;
+            /** Promises Due */
+            promises_due: number;
+            /** Promises Kept */
+            promises_kept: number;
+            /** Entries */
+            entries: number;
+            /** Disputed */
+            disputed: number;
         };
         /**
          * PayIn

@@ -11,7 +11,13 @@ import { Dots, Notice } from "@/components/ui/Notice";
 import { Pill } from "@/components/ui/Pill";
 import { Avatar } from "@/components/ui/Row";
 import { api, apiDelete, ApiError } from "@/lib/api/client";
-import type { Account, CustomerDetail, Remembered, ThreadEntry } from "@/lib/api/types";
+import type {
+  Account,
+  CustomerDetail,
+  Pattern,
+  Remembered,
+  ThreadEntry,
+} from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
 import { fullDate, shortDate } from "@/lib/when";
@@ -47,9 +53,75 @@ function entryLine(e: ThreadEntry): string {
 
 const SAID: Record<Remembered["kind"], string> = {
   note: "Your note",
-  promise: "They said in chat",
+  promise: "They promised in chat",
   nickname: "You call them",
+  said: "From their chat",
 };
+
+const NOW: Record<Pattern["now"], { text: string; tone: string } | null> = {
+  early: { text: "Not due yet", tone: "bg-ok-bg text-ok" },
+  due: { text: "Due about now", tone: "bg-warn-bg text-warn" },
+  late: { text: "Later than usual", tone: "bg-warn-bg text-warn" },
+  unknown: null,
+};
+
+function clock12(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 ? "am" : "pm"}`;
+}
+
+/** How they pay, from their own book: the figures are the book's arithmetic. */
+function HowTheyPay({ p }: { p: Pattern }): React.ReactElement | null {
+  if (!p.payments && !p.entries) return null;
+  const now = NOW[p.now];
+  const rows: [string, string][] = [];
+  if (p.usual_gap !== null && p.usual_gap !== undefined)
+    rows.push([
+      "Usually pays",
+      `every ${p.usual_gap} days · 8 in 10 times within ${p.usually_within}`,
+    ]);
+  if (p.last_paid) rows.push(["Last paid", shortDate(p.last_paid)]);
+  if (p.expect_from && p.expect_by) {
+    const window = `${shortDate(p.expect_from)} to ${shortDate(p.expect_by)}`;
+    // A window that has passed is not a guess for the future.
+    rows.push(p.now === "late" ? ["Usual window", `${window}, passed`] : ["Likely next", window]);
+  }
+  if (p.promised) rows.push(["Promised by", shortDate(p.promised)]);
+  if (p.usual_time) rows.push(["Usually at", clock12(p.usual_time)]);
+  if (p.recent_gaps.length) rows.push(["Latest gaps", `${p.recent_gaps.join(", ")} days`]);
+  if (p.promises_due) rows.push(["Promises kept", `${p.promises_kept} of ${p.promises_due}`]);
+  if (p.entries) rows.push(["Said wrong", `${p.disputed} of ${p.entries} entries`]);
+  return (
+    <Card title="How they pay" tight>
+      {now ? (
+        <span
+          className={`mb-2 inline-block rounded-full px-2.5 py-1 text-[11.5px] font-extrabold ${now.tone}`}
+        >
+          {now.text}
+        </span>
+      ) : null}
+      {rows.length ? (
+        rows.map(([k, v]) => (
+          <div
+            key={k}
+            className="flex items-baseline justify-between gap-3 border-b border-hair py-2 last:border-b-0"
+          >
+            <p className="text-[12.5px] font-semibold text-sub">{k}</p>
+            <p className="text-right text-[13.5px] font-extrabold tabular-nums">{v}</p>
+          </div>
+        ))
+      ) : (
+        <p className="py-1 text-[12.5px] font-medium text-sub">No payments yet.</p>
+      )}
+      {p.payments > 0 && p.payments < 4 ? (
+        <p className="mt-2 text-[11.5px] font-medium text-sub">
+          Only {p.payments} {p.payments === 1 ? "payment" : "payments"} so far: too few to read
+          a rhythm.
+        </p>
+      ) : null}
+    </Card>
+  );
+}
 
 function Memories({
   c,
@@ -304,6 +376,8 @@ export function CustomerScreen({ customerId }: { customerId: string }): React.Re
           </div>
         </Card>
       ) : null}
+
+      {c.pattern ? <HowTheyPay p={c.pattern} /> : null}
 
       <Memories
         c={c}

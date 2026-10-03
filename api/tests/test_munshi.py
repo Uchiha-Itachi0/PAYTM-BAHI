@@ -754,6 +754,58 @@ def test_a_note_it_keeps_is_on_his_card_and_holds_tonight(
     assert any("Remembered about Patil" in d for d in out["done"])
 
 
+def test_asked_when_someone_will_pay_it_reads_how_they_pay(
+    api: TestClient, model: Script
+) -> None:
+    results: list[Any] = []
+    model.then(
+        tool("find_customer", {"name": "पाटिल"}),
+        tool(
+            "customer_card",
+            lambda found: {"customer_id": first_found(found)},
+        ),
+        tool("counter", keeping(results, {})),
+        reply("मेरे हिसाब से…"),
+    )
+    say(api, "पाटिल कब पैसे देगा?")
+    (card,) = results
+    how = card["how_they_pay"]
+    assert how["usually_pays_every_days"] and how["likely_next"]
+    assert how["right_now"].startswith("late by his own rhythm")
+    assert how["likely_next"] == "no date from his rhythm: he is past it"
+    assert "guess" in card["next"] and "passed" in card["next"]
+
+
+def test_who_pays_this_week_is_worked_out_not_guessed(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    from bahi.store import memories
+
+    raju = str(uid("customer", HOME, "raju"))
+    memories.add(
+        tx,
+        SHOP,
+        raju,
+        "promise",
+        "6 को दूँगा",
+        "customer",
+        clock.now(),
+        until=clock.today() + timedelta(days=3),
+    )
+    results: list[Any] = []
+    model.then(
+        tool("expected_payments", {}),
+        tool("counter", keeping(results, {})),
+        reply("…"),
+    )
+    say(api, "इस हफ़्ते कौन देने वाला है?")
+    (week,) = results
+    assert [p["name"] for p in week["promised_in_chat"]] == ["राजू"]
+    assert "पाटिल" in {p["name"] for p in week["late_by_their_rhythm"]}
+    everyone = week["promised_in_chat"] + week["due_by_their_rhythm"]
+    assert all("amount" not in str(p) and "₹" not in str(p) for p in everyone)
+
+
 def test_recall_asks_cognee_and_falls_back_to_the_books_own_list(
     api: TestClient, model: Script, tx: db.Conn
 ) -> None:

@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta
 from bahi.domain import book as book_domain
 from bahi.domain.limitation import expired
 from bahi.domain.wording import button
-from bahi.service import ledger, memory, views
+from bahi.service import ledger, memory, pattern, views
 from bahi.service.errors import Conflict, NotFound
 from bahi.service.models import (
     CustomerDetailOut,
@@ -195,6 +195,7 @@ def customer_detail(con: Conn, c: CustomerRef, today: date) -> CustomerDetailOut
         day=day,
         entries=sorted(live + paid, key=lambda e: e.recorded_at, reverse=True),
         memories=[memory.out(m) for m in memories.of_customer(con, c.id)],
+        pattern=pattern.out(pattern.of_customer(con, c.shop_id, c.id, today)),
     )
 
 

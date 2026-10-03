@@ -211,6 +211,20 @@ can't show:
   words and the message it came from.
 - **A nickname.** A card he confirmed for Raju after calling him "पप्पू": next
   time "पप्पू" finds Raju, as a hint, and the card waits for a clear हाँ.
+- **What else they say.** Each customer message is read once for anything worth
+  remembering: a complaint ("तेल का दाम ज़्यादा लगा, शिकायत की"), a hardship, a
+  request. A dispute's reason is his own message, so it is read too.
+- **How they pay** (`domain/pattern.py`, on the customer's page). Code works out,
+  from his own book: his usual gap, the gap 8 in 10 of his payments fall within,
+  his latest gaps, the time of day he pays, when his next payment is likely (or
+  that he is past it), promises kept, and entries he said were wrong.
+
+Ask the munshi "पाटिल कब देगा?" and it answers as a guess from his card, his
+promise and your notes, which outrank his rhythm, and never with a date that has
+passed ("मेरे हिसाब से लेट है, 40 दिन हो गए…"). "इस हफ़्ते कौन देगा?" is worked out
+at that moment (`expected_payments`); "कौन ज़्यादा शिकायत करता है?" is searched in
+Cognee, which also keeps each customer's pattern as a sentence, rewritten when
+his book changes.
 
 Tomorrow holds anyone past their gap while what was said still asks to wait:
 "Raju said in chat: 'भैया 6 तारीख को पक्का दे दूँगा'. Nothing is sent until after 6

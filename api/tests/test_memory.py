@@ -180,25 +180,29 @@ def patil_writes(tx: db.Conn, text: str) -> str:
     return threads.post(tx, PATIL, "customer", "text", text, clock.now()).id
 
 
-def test_his_promise_in_chat_is_read_and_remembered(
+def test_his_chat_is_read_for_a_promise_and_what_is_worth_remembering(
     tx: db.Conn, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(
-        writer, "promise", lambda text, today: date(2026, 10, 5) if "5" in text else None
-    )
+    def reads(text: str, today: date) -> writer.Read:
+        if "5" in text:
+            return writer.Read(date(2026, 10, 5), None)
+        if "महंगा" in text:
+            return writer.Read(None, "तेल महंगा होने की शिकायत की")
+        return writer.NOTHING
+
+    monkeypatch.setattr(writer, "read", reads)
     promised = patil_writes(tx, "5 तारीख को दे दूँगा")
-    chatted = patil_writes(tx, "ठीक है भाई")
-    assert worker.read_chat(tx, clock.now()) >= 2
-    (m,) = memories.of_customer(tx, PATIL)
-    assert (m.kind, m.said_by, m.until, m.message_id) == (
-        "promise",
-        "customer",
-        date(2026, 10, 5),
-        promised,
-    )
-    assert m.body == "5 तारीख को दे दूँगा"  # his own words, as he wrote them
+    complained = patil_writes(tx, "भैया तेल बहुत महंगा दे रहे हो")
+    patil_writes(tx, "ठीक है भाई")
+    assert worker.read_chat(tx, clock.now()) >= 3
+    kept = {m.kind: m for m in memories.of_customer(tx, PATIL)}
+    assert set(kept) == {"promise", "said"}  # "ठीक है भाई": read, nothing kept
+    p, s = kept["promise"], kept["said"]
+    assert (p.said_by, p.until, p.message_id) == ("customer", date(2026, 10, 5), promised)
+    assert p.body == "5 तारीख को दे दूँगा"  # a promise keeps his own words
+    assert (s.said_by, s.until, s.message_id) == ("customer", None, complained)
+    assert s.body == "तेल महंगा होने की शिकायत की"
     assert worker.read_chat(tx, clock.now()) == 0  # each message read once
-    assert chatted  # read, and nothing kept from it
 
 
 def test_new_memories_go_to_cognee_and_forgotten_ones_come_out(tx: db.Conn) -> None:
@@ -217,23 +221,25 @@ def test_new_memories_go_to_cognee_and_forgotten_ones_come_out(tx: db.Conn) -> N
     assert worker.unstore(tx, fake) == 0
 
 
-def test_a_promise_further_than_three_months_is_not_one(
+def test_a_promise_is_only_from_today_to_three_months_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from bahi.voice import sarvam
 
     monkeypatch.setenv("SARVAM_OFFLINE", "0")
     monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
-    said: dict[str, Any] = {}
+    said: dict[str, Any] = {"remember": ""}
     monkeypatch.setattr(sarvam, "chat_json", lambda *a, **k: said)
     said.update(promise=True, pay_by="2026-10-05")
-    assert writer.promise("5 ko dunga", TODAY) == date(2026, 10, 5)
+    assert writer.read("5 ko dunga", TODAY) == writer.Read(date(2026, 10, 5), None)
     said.update(pay_by="2027-06-01")
-    assert writer.promise("june mein", TODAY) is None
+    assert writer.read("june mein", TODAY).pay_by is None
     said.update(pay_by="2026-09-01")
-    assert writer.promise("pichle mahine", TODAY) is None
-    said.update(promise=False, pay_by="2026-10-05")
-    assert writer.promise("haan theek hai", TODAY) is None
+    assert writer.read("pichle mahine", TODAY).pay_by is None
+    said.update(promise=False, pay_by="2026-10-05", remember="  ")
+    assert writer.read("haan theek hai", TODAY) == writer.NOTHING
+    said.update(remember="x" * 201)  # one line, not an essay
+    assert writer.read("…", TODAY).said is None
 
 
 def test_what_cognee_is_given_says_who_and_until_when(tx: db.Conn) -> None:
@@ -245,3 +251,76 @@ def test_what_cognee_is_given_says_who_and_until_when(tx: db.Conn) -> None:
     text = worker.text_of(m)
     assert "Patil / पाटिल (Auto stand)" in text and "01 Oct 2026" in text
     assert "05 Oct 2026" in text and "5 को दूँगा" in text
+
+
+# ── how he pays ──────────────────────────────────────────────────────────────
+
+
+def test_his_pattern_by_hand() -> None:
+    from datetime import time
+
+    from bahi.domain.pattern import pattern
+
+    paid = [TODAY - timedelta(days=d) for d in (50, 40, 31, 21, 12, 3)]
+    # gaps, oldest first: 10, 9, 10, 9, 9 → usual 9; 8 in 10 within 10
+    p = pattern(
+        paid,
+        [time(18, 40), time(18, 10), time(19, 5)],
+        TODAY,
+        promises=[(TODAY - timedelta(days=20), TODAY - timedelta(days=15))],
+        entries=20,
+        disputed=2,
+    )
+    assert (p.rhythm.median_gap, p.usually_within, p.rhythm.max_gap) == (9, 10, 10)
+    assert p.recent_gaps == (9, 10, 9, 9)
+    assert (p.expect_from, p.expect_by) == (
+        TODAY + timedelta(days=6),
+        TODAY + timedelta(days=7),
+    )
+    assert p.now == "early"
+    assert p.usual_time == time(18, 30)
+    # he promised 20 days ago to pay within 5 days, and paid 12 days ago: late
+    assert (p.promises_kept, p.promises_due) == (0, 1)
+    assert (p.entries, p.disputed) == (20, 2)
+    late = pattern(paid, [], TODAY + timedelta(days=9))
+    assert late.now == "late"
+
+
+def test_too_little_history_makes_no_guess() -> None:
+    from bahi.domain.pattern import pattern
+
+    p = pattern([TODAY - timedelta(days=5), TODAY], [], TODAY)
+    assert (p.expect_from, p.now) == (None, "unknown")
+
+
+def test_patterns_are_written_when_the_book_changes_and_go_to_cognee(
+    tx: db.Conn,
+) -> None:
+    from bahi.service import ledger
+    from bahi.store import profiles
+
+    now = clock.now()
+    assert worker.write_profiles(tx, now) > 30
+    assert worker.write_profiles(tx, now) == 0  # unchanged: nothing to redo
+    first = profiles.get(tx, PATIL)
+    assert first is not None and "Payment pattern of Patil / पाटिल" in first.body
+    assert "Usually pays every" in first.body
+
+    fake = FakeMemory()
+    while worker.store_profiles(tx, fake, now):
+        pass
+    old = profiles.get(tx, PATIL)
+    assert old is not None and old.cognee_id in fake.kept
+
+    ledger.pay_cash(tx, PATIL, 100_00, now + timedelta(minutes=1))
+    assert worker.write_profiles(tx, now + timedelta(minutes=1)) == 1
+    worker.store_profiles(tx, fake, now)
+    new = profiles.get(tx, PATIL)
+    assert new is not None and new.body != old.body and new.cognee_id != old.cognee_id
+    assert fake.forgotten == [old.cognee_id]  # the old copy is taken out
+
+
+def test_his_page_shows_how_he_pays(api: TestClient) -> None:
+    p = api.get(f"/shops/{SHOP}/customers/{PATIL}").json()["pattern"]
+    assert p["usual_gap"] and p["usually_within"] and p["expect_from"]
+    assert p["now"] == "late"  # Patil is past his gap: Tonight reminds him

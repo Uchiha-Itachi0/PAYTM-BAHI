@@ -551,13 +551,15 @@ class CustomerDetailOut(BaseModel):
     entries: list[ThreadEntryOut]
     #: What BAHI remembers about him, newest first.
     memories: list[MemoryOut] = Field(default_factory=list)
+    #: How he pays, from his book.
+    pattern: PatternOut | None = None
 
 
 class MemoryOut(BaseModel):
     """Something BAHI remembers about a customer, and where it came from."""
 
     id: str
-    kind: Literal["note", "promise", "nickname"]
+    kind: Literal["note", "promise", "nickname", "said"]
     body: str
     said_by: Literal["shop", "customer"]
     #: The last day BAHI stays quiet for it, if it asks to wait.
@@ -565,6 +567,32 @@ class MemoryOut(BaseModel):
     remembered_at: datetime
     #: The chat message a promise was read from.
     message_id: str | None
+
+
+class PatternOut(BaseModel):
+    """How he pays, from his own book (domain/pattern.py)."""
+
+    #: Days he paid on.
+    payments: int
+    usual_gap: int | None
+    #: 8 in 10 of his gaps were this long or shorter.
+    usually_within: int | None
+    longest_gap: int | None
+    #: His latest gaps, oldest first.
+    recent_gaps: list[int]
+    last_paid: date | None
+    #: Likely next payment, by his own rhythm: from this day, nearly always by that.
+    expect_from: date | None
+    expect_by: date | None
+    now: Literal["early", "due", "late", "unknown"]
+    #: "18:30": the time of day he usually pays.
+    usual_time: str | None
+    #: A promise still ahead of him.
+    promised: date | None
+    promises_due: int
+    promises_kept: int
+    entries: int
+    disputed: int
 
 
 class MemoryIn(BaseModel):

@@ -117,3 +117,22 @@ def paid_times(con: Conn, shop_id: str) -> dict[str, list[time]]:
         for r in cur.execute(PAID_AT, {"shop": shop_id}):
             out[r["customer_id"]].append(r["at"])
     return dict(out)
+
+
+DISPUTES = """
+SELECT e.customer_id::text AS customer_id, count(*)::int AS entries,
+       count(e.disputed_at)::int AS disputed
+FROM entries e JOIN customers c ON c.id = e.customer_id
+WHERE c.shop_id = %(shop)s AND (%(customer)s::uuid IS NULL OR c.id = %(customer)s::uuid)
+GROUP BY e.customer_id
+"""
+
+
+def disputes(
+    con: Conn, shop_id: str, customer_id: str | None = None
+) -> dict[str, tuple[int, int]]:
+    """(entries written for him, how many he said were wrong), by customer. An
+    entry disputed then corrected still counts as disputed: he said it."""
+    with con.cursor(row_factory=dict_row) as cur:
+        rows = cur.execute(DISPUTES, {"shop": shop_id, "customer": customer_id})
+        return {r["customer_id"]: (r["entries"], r["disputed"]) for r in rows}

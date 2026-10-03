@@ -15,7 +15,7 @@ from psycopg.rows import class_row
 
 from bahi.store.db import Conn
 
-Kind = Literal["note", "promise", "nickname"]
+Kind = Literal["note", "promise", "nickname", "said"]
 SaidBy = Literal["shop", "customer"]
 
 
@@ -60,14 +60,14 @@ def add(
     message_id: str | None = None,
 ) -> Memory | None:
     """Keeps it, only for a customer of this shop (None otherwise). A chat
-    message gives at most one promise: asked again, it is the same memory."""
+    message gives at most one of each kind: read again, it is the same memory."""
     row = con.execute(
         """
         INSERT INTO memories (shop_id, customer_id, kind, body, said_by, until,
                               message_id, remembered_at)
         SELECT c.shop_id, c.id, %s, %s, %s, %s, %s, %s
         FROM customers c WHERE c.id = %s AND c.shop_id = %s
-        ON CONFLICT (message_id) WHERE message_id IS NOT NULL DO NOTHING
+        ON CONFLICT (message_id, kind) WHERE message_id IS NOT NULL DO NOTHING
         RETURNING id::text
         """,
         (kind, body.strip(), said_by, until, message_id, now, customer_id, shop_id),

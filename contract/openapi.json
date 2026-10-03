@@ -3394,6 +3394,16 @@
             },
             "type": "array",
             "title": "Memories"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PatternOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -4343,7 +4353,8 @@
             "enum": [
               "note",
               "promise",
-              "nickname"
+              "nickname",
+              "said"
             ],
             "title": "Kind"
           },
@@ -4753,6 +4764,159 @@
           "elsewhere"
         ],
         "title": "PaidOut"
+      },
+      "PatternOut": {
+        "properties": {
+          "payments": {
+            "type": "integer",
+            "title": "Payments"
+          },
+          "usual_gap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usual Gap"
+          },
+          "usually_within": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usually Within"
+          },
+          "longest_gap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Gap"
+          },
+          "recent_gaps": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Recent Gaps"
+          },
+          "last_paid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Paid"
+          },
+          "expect_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expect From"
+          },
+          "expect_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expect By"
+          },
+          "now": {
+            "type": "string",
+            "enum": [
+              "early",
+              "due",
+              "late",
+              "unknown"
+            ],
+            "title": "Now"
+          },
+          "usual_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usual Time"
+          },
+          "promised": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promised"
+          },
+          "promises_due": {
+            "type": "integer",
+            "title": "Promises Due"
+          },
+          "promises_kept": {
+            "type": "integer",
+            "title": "Promises Kept"
+          },
+          "entries": {
+            "type": "integer",
+            "title": "Entries"
+          },
+          "disputed": {
+            "type": "integer",
+            "title": "Disputed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payments",
+          "usual_gap",
+          "usually_within",
+          "longest_gap",
+          "recent_gaps",
+          "last_paid",
+          "expect_from",
+          "expect_by",
+          "now",
+          "usual_time",
+          "promised",
+          "promises_due",
+          "promises_kept",
+          "entries",
+          "disputed"
+        ],
+        "title": "PatternOut",
+        "description": "How he pays, from his own book (domain/pattern.py)."
       },
       "PayIn": {
         "properties": {

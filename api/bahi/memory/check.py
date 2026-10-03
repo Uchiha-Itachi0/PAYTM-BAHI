@@ -9,9 +9,11 @@ thing, end to end, the way the demo will:
    holds him too.
 3. The worker gives both to Cognee (Sarvam extracts, OpenAI embeds, Postgres
    keeps).
-4. A question by meaning ("who is paying this week?") is answered from Cognee,
-   and one customer's card carries his note.
-5. Forget takes the promise out of Cognee.
+4. A customer's complaint is kept too, and each customer's payment pattern is
+   written; all of it goes to Cognee.
+5. Questions: who pays this week (Cognee), a customer's card with his note, when
+   Patil will pay (a guess from his pattern), who complains (Cognee).
+6. Forget takes the promise out of Cognee.
 
 The book's changes are rolled back; Cognee's check database is wiped before
 and after. It refuses to run against anything but *_check databases.
@@ -36,6 +38,8 @@ from data.world import HOME, uid
 SHOP = str(uid("shop", HOME))
 IQBAL = str(uid("customer", HOME, "iqbal"))
 RAJU = str(uid("customer", HOME, "raju"))
+PATIL = str(uid("customer", HOME, "patil"))
+SALMA = str(uid("customer", HOME, "salma"))
 
 failed: list[str] = []
 
@@ -121,19 +125,39 @@ def main() -> None:
             sorted(p.display_name for p in e.tonight.sending),
         )
 
-        print("\n3. Into Cognee")
+        print("\n3. What else a customer says, and how each pays")
+        threads.post(
+            con,
+            SALMA,
+            "customer",
+            "text",
+            "भैया तेल बहुत महंगा दे रहे हो, हर बार ज़्यादा लगाते हो",
+            now,
+        )
+        worker.read_chat(con, now)
+        said = [m for m in memories.of_customer(con, SALMA) if m.kind == "said"]
+        check("Sarvam kept Salma's complaint", bool(said), said[0].body if said else None)
+        wrote = worker.write_profiles(con, now, only={IQBAL, RAJU, PATIL, SALMA})
+        check("their payment patterns written", wrote == 4, wrote)
+
+        print("\n4. Into Cognee")
         t = time.monotonic()
         stored = 0
         while n := worker.store(con, memory, clock.now()):
             stored += n
-        check(f"stored {stored} in {time.monotonic() - t:.1f}s", stored >= 2)
+        while n := worker.store_profiles(con, memory, clock.now()):
+            stored += n
+        check(f"stored {stored} in {time.monotonic() - t:.1f}s", stored >= 7)
         ids = [m.cognee_id for m in memories.of_shop(con, SHOP)]
         check("each has its own Cognee id", all(ids) and len(set(ids)) == len(ids))
 
-        print("\n4. Asking")
+        print("\n5. Asking")
         o = brain.talk(con, SHOP, None, "इस हफ़्ते कौन कौन पैसे देने वाला है?", now, chat)
         print(f"     मुंशी: {o.reply}   [{' | '.join(o.done)}]")
-        check("it searched memory", any("Searched memory" in d for d in o.done))
+        check(
+            "it worked it out or searched memory",
+            any("Searched memory" in d or "likely to pay" in d for d in o.done),
+        )
         check("and names Raju", "राजू" in (o.reply or "") or "Raju" in (o.reply or ""))
         o = brain.talk(con, SHOP, None, "इकबाल भाई का क्या सीन है?", now, chat)
         print(f"     मुंशी: {o.reply}   [{' | '.join(o.done)}]")
@@ -141,8 +165,25 @@ def main() -> None:
             "his card carries the note (the 10th)",
             any(t in (o.reply or "") for t in ("10", "दस")),
         )
+        o = brain.talk(con, SHOP, None, "पाटिल कब तक पैसे देगा?", now, chat)
+        print(f"     मुंशी: {o.reply}   [{' | '.join(o.done)}]")
+        check("asked when Patil pays, it read his card", "Opened Patil's card" in o.done)
+        check(
+            "and gives it as a guess",
+            "हिसाब" in (o.reply or "") or "लगता" in (o.reply or ""),
+        )
+        check(
+            "without a date that has passed (September)",
+            "सितंबर" not in (o.reply or "") or "आखिरी" in (o.reply or ""),
+        )
+        o = brain.talk(con, SHOP, None, "कौन सबसे ज़्यादा शिकायत करता है?", now, chat)
+        print(f"     मुंशी: {o.reply}   [{' | '.join(o.done)}]")
+        check(
+            "asked who complains, it names Salma",
+            "सलमा" in (o.reply or "") or "Salma" in (o.reply or ""),
+        )
 
-        print("\n5. Forget")
+        print("\n6. Forget")
         if promises:
             keeping.forget(con, SHOP, promises[0].id, clock.now())
             worker.unstore(con, memory)
