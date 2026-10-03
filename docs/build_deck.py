@@ -223,7 +223,7 @@ tf = tb(s, ML, I(1.55), I(7.0), I(4.6))
 para(tf, "BAHI", 70, WHITE, bold=True, first=True, line=0.95)
 para(tf, "Udhaar, confirmed by both sides.", 28, WHITE, bold=True, before=10,
      line=1.1)
-para(tf, "The customer scans the shop’s Paytm QR and chooses udhaar. The "
+para(tf, "The customer scans the shop’s udhaar QR at the counter. The "
          "shopkeeper says the amount to his Soundbox, and the customer confirms "
          "it on his own phone. Every night, an agent decides who actually needs "
          "a reminder.",
@@ -294,7 +294,7 @@ title(s, "The same book, now confirmed by both sides.")
 
 steps = [
     ("docs/screens/B0-scan.png", "He scans at the till",
-     "The shop’s Paytm QR. He taps “Take on udhaar”."),
+     "A separate udhaar QR, so paying customers never see it."),
     ("docs/screens/A2-speak.png", "The shopkeeper says the amount",
      "The scan says who. He says “do sau”, or types it."),
     ("docs/screens/B1-confirm.png", "Confirmed, right there",
@@ -589,7 +589,7 @@ LW = I(4.75)
 card(s, ML, TOP, LW, BOTTOM - TOP)
 tf = tb(s, ML + I(0.3), TOP + I(0.28), LW - I(0.6), I(0.4))
 para(tf, "The demo", 15, NAVY, bold=True, first=True)
-demo = ["A judge scans our QR and taps Udhaar.",
+demo = ["A judge scans our udhaar QR.",
         "The shopkeeper says the amount.",
         "The judge confirms on their own phone.",
         "Both books update, live.",
@@ -613,9 +613,9 @@ para(tb(s, RX + C1, TOP, RW - C1, I(0.3)), "HOW WE HANDLE IT", 9.5, CYAN_TX,
      bold=True, first=True, spc=1.0)
 rect(s, RX, TOP + I(0.34), RW, Pt(1.5), CYAN)
 risks = [
-    ("Speech mishears the amount",
-     "The amount is shown before sending; “Say it again” is one tap. No model "
-     "ever writes the number."),
+    ("Wrong amount, or wrong person",
+     "Both are shown before sending, and the customer must confirm, so a "
+     "mistake is never silent."),
     ("Venue wifi fails",
      "Deployed publicly, so the judge’s phone uses its own data. Speech is "
      "cached offline."),

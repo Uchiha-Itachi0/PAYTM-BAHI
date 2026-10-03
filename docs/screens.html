@@ -227,6 +227,13 @@ h2{font-size:clamp(22px,2.8vw,29px);font-weight:800;letter-spacing:-.025em;margi
 .or::before,.or::after{content:"";flex:1;height:1px;background:#b9d7e8}
 .pcard.choose{border:1.5px solid var(--pt-cyan)}
 .finec{font-size:11.5px;color:var(--pt-sub);text-align:center;line-height:1.5;font-weight:500;padding:0 12px}
+.row.pick{padding:9px 0}
+.radio{width:18px;height:18px;border-radius:50%;border:2px solid #c3cad3;flex:none}
+.row.pick.on .radio{border:5.5px solid var(--pt-cyan)}
+.dots{display:flex;gap:6px;justify-content:center;margin:18px 0 12px}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--pt-cyan);display:block}
+.dots i:nth-child(2){opacity:.6}.dots i:nth-child(3){opacity:.3}
+.textlink{text-align:center;font-size:14px;font-weight:800;color:#0077a8;padding:6px 0;letter-spacing:-.01em}
 .src{font-style:normal;font-weight:600;font-size:11px;color:var(--pt-sub);margin-left:5px}
 
 .tick{width:56px;height:56px;border-radius:50%;background:#e2f6ea;color:#00a550;display:grid;
@@ -403,30 +410,30 @@ footer b{color:var(--ink);font-weight:700}
     <div class="unit">
       <div class="phone">
         <div class="sbar"><span>9:38</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
-        <div class="hdr"><span class="bk">←</span><div><h3>Add udhaar</h3><p class="who">Sharma scanned just now</p></div></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Add udhaar</h3><p class="who">2 people at the counter</p></div></div>
         <div class="scroll">
           <div class="pcard tight">
-            <div class="row" style="padding:0;border:0"><div class="circ c-blue">S</div><div class="rmid"><div class="t">Sharma</div><div class="s">Room 19, B wing · 9:38 am</div></div><div class="rend"><div class="chip g" style="margin-top:0">Scanned</div></div></div>
+            <h5 style="margin-bottom:4px">At the counter</h5>
+            <div class="row pick on"><div class="circ c-blue">S</div><div class="rmid"><div class="t">Sharma</div><div class="s">Room 19, B wing · scanned 40s ago</div></div><span class="radio"></span></div>
+            <div class="row pick"><div class="circ c-pink">K</div><div class="rmid"><div class="t">Kavita</div><div class="s">New here · scanned 12s ago</div></div><span class="radio"></span></div>
           </div>
-          <div class="mic">
-            <div class="wave"><i style="height:11px"></i><i style="height:24px"></i><i style="height:34px"></i><i style="height:18px"></i><i style="height:29px"></i><i style="height:13px"></i><i style="height:22px"></i></div>
+          <div class="mic" style="padding:15px 15px 14px">
+            <div class="wave" style="height:26px;margin-bottom:8px"><i style="height:8px"></i><i style="height:18px"></i><i style="height:26px"></i><i style="height:14px"></i><i style="height:22px"></i><i style="height:10px"></i><i style="height:17px"></i></div>
             <div class="said">"Do sau"</div>
-            <div class="hint">Say the amount, or type it · Sarvam saaras:v4</div>
+            <div class="hint">Say the amount, or a name first: "Kavita, teen sau"</div>
           </div>
-          <div class="pcard">
-            <h5>Check it</h5>
-            <div class="kv"><span>Customer</span><span>Sharma<em class="src">from scan</em></span></div>
+          <div class="pcard tight">
+            <div class="kv"><span>For</span><span>Sharma<em class="src">picked</em></span></div>
             <div class="kv"><span>Amount</span><span>₹200<em class="src">from voice</em></span></div>
-            <div class="kv"><span>Date</span><span>22 Sep 2026</span></div>
           </div>
           <button class="btn navy">Send to Sharma</button>
           <div class="btnrow"><button class="btn out">Say it again</button><button class="btn out">Type it</button></div>
         </div>
       </div>
       <div class="cap">
-        <h4>A2 · He scanned, you say the amount</h4>
-        <p>The scan already says who, so the shopkeeper only says how much. The Soundbox plays a chime, never the customer's name out loud. For someone without a phone, he says "Sharma ko do sau" and the name is matched against his book.</p>
-        <p class="note">Amount parsed by rule from the transcript, never generated. Typing is always one tap away.</p>
+        <h4>A2 · Who's at the counter, then how much</h4>
+        <p>Everyone who scanned in the last three minutes is listed, oldest first, and the first is already picked. Tap someone else, or say the name first: it only has to match the two people standing there, not sixty in the book. Pick the wrong one and his phone asks him to confirm, so he says no.</p>
+        <p class="note">A scan records nothing and expires in 3 minutes. The Soundbox chimes; it never speaks a name.</p>
       </div>
     </div>
 
@@ -456,29 +463,22 @@ footer b{color:var(--ink);font-weight:700}
         <div class="sbar"><span>3:40</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
         <div class="hdr"><span class="bk">←</span><div><h3>Add a customer</h3><p class="who">For someone who can't scan</p></div></div>
         <div class="scroll">
-          <div class="pcard tight">
+          <div class="pcard">
             <div class="amtblk"><div class="lab">Mobile number or UPI ID</div></div>
-            <div class="search" style="margin:8px 0 0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span style="color:var(--pt-text);font-weight:700">98765 43210</span></div>
+            <div class="search" style="margin:9px 0 0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span style="color:var(--pt-text);font-weight:700">98765 43210</span></div>
           </div>
           <div class="pcard">
-            <h5>Found on Paytm</h5>
-            <div class="row" style="padding-top:0"><div class="circ c-blue">AS</div><div class="rmid"><div class="t">Ashok Sharma</div><div class="s">Name as registered on Paytm</div></div></div>
-            <div class="kv"><span>You call him</span><span>Sharma · Room 19</span></div>
-            <div style="height:12px"></div>
+            <div class="row" style="padding:0 0 16px;border:0"><div class="circ c-mint">RS</div><div class="rmid"><div class="t">Rukhsana Shaikh</div><div class="s">On Paytm</div></div></div>
             <button class="btn navy">Send invite</button>
-            <div class="finec" style="margin-top:9px">Nothing is recorded against him until he accepts.</div>
+            <div class="finec" style="margin-top:10px">He accepts it on his phone. Nothing is recorded until he does.</div>
           </div>
-          <div class="pcard">
-            <h5>No phone at all?</h5>
-            <div style="font-size:12.5px;color:var(--pt-sub);line-height:1.5;font-weight:500;margin-bottom:12px">Add him by name. It works like your notebook: no confirmation, no reminders.</div>
-            <button class="btn out">Add by name only</button>
-          </div>
+          <div class="textlink">No phone? Add by name only</div>
         </div>
       </div>
       <div class="cap">
         <h4>A4 · Adding someone who can't scan</h4>
-        <p>His number or UPI ID finds his Paytm account, the same lookup "To Mobile" already does. We keep the link to the account, not the number. And it sends an invite rather than attaching a debt, so nobody can put an entry on a stranger's phone.</p>
-        <p class="note">Invite, never attach. Name-only customers stay one-sided, exactly as the notebook is today.</p>
+        <p>His number or UPI ID finds his Paytm account, the same lookup "To Mobile" already does. We keep the link to the account, not the number. It sends an invite rather than attaching a debt, so nobody can put an entry on a stranger's phone.</p>
+        <p class="note">Invite, never attach. Name-only customers stay one-sided, like the notebook is today.</p>
       </div>
     </div>
 
@@ -496,28 +496,26 @@ footer b{color:var(--ink);font-weight:700}
     <div class="unit">
       <div class="phone">
         <div class="sbar"><span>9:38</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
-        <div class="hdr"><span class="bk">←</span><div><h3>Scanned</h3><p class="who">Paytm QR at the till</p></div></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Udhaar</h3><p class="who">Scanned the udhaar QR</p></div></div>
         <div class="scroll">
-          <div class="pcard" style="text-align:center;padding:20px 15px 18px">
+          <div class="pcard" style="text-align:center;padding:22px 16px 20px">
             <div class="circ c-blue" style="width:56px;height:56px;font-size:21px;margin:0 auto 10px">R</div>
             <div style="font-size:17px;font-weight:800;letter-spacing:-.02em">Ramesh Kirana Store</div>
             <div style="font-size:12px;color:var(--pt-sub);font-weight:500;margin-top:2px">Kurla West</div>
-            <div class="payamt">₹ <span>Enter amount</span></div>
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div style="font-size:15px;font-weight:800;letter-spacing:-.02em">Ramesh can see you're here</div>
+            <div style="font-size:12.5px;color:var(--pt-sub);font-weight:500;margin-top:4px;line-height:1.5">He'll enter the amount.<br>You'll confirm it on this screen.</div>
           </div>
-          <button class="btn navy">Pay</button>
-          <div class="or"><span>or</span></div>
-          <div class="pcard choose">
-            <div style="display:flex;gap:12px;align-items:center">
-              <div class="tile solid" style="width:46px;height:46px;margin:0;flex:none"><svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 012 2v16H8a2 2 0 01-2-2z"/><path d="M6 17a2 2 0 012-2h11"/><path d="M10 7h5M10 10h3"/></svg></div>
-              <div><div style="font-size:15px;font-weight:800;letter-spacing:-.02em">Take on udhaar</div><div style="font-size:12px;color:var(--pt-sub);font-weight:500;margin-top:2px;line-height:1.45">Ramesh says the amount. You confirm it here.</div></div>
-            </div>
+          <div class="pcard tight">
+            <div style="font-size:12.5px;line-height:1.5;font-weight:500;color:var(--pt-sub)"><b style="color:var(--pt-text);font-weight:800">New here?</b> Scanning adds you to Ramesh's udhaar book under your Paytm name. He never sees your number.</div>
           </div>
+          <button class="btn out">Cancel</button>
           <div class="finec">Only a chime plays at the counter. Your name shows on his screen, never out loud.</div>
         </div>
       </div>
       <div class="cap">
-        <h4>B0 · Scan, then choose</h4>
-        <p>The same Paytm QR he already pays with, with one new choice under Pay. Choosing udhaar makes the shopkeeper's Soundbox chime and puts his name on the shopkeeper's screen; the confirmation (B1) arrives seconds later.</p>
+        <h4>B0 · The udhaar QR</h4>
+        <p>A second, separate code beside the pay QR, so a customer who is only paying never sees udhaar. Scanning it just says "I'm at the counter": the shopkeeper's Soundbox chimes, and the confirmation (B1) arrives on this screen seconds later.</p>
         <p class="note">The scan answers "who", so the voice only has to answer "how much".</p>
       </div>
     </div>
