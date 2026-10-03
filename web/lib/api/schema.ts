@@ -329,7 +329,7 @@ export interface components {
              * Why
              * @enum {string}
              */
-            why: "who" | "nobody" | "not_found" | "several";
+            why: "who" | "nobody" | "several" | "maybe" | "not_found" | "not_said";
             /** Among */
             among: components["schemas"]["PersonOut"][];
         };
@@ -350,6 +350,21 @@ export interface components {
             outstanding_paise: number;
             /** Lines */
             lines: components["schemas"]["LineOut"][];
+        };
+        /**
+         * CheckOut
+         * @description One check our code made on the reading.
+         */
+        CheckOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "amount_said" | "amount_read" | "person_said" | "person_fits";
+            /** Ok */
+            ok: boolean;
+            /** Says */
+            says: string;
         };
         /** ClipOut */
         ClipOut: {
@@ -456,7 +471,8 @@ export interface components {
         };
         /**
          * HeardOut
-         * @description What was heard, and what the rules made of it. Nothing is recorded yet.
+         * @description What was heard, what read it, and what our checks made of it. Nothing is
+         *     recorded yet.
          */
         HeardOut: {
             /** Transcript */
@@ -466,6 +482,18 @@ export interface components {
              * @enum {string}
              */
             source: "typed" | "sarvam" | "sarvam_cached" | "clip_script";
+            /**
+             * Reader
+             * @enum {string}
+             */
+            reader: "sarvam" | "rules";
+            /** Fallback */
+            fallback: ("offline" | "no_answer") | null;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "udhaar" | "payment" | "unclear";
             /** Name */
             name: string | null;
             /** Amount Paise */
@@ -473,7 +501,9 @@ export interface components {
             /** Amount Words */
             amount_words: string | null;
             /** Problem */
-            problem: ("no_amount" | "unclear_amount") | null;
+            problem: ("no_amount" | "unclear_amount" | "amount_not_said" | "amount_mismatch" | "invented_customer") | null;
+            /** Checks */
+            checks: components["schemas"]["CheckOut"][];
             readback: components["schemas"]["ReadbackOut"] | null;
             /** Who */
             who: components["schemas"]["PickedOut"] | components["schemas"]["AskOut"];
@@ -539,6 +569,8 @@ export interface components {
             customer_id: string;
             /** Display Name */
             display_name: string;
+            /** Tag */
+            tag: string | null;
             /** Scan Id */
             scan_id: string | null;
         };
