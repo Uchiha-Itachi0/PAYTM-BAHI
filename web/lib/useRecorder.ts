@@ -39,6 +39,8 @@ const MIN_LEVEL = 0.012;
 export function useRecorder(
   onDone: (audio: Blob) => void,
   onNothing: () => void,
+  /** He has started speaking: a countdown waiting on his answer can stop. */
+  onSpeech?: () => void,
 ): {
   state: MicState;
   start: () => Promise<void>;
@@ -101,13 +103,14 @@ export function useRecorder(
       spoke = false;
       listener.onSpeech = () => {
         spoke = true;
+        onSpeech?.();
       };
       cleanup.current = listener.close;
     } else {
       const timer = setTimeout(stop, BLIND_MS);
       cleanup.current = () => clearTimeout(timer);
     }
-  }, [onDone, onNothing, stop]);
+  }, [onDone, onNothing, onSpeech, stop]);
 
   return { state, start, stop, cancel };
 }

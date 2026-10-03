@@ -97,38 +97,50 @@ make api       the service on :8000
 make web       the surfaces on :3000
 ```
 
-Everything still runs with the venue wifi off: the demo clips' transcripts are
-cached to disk, and with `SARVAM_OFFLINE` on (the default) our parser reads. The deployed build is what a judge's phone reaches
-over its own mobile data.
+The book, the scan-to-confirm loop and entering by hand run with the venue wifi
+off. The munshi needs Sarvam: set `SARVAM_OFFLINE=0` and `SARVAM_API_KEY` in
+`api/.env`. The deployed build is what a judge's phone reaches over its own mobile
+data.
 
-## Voice
+## The munshi: voice and chat
 
-The shopkeeper says "do sau", or "Anubhav Shukla ko do sau bees" when the
-customer isn't at the counter. Sarvam reads it, and our code checks every rupee:
+The shopkeeper talks or types to the munshi, the shop's bookkeeper as an agent:
+"बी विंग में जो रहते हैं उनके नाम दो सौ लिख दो", "दूध वाले भैया ने पाँच सौ दिए",
+"Sharma took goods for 200". The AI does the work, code keeps the book, and both
+people approve.
 
-- Sarvam's `saaras:v4` turns the audio into words, listening out for the names at
-  the counter and in the book.
-- Sarvam-105B reads the words: udhaar or payment, the words that state the amount,
-  and the words that name the person. It picks nobody.
-- `domain/check` holds that reading to the words: the amount words must be in the
-  transcript, and `parse` must read them as the same number (the number recorded
-  is ours, not the model's).
-- `domain/who` decides the person from the words that name or describe him, by
-  sound, in roman and Devanagari. A surname, a room number ("204 wale") or how the
-  shop describes him ("medical wale", "चाय टपरी वाले") picks one; "Anubhav" alone
-  asks "Kaunse Anubhav?"; a weak match is only offered. Which description words
-  tell customers apart comes from the book: a word more than three customers share
-  ("Room", "wing") is never used. No word list is written in the code.
-- `speak` puts the amount into words, and Sarvam's `bulbul:v3` says them back
-  ("दो सौ बीस रुपये", never a name); the entry goes after three seconds unless
-  cancelled, and the customer confirms on his own phone.
+- Sarvam's `saaras:v4` turns his voice into words, with the book's names as hints.
+- `sarvam-105b-conversations` (Sarvam's model for voice agents; thinking off, and
+  `sarvam-105b` asked too if it is slow) understands him and calls tools
+  (`munshi/tools.py`): `find_customer` searches the real book by the sound of a
+  name and the words of a description (`domain/find`), `counter` and
+  `customer_card` read it, and `propose_entry` puts a card on his screen.
+- When three or more customers fit, it asks "नाम बताऊँ, या आप बताएँगे?" and
+  reads names only if asked. It never says anyone's balance unless asked.
+- The card shows the amount as stored, not the munshi's sentence, with his words
+  under it. An ordinary entry goes after three seconds unless he says or taps no;
+  a name that only sounded close, ₹5,000 or more, or three times what the customer
+  usually takes waits for a clear हाँ.
+- Only his yes writes, through the same ledger as a typed entry: udhaar becomes an
+  entry, and जमा is split across the customer's open entries, oldest first. Then
+  the munshi says whether it reached the customer's phone, from what the book
+  reports. The customer still confirms on his own phone.
+- Every turn (his words, each tool call and result, each reply, and how long the
+  model took) is kept in `turns`, so any conversation can be traced.
 
-Tapping Add udhaar opens the mic straight away, and it stops by itself a second
-after he stops speaking.
+The munshi needs Sarvam. Offline, the screen's keypad and book still record by
+hand. Its replies are spoken in Sarvam's `bulbul:v3` voice (`shreya`).
 
-Offline, or when Sarvam-105B doesn't answer, `parse` reads the words instead and
-the same checks decide who. Nothing is sent by itself then: the amount and the
-person are filled in, and the shopkeeper taps Send.
+```
+make munshi-eval another model plays the shopkeeper with a hidden goal; scored on
+                 the entry the book would hold (live Sarvam, rolled back, costs credits)
+```
+
+## Voice before the munshi
+
+The V2 path is still in the code, though no longer on the screen: Sarvam-105B read
+the words, `domain/check` held its amount to the words, and `domain/who` decided
+the person. The numbers below measured that path.
 
 ```
 make voice-eval  the 1,338-recording test behind slide 4, replayed through today's checker

@@ -22,3 +22,5 @@ export type Heard = S["HeardOut"];
 export type Answer = S["AnswerOut"];
 export type HeardPerson = S["PersonOut"];
 export type Clip = S["ClipOut"];
+export type Munshi = S["MunshiOut"];
+export type MunshiCard = S["CardOut"];

@@ -399,6 +399,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/munshi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Talk Text
+         * @description He typed to the munshi.
+         */
+        post: operations["talk_text_shops__shop_id__munshi_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/munshi/voice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Talk Voice
+         * @description He spoke to the munshi. The book's names are Saaras's hints.
+         */
+        post: operations["talk_voice_shops__shop_id__munshi_voice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/yes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Card Yes
+         * @description He tapped हाँ, or the three-second countdown ran out. Saving twice is saving
+         *     once.
+         */
+        post: operations["card_yes_shops__shop_id__munshi__conversation_id__cards__draft_id__yes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/no": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Card No
+         * @description He tapped नहीं: the card goes, nothing is written.
+         */
+        post: operations["card_no_shops__shop_id__munshi__conversation_id__cards__draft_id__no_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/munshi/{conversation_id}/say/{turn_id}.wav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Say Reply
+         * @description The munshi's reply in Sarvam's voice (Bulbul, shreya). 503 when voice is
+         *     offline; the screen then shows the reply without saying it.
+         */
+        get: operations["say_reply_shops__shop_id__munshi__conversation_id__say__turn_id__wav_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -464,6 +566,16 @@ export interface components {
              */
             before: string;
         };
+        /** Body_talk_voice_shops__shop_id__munshi_voice_post */
+        Body_talk_voice_shops__shop_id__munshi_voice_post: {
+            /** Audio */
+            audio: string;
+            /**
+             * Conversation Id
+             * @default
+             */
+            conversation_id: string;
+        };
         /** BookOut */
         BookOut: {
             /** Customer Count */
@@ -476,6 +588,47 @@ export interface components {
             outstanding_paise: number;
             /** Lines */
             lines: components["schemas"]["LineOut"][];
+        };
+        /**
+         * CardOut
+         * @description The entry the munshi proposed, as the card shows it. The amount is the one
+         *     stored on the draft, never the munshi's sentence.
+         */
+        CardOut: {
+            /**
+             * Draft Id
+             * Format: uuid
+             */
+            draft_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Tag */
+            tag: string | null;
+            /** Amount Paise */
+            amount_paise: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "udhaar" | "payment";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "shown" | "saved" | "replaced" | "cancelled";
+            /** Reasons */
+            reasons: ("weak_match" | "large" | "unusual")[];
+            /** Spoken Text */
+            spoken_text: string | null;
+            /** Entry Id */
+            entry_id: string | null;
+            /** On Bahi */
+            on_bahi: boolean;
         };
         /**
          * CheckOut
@@ -682,6 +835,40 @@ export interface components {
              */
             chip: "on_rhythm" | "changed" | "not_confirmed" | "new";
             rhythm: components["schemas"]["RhythmOut"];
+        };
+        /**
+         * MunshiIn
+         * @description His words, typed. No conversation_id: a new conversation.
+         */
+        MunshiIn: {
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Text */
+            text: string;
+        };
+        /** MunshiOut */
+        MunshiOut: {
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /** Heard */
+            heard: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "typed" | "sarvam" | "sarvam_cached" | "clip_script" | "tap";
+            /** Reply */
+            reply: string | null;
+            /** Say Url */
+            say_url: string | null;
+            /** Done */
+            done: string[];
+            card: components["schemas"]["CardOut"] | null;
+            /** Finished */
+            finished: boolean;
         };
         /** PersonIn */
         PersonIn: {
@@ -1427,6 +1614,173 @@ export interface operations {
             header?: never;
             path: {
                 question: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    talk_text_shops__shop_id__munshi_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MunshiIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MunshiOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    talk_voice_shops__shop_id__munshi_voice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_talk_voice_shops__shop_id__munshi_voice_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MunshiOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    card_yes_shops__shop_id__munshi__conversation_id__cards__draft_id__yes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                conversation_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MunshiOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    card_no_shops__shop_id__munshi__conversation_id__cards__draft_id__no_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                conversation_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MunshiOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    say_reply_shops__shop_id__munshi__conversation_id__say__turn_id__wav_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                conversation_id: string;
+                turn_id: string;
             };
             cookie?: never;
         };
