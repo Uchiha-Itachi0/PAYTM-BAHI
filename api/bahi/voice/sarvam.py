@@ -39,6 +39,12 @@ class SarvamError(Exception):
     """Sarvam could not be reached, or refused the request."""
 
 
+def media_type(content_type: str) -> str:
+    """ "audio/webm;codecs=opus" -> "audio/webm". Chrome's recorder adds the codec,
+    and Sarvam refuses any type with a parameter on it, though it takes the audio."""
+    return content_type.split(";", 1)[0].strip().lower() or "application/octet-stream"
+
+
 def model() -> str:
     return os.environ.get("SARVAM_STT_MODEL", "saaras:v4")
 
@@ -63,7 +69,7 @@ def transcribe(
             URL,
             headers={"api-subscription-key": key},
             data=form,
-            files={"file": ("speech", audio, content_type or "application/octet-stream")},
+            files={"file": ("speech", audio, media_type(content_type))},
             timeout=TIMEOUT_S,
         )
     except httpx.HTTPError as e:

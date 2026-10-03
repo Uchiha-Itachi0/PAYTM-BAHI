@@ -13,6 +13,7 @@ from collections.abc import Iterator
 from datetime import timedelta
 from typing import Any
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -302,6 +303,46 @@ def test_a_new_recording_with_voice_offline_is_refused_not_guessed(
     )
     assert r.status_code == 503
     assert "Type the amount" in r.json()["detail"]
+
+
+def test_a_browser_recording_reaches_sarvam_as_a_type_it_takes(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Chrome records "audio/webm;codecs=opus"; Sarvam refuses the ";codecs"."""
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    sent: list[str] = []
+
+    def fake_post(url: str, **kw: Any) -> Any:
+        if url != sarvam.URL:  # the reading: unreachable here, so our parser reads
+            raise httpx.ConnectError("faked")
+        sent.append(kw["files"]["file"][2])
+        return httpx.Response(200, json={"transcript": "Sharma ko do sau"})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    r = api.post(
+        f"/shops/{SHOP}/voice",
+        files={"audio": ("speech.webm", b"new audio", "audio/webm;codecs=opus")},
+    )
+    assert r.status_code == 200, r.text
+    assert sent == ["audio/webm"]
+
+
+def test_when_sarvam_refuses_the_screen_gets_a_plain_sentence(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    refusal = httpx.Response(400, json={"error": {"message": "Invalid file type"}})
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: refusal)
+    r = api.post(
+        f"/shops/{SHOP}/voice", files={"audio": ("x.webm", b"new audio", "audio/webm")}
+    )
+    assert r.status_code == 502
+    assert (
+        r.json()["detail"]
+        == "Sarvam couldn't hear that just now. Say it again, or type it."
+    )
 
 
 def test_the_demo_clips_are_listed(api: TestClient) -> None:
