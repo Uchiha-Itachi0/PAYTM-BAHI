@@ -161,7 +161,7 @@ def test_a_card_then_a_tap_writes_the_entry_and_says_it_was_sent(
     assert card["status"] == "shown" and card["reasons"] == []
     assert card["spoken_text"] == "शर्मा जी को दो सौ लिख दो"
     assert out["reply"].endswith("पक्का?")
-    assert out["say_url"].endswith(".wav")
+    assert ".wav?lang=hi-IN" in out["say_url"]
     assert sharmas_entries(tx) == before, "a card is not an entry"
 
     model.then(reply("लिख दिया और शर्मा जी के फोन पर भेज दिया।"))
@@ -807,7 +807,9 @@ def voice_on(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> list[str]:
     monkeypatch.setattr(said, "LIVE", tmp_path)
     asked: list[str] = []
 
-    def speak(text: str, *, key: str, voice: str, timeout: float) -> bytes:
+    def speak(
+        text: str, *, key: str, voice: str, timeout: float, language: str = "hi-IN"
+    ) -> bytes:
         assert timeout == sarvam.SENTENCE_TTS_TIMEOUT_S
         asked.append(text)
         time.sleep(0.05)
@@ -1150,3 +1152,13 @@ def test_a_misheard_name_comes_back_weak() -> None:
 def test_nobody_fits_says_so() -> None:
     s = find(BOOK, "रमेश", None)
     assert s.found == () and s.note and "nobody" in s.note
+
+
+def test_the_reply_is_said_in_its_own_language() -> None:
+    from bahi.voice import language_of
+
+    assert language_of("शर्मा जी, दो सौ रुपये उधार, पक्का?") == "hi-IN"
+    assert language_of("शर्मा, दोनशे रुपये उधार, नक्की?", "mr-IN") == "mr-IN"
+    assert language_of("சர்மா, இருநூறு ரூபாய், சரியா?") == "ta-IN"
+    assert language_of("Sharma, two hundred rupees udhaar, okay?") == "en-IN"
+    assert language_of("₹200") == "hi-IN"

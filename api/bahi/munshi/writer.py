@@ -87,6 +87,9 @@ udhaar (goods on credit) with it. The shop has decided to send it; you only writ
   deadline, no count of days, no "by Friday".
 - Say it's fine to tell the shop if there is any difficulty.
 - One or two sentences, under 200 characters.
+- Start with their name as given. No religious or community greeting (no Assalamu
+  Alaikum, Ram Ram, Jai Shri Krishna, Sat Sri Akal): never guess anyone's faith or
+  community from a name.
 - Write in the language and script the customer uses in the chat. If there is no
   chat, write Hinglish in English letters.
 

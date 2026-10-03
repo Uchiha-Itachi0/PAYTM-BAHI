@@ -16,7 +16,9 @@ from bahi import clock
 from bahi.service import tonight
 from bahi.service.deps import Con
 from bahi.service.models import (
+    PauseIn,
     PlanOut,
+    ReminderEditIn,
     ReminderOut,
     RhythmOut,
     SentOut,
@@ -105,6 +107,24 @@ def send_due(shop_id: str, con: Con) -> SentOut:
 def send_now(shop_id: str, con: Con) -> SentOut:
     """The demo's fast-forward: every planned reminder goes now."""
     return SentOut(sent=len(tonight.send(con, shop_id, clock.now(), all_now=True)))
+
+
+@router.post("/shops/{shop_id}/reminders/{reminder_id}")
+def rewrite(
+    shop_id: str, reminder_id: str, body: ReminderEditIn, con: Con
+) -> ReminderOut:
+    """His own words for tomorrow's reminder, or his own hour for it."""
+    out = _reminder(
+        tonight.rewrite(con, shop_id, reminder_id, body=body.body, at=body.at)
+    )
+    assert out is not None
+    return out
+
+
+@router.post("/shops/{shop_id}/customers/{customer_id}/pause", status_code=204)
+def pause(shop_id: str, customer_id: str, body: PauseIn, con: Con) -> None:
+    """No reminders to him until the day he chose, and tomorrow's stopped."""
+    tonight.pause(con, shop_id, customer_id, body.until, clock.now())
 
 
 @router.post("/shops/{shop_id}/reminders/{reminder_id}/stop")

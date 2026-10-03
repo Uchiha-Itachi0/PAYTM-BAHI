@@ -370,7 +370,7 @@ def test_a_spoken_answer_to_how_much_is_read_with_what_came_before(
 ) -> None:
     monkeypatch.setenv("SARVAM_OFFLINE", "0")
     monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
-    monkeypatch.setattr(sarvam, "transcribe", lambda *a, **kw: "दो सौ रुपये")
+    monkeypatch.setattr(sarvam, "heard", lambda *a, **kw: ("दो सौ रुपये", "hi-IN"))
     monkeypatch.setattr(
         sarvam,
         "chat_json",
@@ -454,11 +454,18 @@ def test_a_spoken_answer_is_heard_with_the_names_offered(
     four = anubhavs(api)
     listened: list[list[str]] = []
 
-    def fake(audio: bytes, content_type: str, *, key: str, keyterms: Any = ()) -> str:
+    def fake(
+        audio: bytes,
+        content_type: str,
+        *,
+        key: str,
+        keyterms: Any = (),
+        language: str | None = None,
+    ) -> tuple[str, str | None]:
         listened.append(list(keyterms))
-        return "शुक्ला वाले"
+        return "शुक्ला वाले", "hi-IN"
 
-    monkeypatch.setattr(sarvam, "transcribe", fake)
+    monkeypatch.setattr(sarvam, "heard", fake)
     r = api.post(
         f"/shops/{SHOP}/answer/voice",
         files={"audio": ("a.webm", b"answer", "audio/webm")},

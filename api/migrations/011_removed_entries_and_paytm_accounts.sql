@@ -66,3 +66,10 @@ CREATE TABLE paytm.accounts (
 );
 -- As in 010: only the API, which owns the tables, reads them.
 ALTER TABLE paytm.accounts ENABLE ROW LEVEL SECURITY;
+
+
+-- Tomorrow's reminder, in the shopkeeper's own words when he rewrites it.
+ALTER TABLE reminders
+    DROP CONSTRAINT reminders_written_check,
+    ADD CONSTRAINT reminders_written_check CHECK (
+        written IN ('munshi', 'words', 'shop'));

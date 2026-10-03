@@ -10,7 +10,7 @@ purity test needs no exceptions.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Literal
 from uuid import UUID
 
@@ -700,8 +700,21 @@ class ReminderOut(BaseModel):
     send_at: datetime
     body: str
     #: munshi: Sarvam's model wrote it, and it passed our checks. words: ours.
-    written: Literal["munshi", "words"]
+    #: shop: the shopkeeper rewrote it.
+    written: Literal["munshi", "words", "shop"]
     status: Literal["planned", "stopped", "sent"]
+
+
+class ReminderEditIn(BaseModel):
+    """His own words for it, or his own hour (HH:MM, IST), or both."""
+
+    body: str | None = Field(default=None, min_length=1, max_length=300)
+    at: time | None = None
+
+
+class PauseIn(BaseModel):
+    #: The last day with no reminder.
+    until: date
 
 
 class PlanOut(BaseModel):

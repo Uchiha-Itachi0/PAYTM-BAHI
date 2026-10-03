@@ -181,6 +181,36 @@ def test_a_stopped_reminder_never_goes(api: TestClient) -> None:
     assert not [m for m in thread["messages"] if m["kind"] == "reminder"]
 
 
+def test_he_rewrites_a_reminder_and_picks_its_hour(api: TestClient) -> None:
+    patil = sending(api.post(f"/shops/{SHOP}/tonight").json())["Patil"]["reminder"]
+    words = "Patil ji, jab ho sake tab aa jana."
+    r = api.post(
+        f"/shops/{SHOP}/reminders/{patil['id']}", json={"body": words, "at": "18:30"}
+    )
+    assert r.status_code == 200, r.text
+    assert (r.json()["body"], r.json()["written"]) == (words, "shop")
+    assert r.json()["send_at"].startswith("2026-10-04T18:30")
+    # Never at night, whoever sets the hour.
+    late = api.post(f"/shops/{SHOP}/reminders/{patil['id']}", json={"at": "23:00"})
+    assert late.status_code == 409
+    api.post(f"/shops/{SHOP}/tonight/send-now")
+    thread = api.get(f"/shops/{SHOP}/customers/{PATIL}/thread").json()
+    sent = [m["body"] for m in thread["messages"] if m["kind"] == "reminder"]
+    assert sent == [words]
+
+
+def test_a_pause_holds_him_and_stops_tomorrows(api: TestClient) -> None:
+    patil = sending(api.post(f"/shops/{SHOP}/tonight").json())["Patil"]["reminder"]
+    r = api.post(f"/shops/{SHOP}/customers/{PATIL}/pause", json={"until": "2026-10-20"})
+    assert r.status_code == 204, r.text
+    out = api.get(f"/shops/{SHOP}/tonight").json()
+    p = next(p for p in out["plans"] if p["display_name"] == "Patil")
+    assert (p["send"], p["why"]) == (False, "asked_to_wait")
+    assert p["reminder"]["id"] == patil["id"] and p["reminder"]["status"] == "stopped"
+    far = api.post(f"/shops/{SHOP}/customers/{PATIL}/pause", json={"until": "2027-06-01"})
+    assert far.status_code == 409, "three months at most, like any wait"
+
+
 def test_send_now_posts_it_in_his_thread_once(api: TestClient) -> None:
     api.post(f"/shops/{SHOP}/tonight")
     assert api.post(f"/shops/{SHOP}/tonight/send-now").json() == {"sent": 4}

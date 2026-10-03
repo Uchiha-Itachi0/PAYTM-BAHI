@@ -98,6 +98,18 @@ def set_status(
     return row is not None
 
 
+def rewrite(
+    con: Conn, reminder_id: str, body: str, send_at: datetime, written: str
+) -> bool:
+    """New words or a new hour for a reminder not yet gone. False if it has."""
+    row = con.execute(
+        "UPDATE reminders SET body = %s, send_at = %s, written = %s "
+        "WHERE id = %s AND status <> 'sent' RETURNING id",
+        (body, send_at, written, reminder_id),
+    ).fetchone()
+    return row is not None
+
+
 def mark_sent(con: Conn, reminder_id: str, message_id: str) -> bool:
     """It went out as this message. Once: a second send finds it sent."""
     row = con.execute(
