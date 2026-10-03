@@ -1,9 +1,11 @@
 # BAHI — the udhaar book both sides can see
 
-A kirana shopkeeper records credit by speaking to his Soundbox. The customer
-confirms it on his own phone, sees his own balance across every shop he owes,
-and clears it in one tap. Every night the agent works out, per person, when a
-reminder should go — and, far more often, when it should not.
+At the counter, the customer scans the shop's **udhaar QR**, a separate code
+beside the pay QR. The shopkeeper's Soundbox chimes, and he says the amount
+("do sau") or types it. The customer confirms it on the phone already in his
+hand, sees what he owes across every shop, and clears it in one tap. Every night
+an agent works out, per person, when a reminder should go, and far more often,
+when it should not.
 
 Built for the **Paytm Build for India AI Hackathon, Mumbai, 3 October 2026**,
 Track 2 (AI-Powered Financial Journeys).
@@ -15,71 +17,91 @@ Tickets: [BIT-8 backend](https://linear.app/bitzlab/issue/BIT-8) ·
 
 ## The problem
 
-About 1.3 crore kirana shops in India run a credit book by the till. It is
-written by one person, held by one person, and read by one person. The other
-party to every entry has no copy.
+The udhaar book by the till is written by one person, held by one person and
+read by one person. The other party to every entry has no copy.
 
-So the shopkeeper cannot tell who is about to pay from who is drifting away,
-and treats them identically. And the customer cannot see his own total, holds
-no evidence if the number is wrong, and gets asked for money in front of other
-customers — because embarrassment is the only enforcement anyone has built.
+So the shopkeeper cannot tell who is about to pay from who is drifting away, and
+treats them the same. And the customer cannot see his own total, has no proof if
+the number is wrong, and gets asked for money in front of other customers.
+Ledger apps digitised the shopkeeper's half; the customer still gets an SMS.
 
-## The one rule
+## The two rules the code keeps
 
-**No language model ever produces a number.**
+**No AI model ever produces a number.** The amount is parsed by rule from the
+speech transcript. Every balance, gap and reminder day is plain Python in
+`api/bahi/domain`, and a test fails the build if that package imports anything
+outside the standard library.
 
-The amount is parsed by rule from the speech transcript. The rhythm, the gap,
-the reminder day, every balance — deterministic Python. The model writes prose
-around figures it did not compute, and nothing else. This must be
-demonstrable in ten seconds on stage.
+**The system never guesses who.** With one person at the counter, an amount is
+enough. With several, the shopkeeper says the name or taps; the Soundbox asks
+"kiske liye?" rather than picking by queue order.
 
 ## The four rules we built in
 
-Recording someone's debt and then reminding them about it walks into four
-separate Indian statutes. Each one became a single implementation constraint,
-enforced in the schema and the API rather than in the UI — a UI that merely
-behaves well is a styling choice.
+Recording someone's debt and then reminding them about it runs into four Indian
+laws. Each became one constraint, enforced by the database and the API rather
+than by the screens.
 
-| | Rule | Where it lives |
-|---|---|---|
-| **1** | **Acknowledge, never promise.** The button says "I owe ₹200", never "I'll pay by Friday". | No due-date field on the acknowledgment record. IT Act 2000 s.4 recognises an acknowledgment; a promise to pay a fixed sum is a demand promissory note, First Schedule entry 1, which sits outside the Act entirely. |
-| **2** | **Never a rupee above the price.** | No fee, interest or charge column anywhere in the schema. All four state Money-Lenders Acts define a loan as an advance "at interest"; one ₹10 late fee makes the shopkeeper an unlicensed money-lender in Karnataka and Delhi. |
-| **3** | **Let debts die.** | `claimable_until` = last acknowledgment + 3 years. The scheduler stops prompting before the clock runs out, and the entry is marked expired to both sides. Limitation Act s.18 restarts a fresh three years on every acknowledgment, with no cap — an app that keeps prompting makes a ₹200 debt legally immortal. The paper diary let it die. |
-| **4** | **Never shame, never charge.** | No demand endpoint for the merchant, no defaulter list, no shared blacklist, no commercial payload on a reminder. CCPA's "nagging" needs repetition *and* commercial gain; BNS s.308 Illustration (a) makes threatening exposure to extract payment the textbook case of extortion. The customer gets a pay action; the shopkeeper gets a text field. |
+| | Rule | How it is enforced | Why |
+|---|---|---|---|
+| **1** | **Acknowledge, never promise.** The button says "Yes, I owe ₹200", never "I'll pay by Friday". | `acknowledgments` has no due-date column, keeps the exact wording shown, and allows one row per entry. | A dated promise to pay can be a promissory note, which the IT Act does not cover (IT Act 2000, s.1(4) and First Schedule). |
+| **2** | **Never a rupee above the price.** | No fee, interest or charge column anywhere; a test asks Postgres and fails if one appears. | State money-lending Acts define a loan by the interest it carries (e.g. Karnataka Money Lenders Act 1961, s.2(9)). |
+| **3** | **Let debts die.** | Expiry is computed: three years from the sale, restarted once by the customer's confirmation. The database cannot hold a second confirmation, so the app cannot keep a debt alive by asking again. | Each written acknowledgment restarts the limitation period (Limitation Act 1963, s.18). |
+| **4** | **Never shame, never charge.** | A message has no amount column; only people can type, and only BAHI posts reminders. No defaulter list. The Soundbox never says a name. | Public "defaulter" labels risk defamation (BNS 2023, s.356); repeated nudges for gain are "nagging" (CCPA Dark Patterns Guidelines 2023). |
 
-Regulatory position: RBI's Digital Lending Directions 2025 para 3 bind
-Regulated Entities only, and an LSP is "an agent of a RE" — a kirana
-shopkeeper is not one. CICRA does not reach us either, because "credit
-information" under s.2(d) is defined by reference to credit granted *by a
-credit institution*. **Record it, never fund it** — the moment the platform
-finances the udhaar, CICRA s.2(f)(vi) flips the perimeter.
+**Record it, never fund it.** RBI's digital lending rules bind regulated
+lenders and their agents; a shopkeeper giving his own trade credit is neither.
+If the platform ever financed the udhaar, that could change.
 
 ## Layout
 
 ```
-api/          FastAPI + Postgres. Owns the ledger and every figure.
-  bahi/       the service
-  data/       schema, migrations, seed generator
+api/
+  migrations/     the schema, as plain numbered SQL
+  bahi/domain/    pure rules: money, rhythm, limitation, the book. stdlib only.
+  bahi/store/     the only code that speaks SQL. Rows in, domain objects out.
+  data/           migrate, seed, contract, check
   tests/
-web/          Next.js. Two mobile-first surfaces, merchant and customer.
-docs/         the deck, the canvas, the screens
+contract/         shop.json, generated from the seed for the frontend
+web/              Next.js. Two mobile-first surfaces, merchant and customer.
+docs/             the deck, the screens, and the scripts that build them
 ```
+
+## The data model
+
+Eight tables. What each one is for, and what is deliberately missing, is written
+at the top of each table in `api/migrations/001_init.sql`.
+
+| Table | One row is |
+|---|---|
+| `shops` | a kirana |
+| `customers` | a person *at one shop*, linked to a Paytm account, invited, or kept by name only |
+| `entries` | one udhaar; the amount never changes after it is written |
+| `acknowledgments` | the customer's "Yes, I owe ₹200", at most one per entry |
+| `repayments` | a payment against a named entry |
+| `threads` | one conversation per shopkeeper and customer |
+| `messages` | one bubble; no amount column |
+| `scans` | someone at the counter, waiting for three minutes |
+
+Balances, expiry, payment gaps and tonight's decisions are computed, never
+stored. Money is `bigint` paise. We store no phone numbers.
 
 ## Running it
 
 ```
-make db        drop, migrate, seed — one shop, 60 udhaar customers, 6 months
+make db        create, migrate and seed; writes contract/shop.json
+make db-check  read the seed back: the book, the cast, everyone's usual gap
+make check     ruff, ruff format, mypy strict, pytest
 make api       the service on :8000
 make web       the surfaces on :3000
-make check     ruff, mypy strict, pytest
 ```
 
-Everything runs with the venue wifi off: Sarvam responses are cached to disk
-and `SARVAM_OFFLINE` defaults on. The deployed build is what a judge's phone
-reaches over its own mobile data.
+Everything runs with the venue wifi off: speech responses are cached to disk and
+`SARVAM_OFFLINE` defaults on. The deployed build is what a judge's phone reaches
+over its own mobile data.
 
 ## Data
 
-All figures are synthetic, generated for one seeded shop, and labelled as such
-on every screen. Paytm does not publish udhaar volume and neither does anyone
-else — we looked.
+Every shop, customer and amount is synthetic, generated for one seeded shop from
+a fixed seed, and labelled as such on every screen. `make db` builds the same
+database every time.

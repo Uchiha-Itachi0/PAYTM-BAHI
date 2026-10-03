@@ -27,9 +27,11 @@ help:
 # Database
 # ---------------------------------------------------------------------------
 
-# Drops the schema and rebuilds from scratch. Safe by design: the seed is
-# deterministic, so there is never anything in here worth preserving.
+# Drops the schema and rebuilds from scratch, then writes contract/shop.json from
+# what it built. Safe by design: the seed is deterministic, so there is never
+# anything in here worth preserving. Creates the database on a fresh machine.
 db:
+	@createdb bahi 2>/dev/null || true
 	cd api && uv run python -m data.migrate --reset
 	cd api && uv run python -m data.generate
 
