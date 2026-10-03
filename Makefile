@@ -18,7 +18,7 @@ help:
 	@echo "api          the service on :8000"
 	@echo "web          the two surfaces on :3000"
 	@echo ""
-	@echo "voice        render the demo lines to disk. needs SARVAM_API_KEY"
+	@echo "voice        render the demo clips; with SARVAM_API_KEY, Sarvam transcribes them"
 	@echo "voice-list   what is already in the offline cache"
 	@echo ""
 	@echo "check        ruff, ruff format, mypy strict, pytest"

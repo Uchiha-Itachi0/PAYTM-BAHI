@@ -101,6 +101,28 @@ Everything runs with the venue wifi off: speech responses are cached to disk and
 `SARVAM_OFFLINE` defaults on. The deployed build is what a judge's phone reaches
 over its own mobile data.
 
+## Voice
+
+The shopkeeper says "do sau", or "Sharma ko dhaai sau" when the customer isn't at
+the counter. Sarvam turns the audio into words; everything after that is rules in
+`api/bahi/domain`, not a model:
+
+- `parse` reads the amount and the name (Hinglish, Devanagari, English, digits).
+  Two amounts in one sentence, or a malformed one, is a question, never a guess.
+- `resolve` picks the only person waiting, or the one whose name was said
+  (counter first, then the book), or asks "kiske liye?".
+- `speak` says the amount back; the entry goes after three seconds unless
+  cancelled. A test reads every readback up to ₹1 lakh back to the same amount.
+
+```
+make voice       render the demo clips; with SARVAM_API_KEY in api/.env, Sarvam transcribes them
+make voice-list  what the offline cache holds, and where each transcript came from
+```
+
+Without a key the mic says voice is offline; typing the words and the demo clips
+still work. Until `make voice` runs with a key, a clip's cached "transcript" is
+the line it was made from, and the screen says so.
+
 ## Data
 
 Every shop, customer and amount is synthetic, generated for one seeded shop from

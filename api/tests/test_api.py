@@ -147,6 +147,15 @@ def test_he_can_walk_away(api: TestClient) -> None:
     assert record(api, scan_id=joined["scan_id"], amount_paise=20000).status_code == 409
 
 
+def test_scanning_again_while_waiting_is_the_same_visit(api: TestClient) -> None:
+    """His phone reloaded the page: the counter still lists him once."""
+    person, first = join(api)
+    again = api.post(f"/join/{SHOP}", json={"person_id": person})
+    assert again.json()["scan_id"] == first["scan_id"]
+    waiting = api.get(f"/shops/{SHOP}/counter").json()["waiting"]
+    assert [w["scan_id"] for w in waiting] == [first["scan_id"]]
+
+
 def test_nothing_is_recorded_against_an_invitation(api: TestClient) -> None:
     r = record(api, customer_id=RUKHSANA, amount_paise=20000)
     assert r.status_code == 409 and "accepted" in r.json()["detail"]
@@ -193,3 +202,115 @@ def test_an_invited_customer_who_scans_has_said_yes(api: TestClient, tx: db.Conn
     r = api.post(f"/join/{SHOP}", json={"person_id": person})
     assert r.status_code == 201 and r.json()["customer_id"] == RUKHSANA
     assert record(api, scan_id=r.json()["scan_id"], amount_paise=5000).status_code == 201
+
+
+# ── voice ────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Voice as it runs on the day: no key, Sarvam switched off."""
+    monkeypatch.setenv("SARVAM_OFFLINE", "1")
+    monkeypatch.delenv("SARVAM_API_KEY", raising=False)
+
+
+def hear(api: TestClient, text: str) -> Any:
+    r = api.post(f"/shops/{SHOP}/heard", json={"text": text})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_with_one_person_waiting_the_amount_is_enough(api: TestClient) -> None:
+    _, joined = join(api)
+    h = hear(api, "do sau")
+    assert h["amount_paise"] == 20000
+    assert h["readback"] == {"roman": "do sau", "devanagari": "दो सौ"}
+    assert h["who"]["kind"] == "picked" and h["who"]["how"] == "only_one"
+    assert h["who"]["person"]["scan_id"] == joined["scan_id"]
+
+
+def test_with_two_waiting_an_amount_alone_asks_who(api: TestClient) -> None:
+    join(api, "Kavita")
+    join(api, "Ravi")
+    h = hear(api, "do sau")
+    assert h["amount_paise"] == 20000
+    assert h["who"]["kind"] == "ask" and h["who"]["why"] == "who"
+    assert sorted(p["display_name"] for p in h["who"]["among"]) == ["Kavita", "Ravi"]
+
+
+def test_with_two_waiting_the_name_picks_one(api: TestClient) -> None:
+    _, kavita = join(api, "Kavita")
+    join(api, "Ravi")
+    h = hear(api, "Kavita, teen sau")
+    assert h["who"]["how"] == "at_counter"
+    assert h["who"]["person"]["scan_id"] == kavita["scan_id"]
+
+
+def test_a_name_not_at_the_counter_is_found_in_the_book(api: TestClient) -> None:
+    h = hear(api, "Sharma ko dhaai sau udhaar")
+    assert h["amount_paise"] == 25000
+    assert h["who"]["how"] == "in_book"
+    assert h["who"]["person"] == {
+        "customer_id": SHARMA,
+        "display_name": "Sharma",
+        "scan_id": None,
+    }
+
+
+def test_an_invited_customer_is_never_picked(api: TestClient) -> None:
+    h = hear(api, "Rukhsana ko do sau")
+    assert h["who"] == {"kind": "ask", "why": "not_found", "among": []}
+
+
+def test_hearing_records_nothing(api: TestClient, tx: db.Conn) -> None:
+    before = tx.execute("SELECT count(*) FROM entries").fetchone()
+    hear(api, "Sharma ko do sau")
+    assert tx.execute("SELECT count(*) FROM entries").fetchone() == before
+
+
+def test_what_was_heard_records_like_anything_typed(api: TestClient) -> None:
+    _, joined = join(api)
+    h = hear(api, "saade teen sau de do")
+    person = h["who"]["person"]
+    r = record(
+        api,
+        scan_id=person["scan_id"],
+        amount_paise=h["amount_paise"],
+        spoken_text=h["transcript"],
+    )
+    assert r.status_code == 201
+    assert (r.json()["amount_paise"], r.json()["spoken_text"]) == (
+        35000,
+        "saade teen sau de do",
+    )
+
+
+@pytest.mark.usefixtures("offline")
+def test_a_demo_clip_is_heard_with_the_wifi_off(api: TestClient) -> None:
+    join(api)
+    wav = api.get("/voice/clips/do-sau.wav")
+    assert wav.status_code == 200 and wav.headers["content-type"] == "audio/wav"
+    r = api.post(
+        f"/shops/{SHOP}/voice", files={"audio": ("clip.wav", wav.content, "audio/wav")}
+    )
+    assert r.status_code == 200, r.text
+    h = r.json()
+    assert h["source"] in {"clip_script", "sarvam_cached"}
+    assert h["amount_paise"] == 20000 and h["who"]["how"] == "only_one"
+
+
+@pytest.mark.usefixtures("offline")
+def test_a_new_recording_with_voice_offline_is_refused_not_guessed(
+    api: TestClient,
+) -> None:
+    r = api.post(
+        f"/shops/{SHOP}/voice",
+        files={"audio": ("x.webm", b"not heard before", "audio/webm")},
+    )
+    assert r.status_code == 503
+    assert "Type the amount" in r.json()["detail"]
+
+
+def test_the_demo_clips_are_listed(api: TestClient) -> None:
+    slugs = [c["slug"] for c in api.get("/voice/clips").json()]
+    assert "do-sau" in slugs and "sharma-dhaai-sau" in slugs

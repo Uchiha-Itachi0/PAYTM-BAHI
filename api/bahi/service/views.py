@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 from bahi.domain.book import Book, Line
+from bahi.domain.resolve import Person, Picked
+from bahi.domain.speak import say
 from bahi.domain.wording import button
+from bahi.service.ledger import Hearing
 from bahi.service.models import (
+    AskOut,
     BookOut,
     EntryOut,
+    HeardOut,
+    HeardSource,
     LineOut,
+    PersonOut,
+    PickedOut,
+    ReadbackOut,
     RhythmOut,
     ShopBookOut,
     ShopOut,
@@ -66,4 +75,36 @@ def entry_out(e: EntryRef) -> EntryOut:
         corrects_entry_id=e.corrects_entry_id,
         acknowledged_at=e.acknowledged_at,
         button=button(e.amount_paise),
+    )
+
+
+def heard_out(hearing: Hearing, transcript: str, source: HeardSource) -> HeardOut:
+    h = hearing.heard
+
+    def person(p: Person) -> PersonOut:
+        return PersonOut(
+            customer_id=p.ref, display_name=p.name, scan_id=hearing.scans.get(p.ref)
+        )
+
+    who = hearing.who
+    readback = None
+    if h.amount_paise is not None:
+        try:
+            said = say(h.amount_paise)
+            readback = ReadbackOut(roman=said.roman, devanagari=said.devanagari)
+        except ValueError:
+            readback = None  # beyond what is said aloud; the figure still shows
+    return HeardOut(
+        transcript=transcript,
+        source=source,
+        name=h.name,
+        amount_paise=h.amount_paise,
+        amount_words=h.amount_words,
+        problem=h.problem,
+        readback=readback,
+        who=(
+            PickedOut(how=who.how, person=person(who.person))
+            if isinstance(who, Picked)
+            else AskOut(why=who.why, among=[person(p) for p in who.among])
+        ),
     )
