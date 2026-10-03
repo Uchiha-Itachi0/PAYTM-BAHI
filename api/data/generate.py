@@ -28,13 +28,22 @@ from __future__ import annotations
 import random
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
-from typing import Any
 
 from bahi.domain.money import rupees
 from data import db
 from data.personas import CAST, CROWD, Open, Persona
+from data.rows import (
+    AcknowledgmentRow,
+    CustomerRow,
+    EntryRow,
+    MessageRow,
+    RepaymentRow,
+    ShopRow,
+    ThreadRow,
+    insert,
+)
 from data.world import HOME, SEED, SHOPS, START, TODAY, at, uid
 
 #: The usual gap for a generated customer is drawn from this, in days. Weighted
@@ -48,18 +57,18 @@ CROWD_OWING = 27
 
 NOTES = (None,) * 7 + ("Atta", "Doodh", "Chawal", "Dal", "Tel", "Sabun", "Chai patti")
 
-Row = tuple[Any, ...]
-
 
 @dataclass
 class Plan:
-    shops: list[Row] = field(default_factory=list)
-    customers: list[Row] = field(default_factory=list)
-    entries: list[Row] = field(default_factory=list)
-    acknowledgments: list[Row] = field(default_factory=list)
-    repayments: list[Row] = field(default_factory=list)
-    threads: list[Row] = field(default_factory=list)
-    messages: list[Row] = field(default_factory=list)
+    """Every row the seed will write, table by table, in insert order."""
+
+    shops: list[ShopRow] = field(default_factory=list)
+    customers: list[CustomerRow] = field(default_factory=list)
+    entries: list[EntryRow] = field(default_factory=list)
+    acknowledgments: list[AcknowledgmentRow] = field(default_factory=list)
+    repayments: list[RepaymentRow] = field(default_factory=list)
+    threads: list[ThreadRow] = field(default_factory=list)
+    messages: list[MessageRow] = field(default_factory=list)
 
 
 class Builder:
@@ -77,7 +86,7 @@ class Builder:
     def shop(self, key: str) -> uuid.UUID:
         sid = uid("shop", key)
         name, locality = SHOPS[key]
-        self.plan.shops.append((sid, name, locality, at(START, 8)))
+        self.plan.shops.append(ShopRow(sid, name, locality, created_at=at(START, 8)))
         return sid
 
     def customer(
@@ -94,7 +103,15 @@ class Builder:
         cid = uid("customer", shop, key)
         pid = uid("person", person) if person else None
         self.plan.customers.append(
-            (cid, uid("shop", shop), pid, name, tag, added_at, linked_at)
+            CustomerRow(
+                id=cid,
+                shop_id=uid("shop", shop),
+                person_id=pid,
+                display_name=name,
+                tag=tag,
+                added_at=added_at,
+                linked_at=linked_at,
+            )
         )
         return cid
 
@@ -113,16 +130,29 @@ class Builder:
     ) -> uuid.UUID:
         eid = uid("entry", shop, who, str(self._next(f"entry:{shop}:{who}")))
         self.plan.entries.append(
-            (eid, cid, paise, note, spoken, status, corrects, recorded_at)
+            EntryRow(
+                id=eid,
+                customer_id=cid,
+                amount_paise=paise,
+                status=status,
+                recorded_at=recorded_at,
+                note=note,
+                spoken_text=spoken,
+                corrects_entry_id=corrects,
+            )
         )
         return eid
 
     def ack(self, shop: str, eid: uuid.UUID, paise: int, when: datetime) -> None:
         wording = f"Yes, I owe {rupees(paise)} to {SHOPS[shop][0]}"
-        self.plan.acknowledgments.append((uid("ack", str(eid)), eid, wording, when))
+        self.plan.acknowledgments.append(
+            AcknowledgmentRow(uid("ack", str(eid)), eid, wording, acknowledged_at=when)
+        )
 
     def pay(self, eid: uuid.UUID, paise: int, method: str, when: datetime) -> None:
-        self.plan.repayments.append((uid("pay", str(eid)), eid, paise, method, when))
+        self.plan.repayments.append(
+            RepaymentRow(uid("pay", str(eid)), eid, paise, method, paid_at=when)
+        )
 
 
 # ── one customer's history ───────────────────────────────────────────────────
@@ -217,8 +247,9 @@ def dispute(
     b.ack(shop, right, 15000, when + timedelta(minutes=7))
 
     tid = uid("thread", shop, p.key)
+    read = when + timedelta(minutes=10)
     b.plan.threads.append(
-        (tid, cid, when + timedelta(minutes=10), when + timedelta(minutes=10), when)
+        ThreadRow(tid, cid, created_at=when, shop_read_at=read, customer_read_at=read)
     )
     lines = (
         ("bahi", "entry", "Ramesh recorded ₹200 udhaar.", wrong, 0),
@@ -228,14 +259,14 @@ def dispute(
     )
     for n, (author, kind, body, eid, minutes) in enumerate(lines):
         b.plan.messages.append(
-            (
-                uid("message", str(tid), str(n)),
-                tid,
-                author,
-                kind,
-                body,
-                eid,
-                when + timedelta(minutes=minutes, seconds=5),
+            MessageRow(
+                id=uid("message", str(tid), str(n)),
+                thread_id=tid,
+                author=author,
+                kind=kind,
+                body=body,
+                sent_at=when + timedelta(minutes=minutes, seconds=5),
+                entry_id=eid,
             )
         )
     return right
@@ -386,9 +417,8 @@ def plan() -> Plan:
         ids[p.key] = join(b, HOME, p)
 
     # Sharma was in the paper book long before he ever scanned.
-    sharma = next(i for i, row in enumerate(b.plan.customers) if row[0] == ids["sharma"])
-    row = b.plan.customers[sharma]
-    b.plan.customers[sharma] = (*row[:5], at(date(2023, 7, 14), 10), row[6])
+    i = next(n for n, c in enumerate(b.plan.customers) if c.id == ids["sharma"])
+    b.plan.customers[i] = replace(b.plan.customers[i], added_at=at(date(2023, 7, 14), 10))
 
     for p in people:
         if p.joined != "invited":
@@ -397,30 +427,21 @@ def plan() -> Plan:
     return b.plan
 
 
-INSERTS = {
-    "shops": "INSERT INTO shops (id, name, locality, created_at) VALUES (%s,%s,%s,%s)",
-    "customers": "INSERT INTO customers (id, shop_id, person_id, display_name, tag, "
-    "added_at, linked_at) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-    "entries": "INSERT INTO entries (id, customer_id, amount_paise, note, spoken_text, "
-    "status, corrects_entry_id, recorded_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-    "acknowledgments": "INSERT INTO acknowledgments (id, entry_id, wording, "
-    "acknowledged_at) VALUES (%s,%s,%s,%s)",
-    "repayments": "INSERT INTO repayments (id, entry_id, amount_paise, method, paid_at) "
-    "VALUES (%s,%s,%s,%s,%s)",
-    "threads": "INSERT INTO threads (id, customer_id, shop_read_at, customer_read_at, "
-    "created_at) VALUES (%s,%s,%s,%s,%s)",
-    "messages": "INSERT INTO messages (id, thread_id, author, kind, body, entry_id, "
-    "sent_at) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-}
+#: Parents before children, so every foreign key already exists when it is used.
+TABLES = (
+    "shops",
+    "customers",
+    "entries",
+    "acknowledgments",
+    "repayments",
+    "threads",
+    "messages",
+)
 
 
 def load(con: db.Conn, p: Plan) -> dict[str, int]:
-    counts: dict[str, int] = {}
     with con.cursor() as cur:
-        for table, sql in INSERTS.items():
-            rows: list[Row] = getattr(p, table)
-            cur.executemany(sql, rows)
-            counts[table] = len(rows)
+        counts = {table: insert(cur, table, getattr(p, table)) for table in TABLES}
     con.commit()
     return counts
 
