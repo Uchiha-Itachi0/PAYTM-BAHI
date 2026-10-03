@@ -43,6 +43,7 @@ def _patterns(
             promises=promised.get(c.id, []),
             entries=counts.get(c.id, (0, 0))[0],
             disputed=counts.get(c.id, (0, 0))[1],
+            owed_paise=sum(e.owed_paise for e in c.entries if e.claimable(today)),
         )
         for c in book_store.load(con, shop_id, customer_id)
     }
@@ -74,8 +75,10 @@ def _day(d: date) -> str:
 
 
 def facts(p: Pattern, said: int) -> dict[str, object]:
-    """His pattern as the munshi is shown it: the book's figures, in words it can
-    say. `said`: what memory kept from his chat (complaints, requests…)."""
+    """Their pattern as the munshi is shown it: the book's figures, in words it
+    can say. `said`: what memory kept from their chat (complaints, requests…).
+    "Their", never "his": the book doesn't know who is a woman, and the munshi
+    goes by the name."""
     r = p.rhythm
     out: dict[str, object] = {"payments_so_far": r.n + 1 if r.last_paid else 0}
     if r.last_paid:
@@ -85,20 +88,29 @@ def facts(p: Pattern, said: int) -> dict[str, object]:
         out["8_in_10_times_within_days"] = p.usually_within
         out["longest_gap_days"] = r.max_gap
         out["latest_gaps_days"] = list(p.recent_gaps)
-    if p.expect_from and p.expect_by:
+    if p.now == "clear":
+        out["owes_now"] = "nothing"
+        out["likely_next"] = "nothing owed, so no payment to expect"
+    elif p.expect_from and p.expect_by:
         window = f"{_day(p.expect_from)} to {_day(p.expect_by)}"
         if p.now == "early":
             out["likely_next"] = window
-            out["right_now"] = "not due yet by his own rhythm"
+            out["right_now"] = "not due yet by their own rhythm"
         elif p.now == "due":
-            out["likely_next"] = f"any day now, by {_day(p.expect_by)} by his rhythm"
-            out["right_now"] = "due about now, by his own rhythm"
+            out["likely_next"] = f"any day now, by {_day(p.expect_by)} by their rhythm"
+            out["right_now"] = "due about now, by their own rhythm"
         else:  # a window that has passed is not a guess for the future
-            out["likely_next"] = "no date from his rhythm: he is past it"
-            out["right_now"] = (
-                f"late by his own rhythm: {r.day} days since he paid; his usual "
-                f"window ({window}) has passed"
+            out["likely_next"] = "no date from their rhythm: they are past it"
+            late = (
+                f"late by their own rhythm: {r.day} days since they paid; their "
+                f"usual window ({window}) has passed"
             )
+            if r.day is not None and r.max_gap is not None and r.day > r.max_gap:
+                late += (
+                    f"; later than they have ever been (longest before: "
+                    f"{r.max_gap} days), so their rhythm can't say when"
+                )
+            out["right_now"] = late
     else:
         out["likely_next"] = "too little history to tell"
     if p.usual_time:
@@ -108,9 +120,9 @@ def facts(p: Pattern, said: int) -> dict[str, object]:
     if p.promises_due:
         out["promises_kept"] = f"{p.promises_kept} of {p.promises_due}"
     if p.entries:
-        out["entries_he_said_were_wrong"] = f"{p.disputed} of {p.entries}"
+        out["entries_they_said_were_wrong"] = f"{p.disputed} of {p.entries}"
     if said:
-        out["things_he_said_remembered"] = said
+        out["things_they_said_remembered"] = said
     return out
 
 

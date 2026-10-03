@@ -1840,7 +1840,7 @@ export interface components {
              * Now
              * @enum {string}
              */
-            now: "early" | "due" | "late" | "unknown";
+            now: "early" | "due" | "late" | "unknown" | "clear";
             /** Usual Time */
             usual_time: string | null;
             /** Promised */

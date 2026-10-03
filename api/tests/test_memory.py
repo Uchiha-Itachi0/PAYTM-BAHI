@@ -320,6 +320,15 @@ def test_patterns_are_written_when_the_book_changes_and_go_to_cognee(
     assert fake.forgotten == [old.cognee_id]  # the old copy is taken out
 
 
+def test_owing_nothing_there_is_no_payment_to_expect() -> None:
+    from bahi.domain.pattern import pattern
+
+    paid = [TODAY - timedelta(days=d) for d in (50, 40, 31, 21, 12, 3)]
+    p = pattern(paid, [], TODAY, owed_paise=0)
+    assert (p.now, p.expect_from, p.expect_by) == ("clear", None, None)
+    assert p.rhythm.median_gap == 9  # how he pays is still known
+
+
 def test_his_page_shows_how_he_pays(api: TestClient) -> None:
     p = api.get(f"/shops/{SHOP}/customers/{PATIL}").json()["pattern"]
     assert p["usual_gap"] and p["usually_within"] and p["expect_from"]

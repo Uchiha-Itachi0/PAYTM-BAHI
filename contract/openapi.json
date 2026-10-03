@@ -4853,7 +4853,8 @@
               "early",
               "due",
               "late",
-              "unknown"
+              "unknown",
+              "clear"
             ],
             "title": "Now"
           },

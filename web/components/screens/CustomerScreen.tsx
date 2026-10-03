@@ -63,6 +63,7 @@ const NOW: Record<Pattern["now"], { text: string; tone: string } | null> = {
   due: { text: "Due about now", tone: "bg-warn-bg text-warn" },
   late: { text: "Later than usual", tone: "bg-warn-bg text-warn" },
   unknown: null,
+  clear: { text: "Nothing owed", tone: "bg-ok-bg text-ok" },
 };
 
 function clock12(hhmm: string): string {

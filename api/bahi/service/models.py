@@ -584,7 +584,8 @@ class PatternOut(BaseModel):
     #: Likely next payment, by his own rhythm: from this day, nearly always by that.
     expect_from: date | None
     expect_by: date | None
-    now: Literal["early", "due", "late", "unknown"]
+    #: clear: he owes nothing, so there is no next payment to expect.
+    now: Literal["early", "due", "late", "unknown", "clear"]
     #: "18:30": the time of day he usually pays.
     usual_time: str | None
     #: A promise still ahead of him.

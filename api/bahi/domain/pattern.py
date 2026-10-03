@@ -6,7 +6,8 @@ by hand against his ledger.
     usually within   8 in 10 of his gaps were this long or shorter
     likely next      his last payment + his usual gap, and nearly always by his
                      last payment + usually within
-    now              early (before that), due (inside it), late (past it)
+    now              early (before that), due (inside it), late (past it);
+                     clear when he owes nothing: there is nothing to pay
     promises kept    a promise to pay by a day, whose day has passed, with a
                      payment between the day he said it and that day
     disputed         entries he said were wrong, of all the entries written for him
@@ -27,7 +28,7 @@ from typing import Literal
 
 from bahi.domain.rhythm import Rhythm, rhythm
 
-Now = Literal["early", "due", "late", "unknown"]
+Now = Literal["early", "due", "late", "unknown", "clear"]
 
 #: "Usually within": the gap this share of his gaps were at or under.
 USUALLY = 0.8
@@ -70,17 +71,25 @@ def pattern(
     promises: Iterable[tuple[date, date]] = (),
     entries: int = 0,
     disputed: int = 0,
+    owed_paise: int = 1,
 ) -> Pattern:
     """His pattern as of `today`. `promises`: (the day he said it, the day he
-    promised to pay by)."""
+    promised to pay by). `owed_paise`: what he owes now; with nothing owed there
+    is no next payment to guess."""
     days = sorted({d for d in paid_on if d <= today})
     r = rhythm(days, today)
     gaps = sorted((b - a).days for a, b in pairwise(days))
     within = gaps[max(ceil(USUALLY * len(gaps)) - 1, 0)] if gaps else None
 
     expect_from = expect_by = None
-    now: Now = "unknown"
-    if r.enough and r.last_paid and r.median_gap is not None and within is not None:
+    now: Now = "unknown" if owed_paise > 0 else "clear"
+    if (
+        owed_paise > 0
+        and r.enough
+        and r.last_paid
+        and r.median_gap is not None
+        and within is not None
+    ):
         expect_from = r.last_paid + timedelta(days=r.median_gap)
         expect_by = r.last_paid + timedelta(days=within)
         now = "early" if today < expect_from else "due" if today <= expect_by else "late"

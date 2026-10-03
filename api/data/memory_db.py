@@ -8,12 +8,17 @@
 
 Needs pgvector installed into Postgres first: `brew install pgvector`. Run again,
 it changes nothing it has already done; it never prints the password.
+
+`--reset` (make db runs it): the app's memory database, emptied along with the
+book, so Cognee never answers from memories of a book that is gone. Restart the
+API after: its connections to the old database are closed.
 """
 
 from __future__ import annotations
 
 import re
 import secrets
+import shutil
 import sys
 
 import psycopg
@@ -26,7 +31,34 @@ DATABASES = ("bahi_memory", "bahi_memory_check")
 ENV = API_DIR / ".env"
 
 
+def reset() -> int:
+    if not re.search(r"^MEMORY_DATABASE_URL=", ENV.read_text(encoding="utf-8"), re.M):
+        print("  memory isn't set up (make memory-db): nothing to reset")
+        return 0
+    admin = re.sub(r"/[^/?]*(\?|$)", r"/postgres\1", url(), count=1)
+    name = DATABASES[0]
+    with psycopg.connect(admin, autocommit=True) as con:
+        con.execute(
+            sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
+                sql.Identifier(name)
+            )
+        )
+        con.execute(
+            sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                sql.Identifier(name), sql.Identifier(ROLE)
+            )
+        )
+    db_url = re.sub(r"/[^/?]*(\?|$)", rf"/{name}\1", url(), count=1)
+    with psycopg.connect(db_url, autocommit=True) as con:
+        con.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    shutil.rmtree(API_DIR / ".cognee" / "data", ignore_errors=True)
+    print(f"  emptied {name}: Cognee starts again from the new book (restart make api)")
+    return 0
+
+
 def main() -> int:
+    if "--reset" in sys.argv[1:]:
+        return reset()
     env = ENV.read_text(encoding="utf-8") if ENV.exists() else ""
     have_url = re.search(r"^MEMORY_DATABASE_URL=", env, re.M) is not None
     admin = re.sub(r"/[^/?]*(\?|$)", r"/postgres\1", url(), count=1)

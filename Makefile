@@ -38,6 +38,7 @@ db:
 	@createdb bahi 2>/dev/null || true
 	cd api && uv run python -m data.migrate --reset
 	cd api && uv run python -m data.generate
+	cd api && uv run python -m data.memory_db --reset
 
 db-migrate:
 	cd api && uv run python -m data.migrate

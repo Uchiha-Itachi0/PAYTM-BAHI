@@ -183,6 +183,19 @@ def main() -> None:
             "सलमा" in (o.reply or "") or "Salma" in (o.reply or ""),
         )
 
+        o = brain.talk(con, SHOP, None, "आशा कब पैसे देगी?", now, chat)
+        print(f"     मुंशी: {o.reply}   [{' | '.join(o.done)}]")
+        check(
+            "Asha owes nothing: no payment is predicted",
+            "अक्टूबर" not in (o.reply or "") and "October" not in (o.reply or ""),
+        )
+        o = brain.talk(con, SHOP, None, "राजू का कितना उधार बाकी है?", now, chat)
+        print(f"     मुंशी: {o.reply}   [{' | '.join(o.done)}]")
+        check(
+            "asked only what Raju owes, it says just that",
+            "सितंबर" not in (o.reply or "") and "September" not in (o.reply or ""),
+        )
+
         print("\n6. Forget")
         if promises:
             keeping.forget(con, SHOP, promises[0].id, clock.now())

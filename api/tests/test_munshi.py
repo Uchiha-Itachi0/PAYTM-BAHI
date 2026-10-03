@@ -771,8 +771,8 @@ def test_asked_when_someone_will_pay_it_reads_how_they_pay(
     (card,) = results
     how = card["how_they_pay"]
     assert how["usually_pays_every_days"] and how["likely_next"]
-    assert how["right_now"].startswith("late by his own rhythm")
-    assert how["likely_next"] == "no date from his rhythm: he is past it"
+    assert how["right_now"].startswith("late by their own rhythm")
+    assert how["likely_next"] == "no date from their rhythm: they are past it"
     assert "guess" in card["next"] and "passed" in card["next"]
 
 

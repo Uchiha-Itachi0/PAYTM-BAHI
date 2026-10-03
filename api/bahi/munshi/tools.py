@@ -607,12 +607,13 @@ class Desk:
         if kept:
             out["remembered"] = [_remembered(m) for m in kept[:RECALLED]]
         out["next"] = (
-            "Answer what he asked from this. If he asks when they will pay, give your "
-            "best guess, as a guess (मेरे हिसाब से…), with the reason in a few words; "
-            "never promise it. Their promise, or a note about when they get money, "
-            "outranks their rhythm. Never give a date that has passed: if they are "
-            "late by their rhythm, say so. If something remembered bears on it, say "
-            "it as said (आपने बताया था…, उन्होंने लिखा था…)."
+            "Answer only what he asked: what they owe, if that is all he asked. Only "
+            "when he asks when they will pay, or what kind of customer they are, use "
+            "how_they_pay: a guess (मेरे हिसाब से…) with the reason in a few words, "
+            "never a promise. Owing nothing, there is nothing to expect. Their "
+            "promise, or a note about when they get money, outranks their rhythm. "
+            "Never give a date that has passed. If something remembered bears on "
+            "it, say it as said (आपने बताया था…, उन्होंने लिखा था…)."
         )
         return out
 
