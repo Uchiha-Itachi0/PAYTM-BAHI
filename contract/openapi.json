@@ -3067,6 +3067,7 @@
               "type": "string",
               "enum": [
                 "weak_match",
+                "one_of_several",
                 "large",
                 "unusual",
                 "new_customer",

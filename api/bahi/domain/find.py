@@ -119,6 +119,14 @@ def find(book: Sequence[Person], name: str | None, description: str | None) -> S
         Found(p, named.get(p.ref, 0.0), fitting.get(p.ref, 0.0)) for p in chosen
     )
 
+    if not found and name and not description:
+        # A place can land in the name ("सी विंग", "Room 4"): speech runs the
+        # words together, and a model files them where it likes. Read as where
+        # they live, the same words may fit.
+        as_place = find(book, None, name)
+        if as_place.found:
+            return as_place
+
     said = " ".join(x for x in (name, description) if x)
     if not found:
         note = f"nobody in the book fits '{said}'. Say so and ask who he means."

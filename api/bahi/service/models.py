@@ -304,7 +304,16 @@ class CardOut(BaseModel):
     #: shown: waiting for his yes. saved: written. cancelled: he said no.
     status: Literal["shown", "saved", "replaced", "cancelled"]
     #: Why it waits for a clear yes; empty means the three-second countdown.
-    reasons: list[Literal["weak_match", "large", "unusual", "new_customer", "correction"]]
+    reasons: list[
+        Literal[
+            "weak_match",
+            "one_of_several",
+            "large",
+            "unusual",
+            "new_customer",
+            "correction",
+        ]
+    ]
     #: What he said, shown under the amount.
     spoken_text: str | None
     entry_id: UUID | None

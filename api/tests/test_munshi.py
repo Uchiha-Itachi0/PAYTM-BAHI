@@ -10,7 +10,10 @@ entry.
 
 from __future__ import annotations
 
+import io
 import json
+import time
+import wave
 from collections.abc import Callable, Iterator
 from datetime import timedelta
 from typing import Any
@@ -502,6 +505,172 @@ def test_out_of_credits_says_so_plainly(
     assert r.status_code == 503 and "no credits" in r.json()["detail"]
 
 
+# ── names: a count, until he asks to hear them ───────────────────────────────
+
+
+def keeping(results: list[Any], args: dict[str, Any]) -> Callable[[Any], dict[str, Any]]:
+    """A step that keeps the last tool result, then calls with `args`."""
+
+    def step(result: Any) -> dict[str, Any]:
+        results.append(result)
+        return args
+
+    return step
+
+
+def test_three_or_more_are_a_count_until_he_has_been_asked(
+    api: TestClient, model: Script
+) -> None:
+    results: list[Any] = []
+    wing = {"description": "B wing"}
+    model.then(
+        tool("find_customer", wing),
+        # The model tries to read them out in the same breath: refused.
+        tool("find_customer", keeping(results, {**wing, "read_names": True})),
+        tool("counter", keeping(results, {})),
+        reply("बी विंग में कई लोग हैं। नाम बताऊँ, या आप बताएँगे किसके लिए?"),
+    )
+    out = say(api, "बी विंग वाले को दो सौ")
+    counted, too_soon = results
+    assert counted["count"] >= 3 and "customers" not in counted
+    assert "नाम बताऊँ" in counted["next"]
+    assert "customers" not in too_soon and too_soon["names"].startswith("not yet")
+
+    # He heard the count and asked for the names: now they come back, each with
+    # its place and never a balance.
+    results.clear()
+    model.then(
+        tool("find_customer", {**wing, "read_names": True}),
+        tool("counter", keeping(results, {})),
+        reply("..."),
+    )
+    say(api, "पढ़ दो", out["conversation_id"])
+    (named,) = results
+    assert named["count"] == counted["count"]
+    assert len(named["customers"]) == min(named["count"], 8)
+    assert all(c["name"] and "owes" not in c for c in named["customers"])
+
+
+def test_names_he_never_heard_the_count_of_are_not_read(
+    api: TestClient, model: Script
+) -> None:
+    results: list[Any] = []
+    model.then(
+        tool("find_customer", {"description": "B wing", "read_names": True}),
+        tool("counter", keeping(results, {})),
+        reply("..."),
+    )
+    say(api, "बी विंग वाले को दो सौ")
+    (first,) = results
+    assert first["count"] >= 3 and "customers" not in first
+
+
+def test_someone_picked_from_several_waits_for_a_clear_yes(
+    api: TestClient, model: Script
+) -> None:
+    """He heard five names and said only an amount: the model picked one. That
+    card doesn't go by itself in three seconds; it waits for his yes."""
+    wing = {"description": "B wing"}
+    model.then(
+        tool("find_customer", wing),
+        reply("बी विंग में कई लोग हैं। नाम बताऊँ?"),
+    )
+    out = say(api, "बी विंग वाले को दो सौ")
+    model.then(
+        tool("find_customer", {**wing, "read_names": True}),
+        tool(
+            "propose_entry",
+            lambda found: {
+                "customer_id": first_found(found),
+                "kind": "udhaar",
+                "amount_rupees": 200,
+            },
+        ),
+        reply("..., दो सौ रुपये उधार, पक्का?"),
+    )
+    card = say(api, "पढ़ दो, दो सौ", out["conversation_id"])["card"]
+    assert card["reasons"] == ["one_of_several"]
+
+    # Looked up by the name he says, alone: the quick card, as ever.
+    model.then(*shows_sharma(200))
+    card = say(api, "शर्मा जी को", out["conversation_id"])["card"]
+    assert card["display_name"] == "Sharma" and card["reasons"] == []
+
+
+# ── the munshi's voice ───────────────────────────────────────────────────────
+
+NAMES = (
+    "अनुभव, रूम 311 बी विंग; आशा, रूम 7 बी विंग; कामत, रूम 13 बी विंग; "
+    "मिश्र जी, रूम 9 बी विंग; राहुल, रूम 6 बी विंग; रिजवान, रूम 18 बी विंग। "
+    "इनमें से कौन हैं?"
+)
+
+
+def wav(seconds: float) -> bytes:
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(24000)
+        w.writeframes(b"\0\0" * int(24000 * seconds))
+    return out.getvalue()
+
+
+@pytest.fixture
+def voice_on(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> list[str]:
+    """Sarvam's voice, faked: each piece takes a moment and a second of audio."""
+    from bahi.voice import said, sarvam
+
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    monkeypatch.setattr(said, "LIVE", tmp_path)
+    asked: list[str] = []
+
+    def speak(text: str, *, key: str, voice: str, timeout: float) -> bytes:
+        assert timeout == sarvam.SENTENCE_TTS_TIMEOUT_S
+        asked.append(text)
+        time.sleep(0.05)
+        return wav(1.0)
+
+    monkeypatch.setattr(sarvam, "speak", speak)
+    return asked
+
+
+def test_a_long_sentence_is_cut_only_where_a_speaker_pauses() -> None:
+    from bahi.voice.said import pieces
+
+    parts = pieces(NAMES)
+    assert len(parts) > 1 and all(len(p) <= 80 for p in parts)
+    assert " ".join(parts) == NAMES
+    assert all(p.endswith((";", "।", "?")) for p in parts)
+    assert pieces("सी विंग में पाँच लोग हैं। नाम बताऊँ?") == ["सी विंग में पाँच लोग हैं। नाम बताऊँ?"]
+    one_long_run = "क" * 120
+    assert pieces(one_long_run) == [one_long_run]
+
+
+def test_a_long_reply_is_said_in_pieces_at_once_and_joined(voice_on: list[str]) -> None:
+    from bahi.voice import said
+
+    path = said.sentence(NAMES)
+    assert sorted(voice_on) == sorted(said.pieces(NAMES))
+    with wave.open(str(path)) as w:  # every piece, one after the other
+        assert w.getnframes() == 24000 * len(voice_on)
+    said.sentence(NAMES)  # kept: never asked for twice
+    assert len(voice_on) == len(said.pieces(NAMES))
+
+
+def test_the_reply_is_said_before_the_screen_asks_and_only_once(
+    api: TestClient, model: Script, voice_on: list[str]
+) -> None:
+    from bahi.voice import said
+
+    model.then(reply(NAMES))
+    out = say(api, "पढ़ दो")
+    r = api.get(out["say_url"])
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/wav"
+    assert len(voice_on) == len(said.pieces(NAMES))
+
+
 # ── money back, oldest first ─────────────────────────────────────────────────
 
 
@@ -540,6 +709,12 @@ def refs(name: str | None, description: str | None) -> list[str]:
 def test_a_description_finds_everyone_it_fits_and_only_them() -> None:
     assert refs(None, "B wing") == ["sharma", "asha"]
     assert refs(None, "Room 19, B wing") == ["sharma"]
+
+
+def test_a_place_given_as_a_name_is_read_as_a_place() -> None:
+    assert refs("बी विंग", None) == ["sharma", "asha"]
+    assert refs("C wing", None) == ["pawar"]
+    assert refs("रमेश", None) == []
 
 
 def test_a_full_description_beats_a_faint_name() -> None:

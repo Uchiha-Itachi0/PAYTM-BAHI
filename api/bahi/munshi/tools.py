@@ -7,8 +7,9 @@ screen, and it is checked here, in code:
   has not been invited without saying yes;
 - the amount is whole rupees above zero, and a जमा is no more than he owes;
 - the card needs an explicit yes (no three-second countdown) when the name only
-  sounded a little like his, the amount is ₹5,000 or more, or it is three times
-  what he usually takes.
+  sounded a little like his, the model picked him from several who fit (no
+  search gave him back alone), the amount is ₹5,000 or more, or it is three
+  times what he usually takes.
 
 `propose_correction` puts the right amount for an entry already written on the
 card; his yes records it as a new entry pointing at the wrong one, and the
@@ -16,6 +17,10 @@ customer confirms it. `propose_new_customer` puts someone who isn't in the book
 yet on the card, only after a search found nobody by that name; his yes adds them
 by name only, then writes the entry. `tonight` reads out tomorrow's reminders,
 decided by code.
+
+When three or more fit a search, `find_customer` says only how many. The names
+come back when the munshi searches again with `read_names`, and only after the
+shopkeeper has heard the count, in a later turn: he is always asked first.
 
 `confirm_entry` turns the waiting card into the entry, once, and only after the
 shopkeeper has answered it. Every result is plain JSON the munshi reads, and
@@ -90,6 +95,12 @@ TOOLS: list[dict[str, Any]] = [
                         "description": "Where they live or what they do, in the "
                         "book's words, e.g. 'B wing', 'Room 19', 'Pan stall'. Numbers as "
                         "digits.",
+                    },
+                    "read_names": {
+                        "type": "boolean",
+                        "description": "true only after the shopkeeper asked you to "
+                        "read the names out (पढ़ दो, नाम बताओ, read them). When three "
+                        "or more fit, the names come back only then.",
                     },
                 },
                 "required": [],
@@ -253,6 +264,12 @@ class Desk:
     seen: dict[str, bool] = field(default_factory=dict)
     #: A search has been made in this conversation.
     searched: bool = False
+    #: Who was in each search of three or more whose count he has already been
+    #: told, before his latest turn: only those names can be read out now.
+    told: set[frozenset[str]] = field(default_factory=set)
+    #: Customers some search, or the counter, gave back alone. Anyone else on a
+    #: card was picked from several, by the model, and waits for a clear yes.
+    alone: set[str] = field(default_factory=set)
     #: What happened, for the screen: "Looked for 'B wing': 8".
     done: list[str] = field(default_factory=list)
 
@@ -281,10 +298,10 @@ class Desk:
         ]
         for t in turns:
             if t.role == "tool":
-                desk._remember(t.message.get("content"))
+                desk._remember(t.message.get("content"), before=t.seq < desk.his_seq)
         return desk
 
-    def _remember(self, content: Any) -> None:
+    def _remember(self, content: Any, *, before: bool) -> None:
         try:
             result = json.loads(content) if isinstance(content, str) else None
         except json.JSONDecodeError:
@@ -293,11 +310,20 @@ class Desk:
             return
         if "looked_for" in result:
             self.searched = True
-        for c in result.get("customers", []) or []:
+            asked = result["looked_for"] or {}
+            if before and "customers" not in result and result.get("count", 0) >= 3:
+                self.told.add(self._who(asked.get("name"), asked.get("description")))
+        rows = result.get("customers", []) or []
+        for c in rows:
             cid = self.resolve(str(c.get("id", "")))
             if cid:
                 weak = c.get("match") in WEAK_MATCHES
                 self.seen[cid] = self.seen.get(cid, True) and weak
+                if len(rows) == 1 and result.get("count") == 1:
+                    self.alone.add(cid)
+
+    def _who(self, name: str | None, description: str | None) -> frozenset[str]:
+        return frozenset(f.person.ref for f in find(self.people, name, description).found)
 
     def resolve(self, given: str) -> str | None:
         """A short id (or a full one) back to the customer's id, in this shop only."""
@@ -346,7 +372,10 @@ class Desk:
         return {w.customer_id for w in scans.waiting(self.con, self.shop_id, self.now)}
 
     def find_customer(
-        self, name: str | None = None, description: str | None = None
+        self,
+        name: str | None = None,
+        description: str | None = None,
+        read_names: bool = False,
     ) -> dict[str, Any]:
         search = find(self.people, name, description)
         here = self._counter_ids()
@@ -356,6 +385,24 @@ class Desk:
             "looked_for": {"name": name, "description": description},
             "count": len(found),
         }
+        looked = " · ".join(x for x in (name, description) if x)
+        asked = read_names is True or str(read_names).lower() == "true"
+        who = frozenset(f.person.ref for f in found)
+        if len(found) >= 3 and not (asked and who in self.told):
+            # The shopkeeper's rule: with three or more, say how many and let him
+            # choose. The names come back only once he has heard the count and
+            # answered it, in a later turn, so they can't be read out before he
+            # asks, whatever the model decides.
+            out["next"] = (
+                f"{len(found)} fit. Say only how many, and ask: नाम बताऊँ, या आप "
+                "बताएँगे किसके लिए? Then wait for his answer. If he wants the "
+                "names, call find_customer again with the same words and read_names "
+                "true. If he says a name or a place, look that up."
+            )
+            if asked:
+                out["names"] = "not yet: he hasn't been asked"
+            self.done.append(f"Looked for {looked}: {len(found)} found")
+            return out
 
         def row(f: Found) -> dict[str, Any]:
             cid = f.person.ref
@@ -378,6 +425,8 @@ class Desk:
             return r
 
         out["customers"] = [row(f) for f in found[:LISTED]]
+        if len(found) == 1:
+            self.alone.add(found[0].person.ref)
         for f in found[:LISTED]:
             weak = not f.strong
             self.seen[f.person.ref] = self.seen.get(f.person.ref, True) and weak
@@ -397,19 +446,24 @@ class Desk:
                 "Nobody fits. Say so plainly and ask who he means. If he says they "
                 "are new, offer to add them with propose_new_customer."
             )
+        elif len(found) > LISTED:
+            out["next"] = (
+                f"He asked for the names: read these {LISTED}, each with its place "
+                f"only, never what they owe. Say there are {len(found) - LISTED} more "
+                "and ask which one, or for a name or place to narrow it."
+            )
         elif len(found) >= 3:
             out["next"] = (
-                f"{len(found)} fit. Don't read them yet: say how many fit and ask "
-                "whether he wants the names read out or will say who. If he wants "
-                "them, read each name with its place only, never what they owe."
+                "He asked for the names: read each with its place only, never what "
+                "they owe, then ask which one."
             )
-        looked = " · ".join(x for x in (name, description) if x)
         self.done.append(f"Looked for {looked}: {len(found)} found")
         return out
 
     def counter(self) -> dict[str, Any]:
         waiting = scans.waiting(self.con, self.shop_id, self.now)
         rows = []
+        rows_of = [w.customer_id for w in waiting if w.customer_id in self.refs]
         for w in waiting:
             if w.customer_id in self.refs:
                 said, about = self._say(w.customer_id)
@@ -418,6 +472,7 @@ class Desk:
         self.done.append(f"Checked the counter: {len(rows)} waiting")
         out: dict[str, Any] = {"count": len(rows), "customers": rows}
         if len(rows) == 1:
+            self.alone.update(rows_of)
             out["next"] = "One person is at the counter; if he named nobody, it is them."
         return out
 
@@ -465,6 +520,8 @@ class Desk:
         reasons = []
         if self.seen.get(cid):
             reasons.append("weak_match")
+        elif cid not in self.alone:
+            reasons.append("one_of_several")
         if paise >= LARGE_PAISE:
             reasons.append("large")
         usual = self._usual(cid)

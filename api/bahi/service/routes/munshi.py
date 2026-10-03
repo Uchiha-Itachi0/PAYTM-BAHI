@@ -89,6 +89,8 @@ def _out(
         if o.reply and o.reply_turn_id
         else None
     )
+    if say and o.reply:
+        said.warm(o.reply)  # ready, or nearly, when the screen asks for it
     return MunshiOut(
         conversation_id=UUID(o.conversation_id),
         heard=heard,
@@ -200,6 +202,6 @@ def say_reply(
         raise HTTPException(404, "no reply to say")
     text = brain.spoken(str(t.message["content"]))
     try:
-        return FileResponse(said.speech(text), media_type="audio/wav")
+        return FileResponse(said.sentence(text), media_type="audio/wav")
     except sarvam.SarvamError as e:
         raise HTTPException(503, "Sarvam didn't say it this time") from e

@@ -38,6 +38,7 @@ const KIND = {
 
 const REASON: Record<MunshiCard["reasons"][number], string> = {
   weak_match: "The name only sounded close",
+  one_of_several: "Picked from several who fit",
   large: "A large amount",
   unusual: "Much more than they usually take",
   new_customer: "Not in your book yet: added by name only",
