@@ -66,7 +66,7 @@ sequenceDiagram
     B-->>SB: done tone
     Note over B: Entry is "In both books"
     C->>B: Pay (UPI)
-    B-->>SB: "दो सौ रुपये मिले"
+    B-->>SB: "दो सौ रुपये का उधार था, पूरे दो सौ रुपये मिले"
     Note over B: 11 pm: Tonight decides who, if anyone, gets a reminder tomorrow
 ```
 
@@ -79,10 +79,14 @@ The main flows:
   English or a mix: "बी विंग में जो रहते हैं उनके नाम दो सौ लिख दो". It finds the
   customer in the real book, asks when it is unsure, and puts a card on screen.
   Only the shopkeeper's yes writes the entry.
-- **Chat and disputes.** One thread per shop and customer. Each entry appears as a
-  live card. The customer answers Yes, **Not mine** or **Wrong amount**, and the
-  shopkeeper takes the entry back or corrects it with a new entry the customer
-  confirms again.
+- **Chat and disputes.** One thread per shop and customer. Each udhaar appears as a
+  live card with its state on a badge (waiting, agreed, part paid, paid), and each
+  payment as its own card with Paytm's green tick. The customer answers Yes,
+  **Not mine** or **Wrong amount**, and the shopkeeper takes the entry back or
+  corrects it with a new entry the customer confirms again.
+- **A passbook in the chat.** Every udhaar and payment shows what was owed before
+  and after it (₹80 → ₹180 → ₹100 → nothing left), and the top of the thread shows
+  where it stands now.
 - **Agreed totals.** What someone owes is what they said yes to. Waiting and
   disputed amounts are shown apart and aren't in the total. For someone kept by
   name only, it's what was written, since there's nobody to ask.
@@ -404,9 +408,11 @@ it. Notes, promises and Tonight's holds still work from the book's own table.
 `payable` lists his open entries that are still claimable, oldest first. A UPI
 payment (`POST /shops/{shop}/pay`), all or part, is split across them in that
 order, each one named. A disputed entry waits until it is agreed. An expired one
-is shown struck through and claims nothing. The shop hears it on the Soundbox
-("दो सौ रुपये मिले, तीन सौ चालीस रुपये बाकी") and sees it in the thread with what is
-still open. Cash at the counter is split the same way.
+is shown struck through and claims nothing. The shop hears it on the Soundbox,
+amounts only and never a name ("दो सौ रुपये का उधार था, उसमें से सौ रुपये मिले,
+सौ रुपये बाकी"), and sees it in the thread as a payment card with what was owed
+before and after it (`domain/passbook.py`). Cash at the counter is split the same
+way.
 
 ### What someone owes (`domain/book.py`)
 

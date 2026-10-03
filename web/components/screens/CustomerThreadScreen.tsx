@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "@/components/chat/Composer";
+import { Owes } from "@/components/chat/Owes";
 import { type DisputedAs, ThreadView } from "@/components/chat/Thread";
 import { CustomerShell } from "@/components/shell/Shell";
 import { Dots, Notice } from "@/components/ui/Notice";
@@ -76,6 +77,7 @@ export function CustomerThreadScreen({ shopId }: { shopId: string }): React.Reac
     title: t?.shop.name ?? "…",
     sub: t ? `${t.shop.locality} · Business` : undefined,
     back: "/c/udhaar",
+    avatar: t?.shop.name,
   };
 
   if (person === null) {
@@ -88,6 +90,14 @@ export function CustomerThreadScreen({ shopId }: { shopId: string }): React.Reac
 
   return (
     <CustomerShell heading={heading}>
+      {t ? (
+        <Owes
+          label={`You owe ${t.shop.name}`}
+          owed={t.balance_paise}
+          waiting={t.waiting_paise ?? 0}
+          disputed={t.disputed_paise ?? 0}
+        />
+      ) : null}
       {t ? (
         <ThreadView
           messages={t.messages}
@@ -112,9 +122,9 @@ export function CustomerThreadScreen({ shopId }: { shopId: string }): React.Reac
             t.balance_paise > 0 ? (
               <Link
                 href={`/c/pay/${shopId}`}
-                className="flex-none rounded-pill bg-cyan px-4 py-2 text-[13.5px] font-extrabold text-white"
+                className="flex-none rounded-pill bg-cyan px-4 py-2.5 text-[13.5px] font-extrabold text-white"
               >
-                Pay
+                Pay Securely
               </Link>
             ) : null
           }

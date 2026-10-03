@@ -64,8 +64,8 @@ export function tone(kind: Tone): void {
 }
 
 /**
- * Money arrived: "सौ रुपये मिले, सौ रुपये बाकी", in Sarvam's voice from the API.
- * The sum and what is still open, never who: the screen shows that. A tone if
+ * Money arrived: "दो सौ रुपये का उधार था, उसमें से सौ रुपये मिले, सौ रुपये
+ * बाकी", in Sarvam's voice from the API. The amounts, never who: the screen shows that. A tone if
  * it can't be said.
  */
 export function sayReceived(paidPaise: number, leftPaise: number): void {

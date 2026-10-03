@@ -12,8 +12,9 @@ import { sayReceived, tone, unlock } from "@/lib/soundbox";
  *
  * Asks the API every two seconds what happened since it last asked: a scan at
  * the counter, a customer's yes, a dispute, a UPI payment, a message. Each one
- * plays its tone; money arriving says the sum and what is still open ("सौ रुपये
- * मिले, सौ रुपये बाकी"). The strip shows who, for a few seconds. The sound never
+ * plays its tone; money arriving says what was owed, what came and what is still
+ * open ("दो सौ रुपये का उधार था, उसमें से सौ रुपये मिले, सौ रुपये बाकी"). The
+ * strip shows who, for a few seconds. The sound never
  * carries a name; the screen does.
  */
 

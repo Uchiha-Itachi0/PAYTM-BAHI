@@ -15,6 +15,7 @@ import type { BookLine, Inbox, ShopBook } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { parseShop } from "@/lib/contract";
 import { formatPaise } from "@/lib/money";
+import { warmMic } from "@/lib/useRecorder";
 
 /**
  * A1 · The book. What the shopkeeper opens every morning, live.
@@ -59,7 +60,7 @@ export function BookScreen(): React.ReactElement {
   const shop = data ? parseShop(data) : undefined;
 
   return (
-    <MerchantShell shopName={shop?.shop.name}>
+    <MerchantShell shopName={shop?.shop.name} fixed>
       {shop ? (
         <>
           <Card>
@@ -77,7 +78,7 @@ export function BookScreen(): React.ReactElement {
           <Card>
             <TileGrid
               tiles={[
-                { label: "Add udhaar", icon: <Mic />, href: "/m/add?listen=1" },
+                { label: "Add udhaar", icon: <Mic />, href: "/m/add?listen=1", onTap: warmMic },
                 { label: "Udhaar QR", icon: <Scan />, href: "/m/qr" },
                 {
                   label: "Messages",
@@ -91,7 +92,7 @@ export function BookScreen(): React.ReactElement {
               ]}
             />
           </Card>
-          <Card title="Who owes you">
+          <Card title="Who owes you" fill>
             {shop.book.lines.map((line) => (
               <Row
                 key={line.customer_id}
@@ -122,7 +123,7 @@ export function BookScreen(): React.ReactElement {
           <Dots />
         </Card>
       )}
-      <StickyPill icon={<Mic />} href="/m/add?listen=1">
+      <StickyPill icon={<Mic />} href="/m/add?listen=1" floating onTap={warmMic}>
         Add udhaar
       </StickyPill>
     </MerchantShell>

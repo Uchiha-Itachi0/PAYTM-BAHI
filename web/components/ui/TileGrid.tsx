@@ -10,6 +10,8 @@ export interface Tile {
   href?: string;
   /** A count on the tile's corner: unread messages. */
   badge?: number;
+  /** Runs inside the tap, before the link opens (the mic is opened here). */
+  onTap?: () => void;
 }
 
 export function TileGrid({ tiles }: { tiles: Tile[] }): React.ReactElement {
@@ -32,7 +34,7 @@ export function TileGrid({ tiles }: { tiles: Tile[] }): React.ReactElement {
           </>
         );
         return t.href ? (
-          <Link key={t.label} href={t.href} className="text-center">
+          <Link key={t.label} href={t.href} onClick={t.onTap} className="text-center">
             {body}
           </Link>
         ) : (
