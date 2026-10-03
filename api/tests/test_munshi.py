@@ -685,6 +685,13 @@ def test_three_or_more_are_a_count_until_he_has_been_asked(
     assert named["count"] == counted["count"]
     assert len(named["customers"]) == min(named["count"], 8)
     assert all(c["name"] and "owes" not in c for c in named["customers"])
+    # What he hears is the names alone: he already said the wing.
+    names = [c["name"] for c in named["customers"]]
+    assert named["read_out"] == ", ".join(
+        f"{c['name']} ({c['about']})" if names.count(c["name"]) > 1 else c["name"]
+        for c in named["customers"]
+    )
+    assert "read_out" in named["next"] and "no room or wing" in named["next"]
 
 
 def test_a_long_list_is_read_eight_at_a_time_then_the_rest_after_the_last(
@@ -1178,3 +1185,30 @@ def test_a_whole_name_finds_that_person_not_everyone_with_the_first_name() -> No
     # Even with the new address he is moving him to, which another Anubhav has.
     assert refs("अनुभव शुक्ला", "Room 311, C wing") == ["a3"]
     assert refs("अनुभव") == ["a1", "a2", "a3"], "the first name alone: all three"
+
+
+def test_a_conversation_is_shown_again_as_it_was(api: TestClient, model: Script) -> None:
+    model.then(*shows_sharma(20000))
+    out = say(api, "शर्मा जी को दो सौ")
+    cid = out["conversation_id"]
+    history = api.get(f"/shops/{SHOP}/munshi/{cid}").json()
+    # The card waiting for his answer comes back with the words.
+    assert history["card"]["draft_id"] == out["card"]["draft_id"]
+    assert history["lines"][0] == {
+        "who": "you",
+        "text": "शर्मा जी को दो सौ",
+        "at": history["lines"][0]["at"],
+    }
+
+    model.then(reply("लिख दिया।"))
+    tap(api, out)
+    history = api.get(f"/shops/{SHOP}/munshi/{cid}").json()
+    said = [(line["who"], line["text"]) for line in history["lines"]]
+    assert ("you", "Yes.") in said
+    assert said[-1] == ("munshi", "लिख दिया।")
+    assert history["card"] is None
+
+
+def test_another_shops_conversation_is_not_shown(api: TestClient) -> None:
+    r = api.get(f"/shops/{SHOP}/munshi/00000000-0000-0000-0000-000000000000")
+    assert r.status_code == 404

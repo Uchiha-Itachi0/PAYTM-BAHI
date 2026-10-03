@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Mic } from "@/components/icons";
 import { type CardEdit, EntryCard } from "@/components/munshi/EntryCard";
 import { Card } from "@/components/ui/Card";
 import { api, ApiError, apiForm } from "@/lib/api/client";
-import type { Munshi as Turn, MunshiCard } from "@/lib/api/types";
+import type { MunshiHistory, Munshi as Turn, MunshiCard } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { useRecorder } from "@/lib/useRecorder";
 import { hush, sayLine } from "@/lib/voice";
@@ -24,7 +24,36 @@ import { hush, sayLine } from "@/lib/voice";
  * until then, and the book does the writing.
  *
  * Arriving from the book's Add udhaar (`listen`), the mic is already open.
+ *
+ * `full`: the whole page is the conversation (Paytm Assistant). The thread grows
+ * down the page, the mic and the box stay at the bottom, and before the first
+ * question a few `starters` are offered; tapping one asks it.
+ *
+ * `keep`: the conversation carries on across visits. Its id is kept in this
+ * browser under that name, and on arrival what was said so far (and a card still
+ * waiting) is fetched back from the server, which keeps every turn anyway.
  */
+
+/** Storage has no change events of its own worth listening to here. */
+const noChange = (): (() => void) => () => undefined;
+
+/** The kept conversation's id, if this browser has one. Storage can be off. */
+function kept(name: string): string | null {
+  try {
+    return localStorage.getItem(name);
+  } catch {
+    return null;
+  }
+}
+
+function keepAs(name: string, id: string | null): void {
+  try {
+    if (id) localStorage.setItem(name, id);
+    else localStorage.removeItem(name);
+  } catch {
+    // Private mode: the conversation just doesn't carry over.
+  }
+}
 
 type Line = { key: string; who: "you" | "munshi"; text: string; done?: string[] };
 
@@ -42,11 +71,20 @@ const LINE: Record<
 export function Munshi({
   listen,
   onWritten,
+  full = false,
+  starters = [],
+  keep,
 }: {
   /** Open the mic straight away. */
   listen: boolean;
   /** An entry was written: the counter and the book have moved. */
   onWritten: () => void;
+  /** The conversation is the whole page. */
+  full?: boolean;
+  /** Questions to offer before the first one. */
+  starters?: string[];
+  /** Carry the conversation over between visits, kept under this name. */
+  keep?: string;
 }): React.ReactElement {
   // A ref, not state: the mic can reopen before React has re-rendered, and the
   // next turn must still land in this conversation.
@@ -61,18 +99,24 @@ export function Munshi({
   const thread = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    thread.current?.scrollTo({ top: thread.current.scrollHeight });
-  }, [lines, card]);
+    // On its own page, the page scrolls; in the card, the thread does.
+    if (full) window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    else thread.current?.scrollTo({ top: thread.current.scrollHeight });
+  }, [lines, card, full]);
 
   const listenAgain = useRef<() => void>(() => undefined);
   // The mic opened by itself (after a reply, or on arrival), not by his tap. If
   // it then hears only silence, it closes quietly: no "didn't catch" warning
   // for words he never meant to say.
   const byItself = useRef(false);
+  // On its own page, the mic opens again after a reply only if he asked by
+  // voice: a typed question is answered, and the page waits.
+  const byVoice = useRef(false);
 
   const take = useCallback(
     async (out: Turn): Promise<void> => {
       conversation.current = out.conversation_id;
+      if (keep) keepAs(keep, out.conversation_id);
       const said: Line[] = [];
       if (out.heard) said.push({ key: `you-${Date.now()}`, who: "you", text: out.heard });
       if (out.reply)
@@ -91,10 +135,35 @@ export function Munshi({
       }
       const waiting = out.card?.status === "shown";
       if (waiting && out.card?.reasons.length === 0) setCounting(true);
-      if (!out.finished) listenAgain.current();
+      if (!out.finished && (!full || byVoice.current)) listenAgain.current();
     },
-    [onWritten],
+    [onWritten, full, keep],
   );
+
+  // Arriving: what was said so far, if this conversation is kept. Storage is
+  // read as an external store, so the server's render (no storage) and the
+  // browser's agree; `undefined` there means "not looked yet".
+  const keptId = useSyncExternalStore(
+    noChange,
+    () => (keep ? kept(keep) : null),
+    () => undefined,
+  );
+  const [lost, setLost] = useState(false);
+  useEffect(() => {
+    // Nothing kept, or it is the conversation already on screen.
+    if (!keep || !keptId || conversation.current === keptId) return;
+    api<MunshiHistory>(`/shops/${SHOP_ID}/munshi/${keptId}`)
+      .then((h) => {
+        conversation.current = h.conversation_id;
+        setLines(h.lines.map((l, i) => ({ key: `kept-${i}`, who: l.who, text: l.text })));
+        setCard(h.card ?? null);
+      })
+      .catch(() => {
+        keepAs(keep, null);
+        setLost(true);
+      });
+  }, [keep, keptId]);
+  const fresh = !keep || keptId === null || lost;
 
   const failed = useCallback((e: unknown) => {
     setProblem(e instanceof ApiError ? e.message : "The munshi couldn't be reached.");
@@ -102,6 +171,7 @@ export function Munshi({
 
   const sendAudio = useCallback(
     async (audio: Blob) => {
+      byVoice.current = true;
       setBusy(true);
       setProblem(null);
       try {
@@ -145,9 +215,10 @@ export function Munshi({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function sendText(): Promise<void> {
-    const words = text.trim();
+  async function sendText(asked?: string): Promise<void> {
+    const words = (asked ?? text).trim();
     if (!words || busy) return;
+    byVoice.current = false;
     cancelMic();
     hush();
     setBusy(true);
@@ -219,56 +290,59 @@ export function Munshi({
           : "idle";
   const [line, fine] = LINE[state];
 
-  return (
-    <Card title="Munshi" tight>
-      {lines.length ? (
-        <div ref={thread} className="mb-3 flex max-h-[340px] flex-col gap-2 overflow-y-auto">
-          {lines.map((l) =>
-            l.who === "you" ? (
-              <p
-                key={l.key}
-                className="max-w-[85%] self-end rounded-card rounded-br-[5px] bg-av-blue px-3.5 py-2.5 text-[14px] font-semibold text-ink"
-              >
-                {l.text}
-              </p>
-            ) : (
-              <div key={l.key} className="max-w-[88%] self-start">
-                <p className="rounded-card rounded-bl-[5px] border border-hair bg-card px-3.5 py-2.5 text-[14.5px] font-semibold">
-                  {l.text}
-                </p>
-                {l.done?.length ? (
-                  <p className="mt-1 px-1 text-[11px] font-medium text-sub">{l.done.join(" · ")}</p>
-                ) : null}
-              </div>
-            ),
-          )}
-        </div>
-      ) : null}
+  const thread_ = lines.length ? (
+    <div
+      ref={thread}
+      className={`flex flex-col gap-2 ${full ? "pb-3" : "mb-3 max-h-[340px] overflow-y-auto"}`}
+    >
+      {lines.map((l) =>
+        l.who === "you" ? (
+          <p
+            key={l.key}
+            className="max-w-[85%] self-end rounded-card rounded-br-[5px] bg-av-blue px-3.5 py-2.5 text-[14px] font-semibold text-ink"
+          >
+            {l.text}
+          </p>
+        ) : (
+          <div key={l.key} className="max-w-[88%] self-start">
+            <p className="rounded-card rounded-bl-[5px] border border-hair bg-card px-3.5 py-2.5 text-[14.5px] font-semibold">
+              {l.text}
+            </p>
+            {l.done?.length ? (
+              <p className="mt-1 px-1 text-[11px] font-medium text-sub">{l.done.join(" · ")}</p>
+            ) : null}
+          </div>
+        ),
+      )}
+    </div>
+  ) : null;
 
-      {card ? (
-        <div className="mb-3">
-          <EntryCard
-            card={card}
-            counting={counting}
-            busy={busy}
-            onYes={() => void answer(true)}
-            onNo={() => void answer(false)}
-            onEdit={edit}
-            onEditing={() => {
-              setCounting(false);
-              cancelMic();
-              hush();
-            }}
-          />
-        </div>
-      ) : null}
+  const card_ = card ? (
+    <div className="mb-3">
+      <EntryCard
+        card={card}
+        counting={counting}
+        busy={busy}
+        onYes={() => void answer(true)}
+        onNo={() => void answer(false)}
+        onEdit={edit}
+        onEditing={() => {
+          setCounting(false);
+          cancelMic();
+          hush();
+        }}
+      />
+    </div>
+  ) : null;
 
-      {problem ? (
-        <p className="mb-3 text-[12.5px] font-semibold text-warn" role="alert">
-          {problem}
-        </p>
-      ) : null}
+  const problem_ = problem ? (
+    <p className="mb-3 text-[12.5px] font-semibold text-warn" role="alert">
+      {problem}
+    </p>
+  ) : null;
 
+  const controls = (
+    <>
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -279,7 +353,7 @@ export function Munshi({
             open();
           }}
           disabled={busy}
-          className={`grid size-14 shrink-0 place-items-center rounded-full text-white shadow-pill disabled:opacity-40 [&_svg]:size-6 ${recording ? "animate-pulse bg-cyan" : "bg-navy"}`}
+          className={`grid shrink-0 place-items-center rounded-full text-white shadow-pill disabled:opacity-40 ${full ? "size-12 [&_svg]:size-5" : "size-14 [&_svg]:size-6"} ${recording ? "animate-pulse bg-cyan" : "bg-navy"}`}
         >
           <Mic />
         </button>
@@ -299,7 +373,7 @@ export function Munshi({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="or type: B wing wale Sharma ji ko do sau"
+          placeholder={full ? "Ask anything: Patil kab dega?" : "or type: B wing wale Sharma ji ko do sau"}
           aria-label="Type to the munshi"
           className="min-w-0 flex-1 rounded-pill border-[1.5px] border-line bg-white px-4 py-2.5 text-[14px] font-bold outline-none placeholder:font-medium placeholder:text-sub focus:border-cyan"
         />
@@ -311,6 +385,42 @@ export function Munshi({
           Send
         </button>
       </form>
+    </>
+  );
+
+  if (full) {
+    return (
+      <div className="flex flex-1 flex-col">
+        {lines.length === 0 && starters.length && fresh ? (
+          <div className="flex flex-col items-start gap-2 pb-3">
+            <p className="px-1 text-[12.5px] font-semibold text-sub">Try asking</p>
+            {starters.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => void sendText(q)}
+                disabled={busy}
+                className="rounded-pill border-2 border-dashed border-line bg-card px-4 py-2 text-left text-[14px] font-bold disabled:opacity-40"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {thread_}
+        {card_}
+        {problem_}
+        <div className="sticky bottom-2 mt-auto rounded-card bg-card p-3 shadow-sheet">{controls}</div>
+      </div>
+    );
+  }
+
+  return (
+    <Card title="Munshi" tight>
+      {thread_}
+      {card_}
+      {problem_}
+      {controls}
     </Card>
   );
 }

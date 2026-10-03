@@ -69,6 +69,11 @@ def _clean(message: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+#: His tap on the card, as his turn in the conversation.
+TAPPED_YES = "(कार्ड पर हाँ दबाया)"
+TAPPED_NO = "(कार्ड पर नहीं दबाया)"
+
+
 def spoken(text: str) -> str:
     """The reply as it will be shown and said: no stray reasoning or markdown."""
     return _MARKDOWN.sub("", _THINKING.sub("", text)).strip()
@@ -104,7 +109,7 @@ def tap(
 ) -> Outcome:
     """He tapped the card (or its countdown ran out): yes saves it, no takes it away.
     Code does it; the munshi is told, and says what happened."""
-    said = "(कार्ड पर हाँ दबाया)" if yes else "(कार्ड पर नहीं दबाया)"
+    said = TAPPED_YES if yes else TAPPED_NO
     store.add_turn(con, conversation_id, {"role": "user", "content": said}, now)
     done: list[str] = []
     if yes:

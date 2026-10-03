@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Chat, Mic, Moon, Person, Plus, Scan } from "@/components/icons";
+import { Chat, Mic, Moon, Person, Plus, Scan, Spark } from "@/components/icons";
 import { MerchantShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
 import { Figure } from "@/components/ui/Figure";
@@ -89,6 +89,7 @@ export function BookScreen(): React.ReactElement {
                 { label: "Tomorrow", icon: <Moon />, href: "/m/tonight" },
                 { label: "Customers", icon: <Person />, href: "/m/customers" },
                 { label: "Add customer", icon: <Plus />, href: "/m/customers/new" },
+                { label: "Assistant", icon: <Spark />, href: "/m/assistant" },
               ]}
             />
           </Card>

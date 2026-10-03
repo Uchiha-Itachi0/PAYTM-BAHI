@@ -629,6 +629,17 @@ class Desk:
             self.seen[f.person.ref] = self.seen.get(f.person.ref, True) and weak
         if len(found) >= 3:
             out["reading"] = f"{first + 1} to {first + len(shown)} of {len(found)}"
+            # What he hears: the names, nothing else. He has just said where
+            # they live, so a room or wing on every name is noise; a place is
+            # said only for a name two of them share.
+            rows = out["customers"]
+            names = [c["name"] for c in rows]
+            out["read_out"] = ", ".join(
+                f"{c['name']} ({c['about']})"
+                if names.count(c["name"]) > 1 and c.get("about")
+                else c["name"]
+                for c in rows
+            )
         if left:
             out["more"] = left
         if search.note:
@@ -656,8 +667,9 @@ class Desk:
             )
         elif left:
             out["next"] = (
-                f"He asked for the names: read these {len(shown)}, each with its "
-                "place only, never what they owe. Then say there are "
+                f"He asked for the names: say read_out as it is, the {len(shown)} "
+                "names and nothing else: no numbers before them, no room or wing, "
+                "never what they owe. Then say there are "
                 f"{left} more names, and ask which one or whether to read more. If "
                 "he wants more, call find_customer again with the same words, "
                 f"read_names true and skip {first + len(shown)}: the next ones, "
@@ -665,8 +677,9 @@ class Desk:
             )
         elif len(found) >= 3:
             out["next"] = (
-                "He asked for the names: read each with its place only, never what "
-                "they owe, then ask which one."
+                "He asked for the names: say read_out as it is, the names and "
+                "nothing else: no numbers before them, no room or wing, never what "
+                "they owe. Then ask which one."
                 + (" These are the last of them." if first else "")
             )
         self.done.append(f"Looked for {looked}: {len(found)} found")
