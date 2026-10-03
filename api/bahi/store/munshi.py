@@ -47,6 +47,8 @@ class Draft:
     new_tag: str | None
     #: A correction: the entry it corrects. amount_paise is the right amount.
     corrects_entry_id: str | None
+    #: The name he used for them, when it isn't the book's (a nickname).
+    called: str | None = None
 
 
 def start(con: Conn, shop_id: str, now: datetime) -> str:
@@ -126,7 +128,7 @@ def add_turn(
 COLUMNS = """id::text AS id, conversation_id::text AS conversation_id,
        customer_id::text AS customer_id, kind, amount_paise, spoken_text, reasons,
        status, shown_seq, entry_id::text AS entry_id, new_name, new_tag,
-       corrects_entry_id::text AS corrects_entry_id"""
+       corrects_entry_id::text AS corrects_entry_id, called"""
 DRAFT = f"SELECT {COLUMNS} FROM drafts"
 
 
@@ -158,6 +160,7 @@ def show(
     new_name: str | None = None,
     new_tag: str | None = None,
     corrects: str | None = None,
+    called: str | None = None,
 ) -> Draft:
     """The new card. A card already waiting in this conversation is replaced."""
     with con.cursor(row_factory=class_row(Draft)) as cur:
@@ -170,8 +173,8 @@ def show(
             f"""
             INSERT INTO drafts (conversation_id, customer_id, kind, amount_paise,
                                 spoken_text, reasons, shown_seq, created_at,
-                                new_name, new_tag, corrects_entry_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                new_name, new_tag, corrects_entry_id, called)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING {COLUMNS}
             """,
             (
@@ -186,6 +189,7 @@ def show(
                 new_name,
                 new_tag,
                 corrects,
+                called,
             ),
         ).fetchone()
     assert row is not None

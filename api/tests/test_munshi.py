@@ -704,6 +704,250 @@ def test_the_reply_is_said_before_the_screen_asks_and_only_once(
     assert voice_on == [NAMES]
 
 
+# ── memory (M3) ──────────────────────────────────────────────────────────────
+
+
+def kept_by(results: list[Any]) -> Callable[[Any], dict[str, Any]]:
+    return keeping(results, {})
+
+
+def test_it_cannot_remember_about_someone_it_never_looked_up(
+    api: TestClient, model: Script
+) -> None:
+    results: list[Any] = []
+    model.then(
+        tool("remember", {"customer_id": SHARMA[:8], "note": "x"}),
+        tool("counter", kept_by(results)),
+        reply("..."),
+    )
+    say(api, "शर्मा जी का याद रखना")
+    assert results[0]["ok"] is False and "find_customer" in results[0]["problem"]
+
+
+def test_a_note_it_keeps_is_on_his_card_and_holds_tonight(
+    api: TestClient, model: Script
+) -> None:
+    patil = str(uid("customer", HOME, "patil"))
+    results: list[Any] = []
+    model.then(
+        tool("find_customer", {"name": "पाटिल"}),
+        tool(
+            "remember",
+            lambda found: {
+                "customer_id": first_found(found),
+                "note": "पेंशन 10 तारीख को आती है, तब तक मत भेजना",
+                "until": "2026-10-10",
+            },
+        ),
+        tool("customer_card", keeping(results, {"customer_id": patil[:8]})),
+        tool("tonight", keeping(results, {})),
+        tool("counter", keeping(results, {})),
+        reply("याद रख लिया।"),
+    )
+    out = say(api, "पाटिल की पेंशन 10 को आती है, तब तक मत भेजना")
+    remembered, card, tomorrow = results
+    assert remembered["ok"] and remembered["quiet_until"] == "2026-10-10"
+    assert card["remembered"][0]["said"].startswith("पेंशन 10 तारीख")
+    held = tomorrow["held_for_what_was_said"]
+    assert [h["why"] for h in held] == ["your note"]
+    assert "Patil" not in {r["name"] for r in tomorrow["reminders_tomorrow"]}
+    assert any("Remembered about Patil" in d for d in out["done"])
+
+
+def test_asked_when_someone_will_pay_it_reads_how_they_pay(
+    api: TestClient, model: Script
+) -> None:
+    results: list[Any] = []
+    model.then(
+        tool("find_customer", {"name": "पाटिल"}),
+        tool(
+            "customer_card",
+            lambda found: {"customer_id": first_found(found)},
+        ),
+        tool("counter", keeping(results, {})),
+        reply("मेरे हिसाब से…"),
+    )
+    say(api, "पाटिल कब पैसे देगा?")
+    (card,) = results
+    how = card["how_they_pay"]
+    assert how["usually_pays_every_days"] and how["likely_next"]
+    assert how["right_now"].startswith("late by their own rhythm")
+    assert how["likely_next"] == "no date from their rhythm: they are past it"
+    assert "guess" in card["next"] and "passed" in card["next"]
+
+
+def test_who_pays_this_week_is_worked_out_not_guessed(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    from bahi.store import memories
+
+    raju = str(uid("customer", HOME, "raju"))
+    memories.add(
+        tx,
+        SHOP,
+        raju,
+        "promise",
+        "6 को दूँगा",
+        "customer",
+        clock.now(),
+        until=clock.today() + timedelta(days=3),
+    )
+    results: list[Any] = []
+    model.then(
+        tool("expected_payments", {}),
+        tool("counter", keeping(results, {})),
+        reply("…"),
+    )
+    say(api, "इस हफ़्ते कौन देने वाला है?")
+    (week,) = results
+    assert [p["name"] for p in week["promised_in_chat"]] == ["राजू"]
+    assert "पाटिल" in {p["name"] for p in week["late_by_their_rhythm"]}
+    everyone = week["promised_in_chat"] + week["due_by_their_rhythm"]
+    assert all("amount" not in str(p) and "₹" not in str(p) for p in everyone)
+
+
+def test_recall_asks_cognee_and_falls_back_to_the_books_own_list(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    from bahi.memory import cognee_client
+    from bahi.store import memories
+
+    memories.add(tx, SHOP, SHARMA, "note", "pays through his son", "shop", clock.now())
+    results: list[Any] = []
+    ask = {"question": "शर्मा जी कैसे पैसे देते हैं?"}
+    model.then(tool("recall", ask), tool("counter", keeping(results, {})), reply("..."))
+    say(api, "शर्मा जी कैसे देते हैं?")
+    assert results[0]["searched"] == "the book's list"
+    assert "pays through his son" in results[0]["found"]
+
+    class Remembers:
+        def remember(self, *a: Any) -> str | None:
+            return None
+
+        def recall(self, shop_id: str, question: str) -> str:
+            return f"cognee found: {question}"
+
+        def forget(self, *a: Any) -> None:
+            return None
+
+    cognee_client.use(Remembers())
+    try:
+        results.clear()
+        model.then(
+            tool("recall", ask), tool("counter", keeping(results, {})), reply("...")
+        )
+        say(api, "शर्मा जी कैसे देते हैं?")
+    finally:
+        cognee_client.use(None)
+    assert results[0]["searched"] == "cognee"
+    assert results[0]["found"] == f"cognee found: {ask['question']}"
+
+
+def test_a_nickname_he_confirmed_finds_them_again_only_as_a_hint(
+    api: TestClient, model: Script
+) -> None:
+    def sharma_as(called: str | None) -> Step:
+        return tool(
+            "propose_entry",
+            lambda found: {
+                "customer_id": first_found(found),
+                "kind": "udhaar",
+                "amount_rupees": 100,
+                **({"called": called} if called else {}),
+            },
+        )
+
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        sharma_as("बड़े भैया"),
+        reply("शर्मा जी, सौ रुपये उधार, पक्का?"),
+        reply("लिख दिया।"),
+    )
+    out = say(api, "बड़े भैया यानी शर्मा जी को सौ")
+    assert tap(api, out)["card"]["status"] == "saved"
+
+    results: list[Any] = []
+    model.then(
+        tool("find_customer", {"name": "बड़े भैया"}),
+        sharma_as(None),
+        tool("counter", keeping(results, {})),
+        reply("शर्मा जी, रूम 19? पक्का?"),
+    )
+    card = say(api, "बड़े भैया को सौ")["card"]
+    assert card["display_name"] == "Sharma"
+    assert card["reasons"] == ["weak_match"]  # a hint: his clear yes decides
+
+
+def test_a_name_that_found_nobody_then_someone_is_decided_before_the_card(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    # "चिंटू को सौ" finds nobody; asked who, he says "शर्मा". The card waits until
+    # the model says whether चिंटू was Sharma: a turn later it forgot to (live,
+    # 3 Oct), and the nickname was lost.
+    from bahi.store import memories
+
+    model.then(tool("find_customer", {"name": "चिंटू"}), reply("कौन चिंटू?"))
+    first = say(api, "चिंटू को सौ")
+    results: list[Any] = []
+    sharma = {"customer_id": "", "kind": "udhaar", "amount_rupees": 100}
+
+    def to_sharma(found: Any) -> dict[str, Any]:
+        results.append(found)
+        sharma["customer_id"] = first_found(found)
+        return sharma
+
+    def as_chintu(refused: Any) -> dict[str, Any]:
+        results.append(refused)
+        return {**sharma, "called": "चिंटू"}
+
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool("propose_entry", to_sharma),
+        tool("propose_entry", as_chintu),
+        tool("counter", keeping(results, {})),
+        reply("शर्मा जी, जिन्हें आप चिंटू कहते हैं, सौ रुपये उधार, पक्का?"),
+        reply("लिख दिया।"),
+    )
+    out = say(api, "शर्मा जी", first["conversation_id"])
+    found, refused, shown = results
+    assert "चिंटू" in found["he_said_earlier"]
+    assert refused["ok"] is False and "called 'चिंटू'" in refused["problem"]
+    assert shown["ok"] is True and shown["he_calls_them"] == "चिंटू"
+    assert out["card"]["called"] == "चिंटू"
+
+    saved = tap(api, out)
+    assert "Remembered: you call Sharma चिंटू" in saved["done"]
+    nicks = [m.body for m in memories.of_customer(tx, SHARMA) if m.kind == "nickname"]
+    assert nicks == ["चिंटू"]
+
+
+def test_he_can_say_the_name_that_found_nobody_was_someone_else(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    from bahi.store import memories
+
+    model.then(tool("find_customer", {"name": "चिंटू"}), reply("कौन चिंटू?"))
+    first = say(api, "चिंटू को सौ")
+    model.then(
+        tool("find_customer", {"name": "शर्मा"}),
+        tool(
+            "propose_entry",
+            lambda found: {
+                "customer_id": first_found(found),
+                "kind": "udhaar",
+                "amount_rupees": 100,
+                "called": "",
+            },
+        ),
+        reply("शर्मा जी, सौ रुपये उधार, पक्का?"),
+        reply("लिख दिया।"),
+    )
+    out = say(api, "नहीं, शर्मा जी को", first["conversation_id"])
+    assert out["card"]["called"] is None
+    tap(api, out)
+    assert not [m for m in memories.of_customer(tx, SHARMA) if m.kind == "nickname"]
+
+
 # ── money back, oldest first ─────────────────────────────────────────────────
 
 

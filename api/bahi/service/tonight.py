@@ -14,12 +14,12 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from bahi import clock
-from bahi.domain.tonight import Plan, Tonight, tonight
+from bahi.domain.tonight import Plan, Tonight, Wait, tonight
 from bahi.munshi import writer
 from bahi.service import ledger
 from bahi.service.errors import Conflict, NotFound
 from bahi.store import book as book_store
-from bahi.store import reminders, threads
+from bahi.store import memories, reminders, threads
 from bahi.store.db import Conn
 from bahi.store.reminders import Reminder
 
@@ -37,11 +37,17 @@ class Evening:
 def work_out(con: Conn, shop_id: str, now: datetime) -> Evening:
     """Who gets a reminder tomorrow, and the words kept for each so far."""
     ledger.shop(con, shop_id)
+    today = now.date()
     t = tonight(
         book_store.load(con, shop_id),
-        now.date(),
+        today,
         book_store.paid_times(con, shop_id),
         reminders.last_sent(con, shop_id),
+        {
+            cid: Wait(m.until, m.said_by, m.body)  # type: ignore[arg-type]
+            for cid, m in memories.waits(con, shop_id, today).items()
+            if m.until is not None
+        },
     )
     return Evening(t, reminders.for_day(con, shop_id, t.for_day))
 

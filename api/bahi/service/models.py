@@ -316,6 +316,8 @@ class CardOut(BaseModel):
     ]
     #: What he said, shown under the amount.
     spoken_text: str | None
+    #: The name he used for them, not the book's: his yes remembers it.
+    called: str | None = None
     entry_id: UUID | None
     #: The customer has BAHI on his phone, so a saved entry reaches it.
     on_bahi: bool
@@ -549,6 +551,59 @@ class CustomerDetailOut(BaseModel):
     day: int | None
     #: Newest first: everything open, then the latest paid.
     entries: list[ThreadEntryOut]
+    #: What BAHI remembers about him, newest first.
+    memories: list[MemoryOut] = Field(default_factory=list)
+    #: How he pays, from his book.
+    pattern: PatternOut | None = None
+
+
+class MemoryOut(BaseModel):
+    """Something BAHI remembers about a customer, and where it came from."""
+
+    id: str
+    kind: Literal["note", "promise", "nickname", "said"]
+    body: str
+    said_by: Literal["shop", "customer"]
+    #: The last day BAHI stays quiet for it, if it asks to wait.
+    until: date | None
+    remembered_at: datetime
+    #: The chat message a promise was read from.
+    message_id: str | None
+
+
+class PatternOut(BaseModel):
+    """How he pays, from his own book (domain/pattern.py)."""
+
+    #: Days he paid on.
+    payments: int
+    usual_gap: int | None
+    #: 8 in 10 of his gaps were this long or shorter.
+    usually_within: int | None
+    longest_gap: int | None
+    #: His latest gaps, oldest first.
+    recent_gaps: list[int]
+    last_paid: date | None
+    #: Likely next payment, by his own rhythm: from this day, nearly always by that.
+    expect_from: date | None
+    expect_by: date | None
+    #: clear: he owes nothing, so there is no next payment to expect.
+    now: Literal["early", "due", "late", "unknown", "clear"]
+    #: "18:30": the time of day he usually pays.
+    usual_time: str | None
+    #: A promise still ahead of him.
+    promised: date | None
+    promises_due: int
+    promises_kept: int
+    entries: int
+    disputed: int
+
+
+class MemoryIn(BaseModel):
+    """A note the shopkeeper types on the customer's page."""
+
+    body: str = Field(min_length=1, max_length=300)
+    #: Stay quiet for him until this day (no reminder on or before it).
+    until: date | None = None
 
 
 class NameOnlyIn(BaseModel):
@@ -567,7 +622,17 @@ TonightWhy = Literal[
     "too_new",
     "no_phone",
     "reminded",
+    "promised",
+    "asked_to_wait",
 ]
+
+
+class WaitOut(BaseModel):
+    """What was said that holds him: his promise, or the shopkeeper's note."""
+
+    until: date
+    said_by: Literal["shop", "customer"]
+    body: str
 
 
 class ReminderOut(BaseModel):
@@ -591,6 +656,8 @@ class PlanOut(BaseModel):
     why: TonightWhy
     reminded_on: date | None
     reminder: ReminderOut | None
+    #: Set when what was said is why he is held.
+    wait: WaitOut | None = None
 
 
 class TonightOut(BaseModel):

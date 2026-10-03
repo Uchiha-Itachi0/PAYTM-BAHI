@@ -188,6 +188,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/customers/{customer_id}/memories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remember Note
+         * @description M3. A note the shopkeeper types about him ("pays through his son"), and a
+         *     day to stay quiet until, if it asks to wait.
+         */
+        post: operations["remember_note_shops__shop_id__customers__customer_id__memories_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/memories/{memory_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Forget
+         * @description M3. Forget it: gone from his page and from Tonight at once, and from
+         *     Cognee's search right after.
+         */
+        delete: operations["forget_shops__shop_id__memories__memory_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shop_id}/customers/{customer_id}/invite": {
         parameters: {
             query?: never;
@@ -1210,6 +1252,8 @@ export interface components {
             reasons: ("weak_match" | "one_of_several" | "large" | "unusual" | "new_customer" | "correction")[];
             /** Spoken Text */
             spoken_text: string | null;
+            /** Called */
+            called?: string | null;
             /** Entry Id */
             entry_id: string | null;
             /** On Bahi */
@@ -1281,6 +1325,9 @@ export interface components {
             day: number | null;
             /** Entries */
             entries: components["schemas"]["ThreadEntryOut"][];
+            /** Memories */
+            memories?: components["schemas"]["MemoryOut"][];
+            pattern?: components["schemas"]["PatternOut"] | null;
         };
         /** CustomerOut */
         CustomerOut: {
@@ -1607,6 +1654,45 @@ export interface components {
             /** Query */
             query: string;
         };
+        /**
+         * MemoryIn
+         * @description A note the shopkeeper types on the customer's page.
+         */
+        MemoryIn: {
+            /** Body */
+            body: string;
+            /** Until */
+            until?: string | null;
+        };
+        /**
+         * MemoryOut
+         * @description Something BAHI remembers about a customer, and where it came from.
+         */
+        MemoryOut: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "note" | "promise" | "nickname" | "said";
+            /** Body */
+            body: string;
+            /**
+             * Said By
+             * @enum {string}
+             */
+            said_by: "shop" | "customer";
+            /** Until */
+            until: string | null;
+            /**
+             * Remembered At
+             * Format: date-time
+             */
+            remembered_at: string;
+            /** Message Id */
+            message_id: string | null;
+        };
         /** MessageOut */
         MessageOut: {
             /** Id */
@@ -1732,6 +1818,45 @@ export interface components {
             elsewhere: components["schemas"]["MyShopOut"][];
         };
         /**
+         * PatternOut
+         * @description How he pays, from his own book (domain/pattern.py).
+         */
+        PatternOut: {
+            /** Payments */
+            payments: number;
+            /** Usual Gap */
+            usual_gap: number | null;
+            /** Usually Within */
+            usually_within: number | null;
+            /** Longest Gap */
+            longest_gap: number | null;
+            /** Recent Gaps */
+            recent_gaps: number[];
+            /** Last Paid */
+            last_paid: string | null;
+            /** Expect From */
+            expect_from: string | null;
+            /** Expect By */
+            expect_by: string | null;
+            /**
+             * Now
+             * @enum {string}
+             */
+            now: "early" | "due" | "late" | "unknown" | "clear";
+            /** Usual Time */
+            usual_time: string | null;
+            /** Promised */
+            promised: string | null;
+            /** Promises Due */
+            promises_due: number;
+            /** Promises Kept */
+            promises_kept: number;
+            /** Entries */
+            entries: number;
+            /** Disputed */
+            disputed: number;
+        };
+        /**
          * PayIn
          * @description He pays this shop by UPI: what he owes it, or the part he chose.
          */
@@ -1801,10 +1926,11 @@ export interface components {
              * Why
              * @enum {string}
              */
-            why: "past_longest_gap" | "inside_gap" | "not_confirmed" | "disputed" | "too_new" | "no_phone" | "reminded";
+            why: "past_longest_gap" | "inside_gap" | "not_confirmed" | "disputed" | "too_new" | "no_phone" | "reminded" | "promised" | "asked_to_wait";
             /** Reminded On */
             reminded_on: string | null;
             reminder: components["schemas"]["ReminderOut"] | null;
+            wait?: components["schemas"]["WaitOut"] | null;
         };
         /**
          * ReadbackOut
@@ -2036,6 +2162,24 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WaitOut
+         * @description What was said that holds him: his promise, or the shopkeeper's note.
+         */
+        WaitOut: {
+            /**
+             * Until
+             * Format: date
+             */
+            until: string;
+            /**
+             * Said By
+             * @enum {string}
+             */
+            said_by: "shop" | "customer";
+            /** Body */
+            body: string;
         };
         /** WaitingOut */
         WaitingOut: {
@@ -2393,6 +2537,72 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CustomerDetailOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remember_note_shops__shop_id__customers__customer_id__memories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    forget_shops__shop_id__memories__memory_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                memory_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

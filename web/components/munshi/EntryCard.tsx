@@ -179,6 +179,14 @@ export function EntryCard({
       {card.spoken_text ? (
         <p className="mt-2 text-[12px] font-medium opacity-80">You said: “{card.spoken_text}”</p>
       ) : null}
+      {card.called && card.status !== "cancelled" && card.status !== "replaced" ? (
+        <p className="mt-1 text-[12px] font-bold">
+          You call them {card.called}
+          <span className="font-medium opacity-80">
+            {card.status === "saved" ? " · remembered" : " · remembered on your yes"}
+          </span>
+        </p>
+      ) : null}
       {card.reasons.length && card.status === "shown" ? (
         <ul className="mt-2 flex flex-wrap gap-1.5">
           {card.reasons.map((r) => (

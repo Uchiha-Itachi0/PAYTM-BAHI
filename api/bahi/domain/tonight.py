@@ -13,9 +13,12 @@ the screen that says who is *not* being messaged is the point of the product.
     too little history to read    hold
     kept by name only             hold: there is no phone to send to
     reminded within his usual gap hold: one reminder a gap, never a stream
+    he promised a day, or the shopkeeper said wait, and that day hasn't passed
+                                  hold: what was said comes first
 
 No model decides anything here. The munshi only writes the words of a reminder
-this file has already decided to send.
+this file has already decided to send. What people said (bahi.memory) reaches
+here as a date to wait until: it can hold a reminder, never cause one.
 """
 
 from __future__ import annotations
@@ -37,6 +40,8 @@ Why = Literal[
     "too_new",
     "no_phone",
     "reminded",
+    "promised",
+    "asked_to_wait",
 ]
 
 #: A reminder never arrives before this or after LATEST.
@@ -47,6 +52,17 @@ USUAL = time(10, 0)
 #: A reminder a gap: after one, the next waits at least his usual gap, and at
 #: least this many days when his gap is shorter or unknown.
 FEWEST_DAYS_BETWEEN = 7
+
+
+@dataclass(frozen=True, slots=True)
+class Wait:
+    """Something said that asks BAHI to stay quiet for him until a day: his own
+    promise in chat, or the shopkeeper's note."""
+
+    #: The last quiet day: no reminder goes out on or before it.
+    until: date
+    said_by: Literal["shop", "customer"]
+    body: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +80,8 @@ class Plan:
     send_at: time | None
     #: When he was last reminded, if ever.
     reminded_on: date | None
+    #: What was said that holds him, when that is why.
+    wait: Wait | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,12 +136,15 @@ def tonight(
     today: date,
     paid_at: Mapping[str, Sequence[time]],
     reminded_on: Mapping[str, date],
+    waits: Mapping[str, Wait] | None = None,
 ) -> Tonight:
     """Tomorrow's reminders, decided tonight from the book as it stands today.
 
     `paid_at`: the time of day of each of his payments, by customer id.
     `reminded_on`: the day each customer was last sent a reminder.
+    `waits`: what was said that asks BAHI to wait for him, by customer id.
     """
+    tomorrow = today + timedelta(days=1)
     plans: list[Plan] = []
     for c in customers:
         ln = line(c, today)
@@ -131,6 +152,12 @@ def tonight(
             continue
         last = reminded_on.get(c.id)
         send, why = _hold_or_send(c, ln, today, last)
+        wait = (waits or {}).get(c.id)
+        held = send and wait is not None and wait.until >= tomorrow
+        if held:
+            assert wait is not None
+            send = False
+            why = "promised" if wait.said_by == "customer" else "asked_to_wait"
         plans.append(
             Plan(
                 customer_id=c.id,
@@ -143,11 +170,12 @@ def tonight(
                 why=why,
                 send_at=send_hour(paid_at.get(c.id, ())) if send else None,
                 reminded_on=last,
+                wait=wait if held else None,
             )
         )
     plans.sort(key=lambda p: (not p.send, p.display_name.casefold()))
     return Tonight(
-        for_day=today + timedelta(days=1),
+        for_day=tomorrow,
         owing_count=len(plans),
         plans=tuple(plans),
     )

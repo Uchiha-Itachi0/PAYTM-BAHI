@@ -66,11 +66,17 @@ def events(api: TestClient, after: str) -> list[dict[str, Any]]:
 # ── V5 · threads ─────────────────────────────────────────────────────────────
 
 
-def test_every_entry_he_owes_has_its_card_in_his_thread(api: TestClient) -> None:
+def test_his_thread_carries_the_same_history_as_his_book(api: TestClient) -> None:
+    """Every entry since he joined BAHI has its card, and every payment its line,
+    as the app posts them: the chat and the book tell one story."""
     t = shop_thread(api, SHARMA)
     cards = [m for m in t["messages"] if m["card"]]
-    assert [c["entry"]["amount_paise"] for c in cards] == [20000]
-    assert cards[0]["author"] == "bahi" and cards[0]["kind"] == "entry"
+    book = api.get(f"/shops/{SHOP}/customers/{SHARMA}").json()
+    assert len(cards) == book["pattern"]["entries"] - 1  # not the 2023 paper book
+    assert cards[-1]["entry"]["amount_paise"] == 20000  # what he owes, last
+    assert all(c["author"] == "bahi" and c["kind"] == "entry" for c in cards)
+    paid = [m for m in t["messages"] if m["body"].startswith("Paid ")]
+    assert len(paid) == book["pattern"]["payments"]
     assert (t["balance_paise"], t["day"]) == (20000, 4)
 
 
@@ -211,15 +217,22 @@ def test_another_shop_cannot_correct_this_shops_entry(api: TestClient) -> None:
 
 
 def test_kamlas_august_dispute_reads_as_it_happened(api: TestClient) -> None:
-    said = [(m["author"], m["card"]) for m in shop_thread(api, KAMLA)["messages"]][:6]
+    messages = shop_thread(api, KAMLA)["messages"]
+    start = next(
+        i
+        for i, m in enumerate(messages)
+        if m["card"] and m["entry"]["status"] == "corrected"
+    )
+    said = [(m["author"], m["card"]) for m in messages[start : start + 5]]
     assert said == [
         ("bahi", True),  # ₹200 recorded
         ("bahi", False),  # she says it's not right
         ("customer", False),
         ("shop", False),
         ("bahi", True),  # the correction, ₹150
-        ("bahi", False),  # paid
     ]
+    after = [m["body"] for m in messages[start + 5 :] if not m["card"]]
+    assert after[0].startswith("Paid ")  # then paid, with the rest of that day
 
 
 # ── V3 · his own book, across shops, and paying it ───────────────────────────

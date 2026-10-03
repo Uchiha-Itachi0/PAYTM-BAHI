@@ -33,10 +33,11 @@ enough to copy without a slip, and looked up again here in this shop's book.
 from __future__ import annotations
 
 import json
+import logging
 import statistics
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -46,14 +47,17 @@ from bahi.domain import limitation
 from bahi.domain.find import Found, find
 from bahi.domain.money import rupees
 from bahi.domain.who import Person
-from bahi.service import ledger
+from bahi.memory import cognee_client
+from bahi.service import ledger, pattern
+from bahi.service import memory as keeping
 from bahi.service import tonight as tonight_service
-from bahi.service.errors import Conflict
+from bahi.service.errors import Conflict, NotFound
 from bahi.store import book as book_store
-from bahi.store import customers, entries, scans
+from bahi.store import customers, entries, memories, scans
 from bahi.store import munshi as store
 from bahi.store.customers import CustomerRef
 from bahi.store.db import Conn
+from bahi.store.memories import Memory
 from bahi.voice.said import amount_words
 
 #: A card at or above this waits for an explicit yes.
@@ -67,6 +71,15 @@ MOST_PAISE = 1_00_000_00
 #: A search lists at most this many.
 LISTED = 8
 SHORT = 6
+#: A note the munshi keeps is at most this long; a nickname, this.
+NOTE_CHARS = 300
+NICKNAME_CHARS = 40
+#: What a customer's card carries of what is remembered about them; and what a
+#: recall reads when Cognee is off.
+RECALLED = 5
+RECALLED_ALL = 30
+
+log = logging.getLogger(__name__)
 
 #: The munshi's words for the two kinds. Not "जमा": that also means "deposit",
 #: and "put it on his account" was read as one.
@@ -153,6 +166,13 @@ TOOLS: list[dict[str, Any]] = [
                         "clear what he owes. If his words don't say which, ask first.",
                     },
                     "amount_rupees": {"type": "number"},
+                    "called": {
+                        "type": "string",
+                        "description": "The name he used for them, only if it isn't "
+                        "the book's name for them (a nickname, e.g. 'पप्पू'). His yes "
+                        "to the card remembers it. '' when a name he said earlier, "
+                        "that nobody in the book has, was not this person.",
+                    },
                 },
                 "required": ["customer_id", "kind", "amount_rupees"],
             },
@@ -220,6 +240,70 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "remember",
+            "description": "Keep a note the shopkeeper tells you about a customer: "
+            "when they get paid, how they pay, anything he asks you to remember. Not "
+            "for money: udhaar and जमा are entries. If he asks BAHI to wait before "
+            "reminding them, give until. The customer is never shown it.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {
+                        "type": "string",
+                        "description": "From find_customer.",
+                    },
+                    "note": {
+                        "type": "string",
+                        "description": "The note, short, in his words and language.",
+                    },
+                    "until": {
+                        "type": "string",
+                        "description": "YYYY-MM-DD: the last day to stay quiet about "
+                        "their udhaar, when he asks to wait (salary on the 10th → the "
+                        "10th). Leave out otherwise.",
+                    },
+                },
+                "required": ["customer_id", "note"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "expected_payments",
+            "description": "Who is likely to pay in the next few days, worked out now "
+            "from the book: their own rhythm, their promises in chat, and your notes. "
+            "For 'who pays this week?'. Never guess dates yourself.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "How many days ahead, from today. Default 7.",
+                    }
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "recall",
+            "description": "Search what BAHI remembers in this shop (his notes, "
+            "customers' promises in chat, nicknames) by meaning, for a question like "
+            "'who promised to pay this week?' or 'how does Kamla pay?'. For one "
+            "customer's notes, customer_card has them already.",
+            "parameters": {
+                "type": "object",
+                "properties": {"question": {"type": "string"}},
+                "required": ["question"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "tonight",
             "description": "Who gets a reminder tomorrow and why, and how many are "
             "left alone. Decided by the book's own arithmetic. Only when he asks.",
@@ -275,6 +359,9 @@ class Desk:
     #: Customers some search, or the counter, gave back alone. Anyone else on a
     #: card was picked from several, by the model, and waits for a clear yes.
     alone: set[str] = field(default_factory=set)
+    #: Names he used in this conversation that nobody in the book has, oldest
+    #: first: maybe what he calls someone ("चिंटू" for D'Souza).
+    unfound: list[str] = field(default_factory=list)
     #: What happened, for the screen: "Looked for 'B wing': 8".
     done: list[str] = field(default_factory=list)
 
@@ -316,6 +403,8 @@ class Desk:
         if "looked_for" in result:
             self.searched = True
             asked = result["looked_for"] or {}
+            if result.get("count") == 0:
+                self._unfound(asked.get("name"))
             if before and "customers" not in result and result.get("count", 0) >= 3:
                 self.told.add(self._who(asked.get("name"), asked.get("description")))
         rows = result.get("customers", []) or []
@@ -326,6 +415,11 @@ class Desk:
                 self.seen[cid] = self.seen.get(cid, True) and weak
                 if len(rows) == 1 and result.get("count") == 1:
                     self.alone.add(cid)
+
+    def _unfound(self, name: Any) -> None:
+        name = str(name or "").strip()
+        if name and name not in self.unfound:
+            self.unfound.append(name)
 
     def _who(self, name: str | None, description: str | None) -> frozenset[str]:
         return frozenset(f.person.ref for f in find(self.people, name, description).found)
@@ -349,6 +443,9 @@ class Desk:
             "propose_correction": self.propose_correction,
             "propose_new_customer": self.propose_new_customer,
             "tonight": self.tonight,
+            "remember": self.remember,
+            "recall": self.recall,
+            "expected_payments": self.expected_payments,
             "confirm_entry": self.confirm_entry,
             "cancel_entry": self.cancel_entry,
         }
@@ -392,6 +489,12 @@ class Desk:
             "count": len(found),
         }
         looked = " · ".join(x for x in (name, description) if x)
+        if not found and name:
+            called = self._called(name, description)
+            if called is not None:
+                self.done.append(f"Looked for {looked}: a name you've used before")
+                return called
+            self._unfound(name)
         asked = read_names is True or str(read_names).lower() == "true"
         who = frozenset(f.person.ref for f in found)
         if len(found) >= 3 and not (asked and who in self.told):
@@ -448,6 +551,13 @@ class Desk:
             out["more"] = left
         if search.note:
             out["note"] = search.note
+        earlier = self._earlier_name(found[0].person.ref) if len(found) == 1 else None
+        if earlier:
+            out["he_said_earlier"] = (
+                f"{earlier}, a name nobody in the book has. If he meant this person "
+                f"by it, it is what he calls them: pass called '{earlier}' on the "
+                "card, and his yes remembers it."
+            )
         if len(found) == 1 and not found[0].strong:
             out["next"] = (
                 "Only a weak match: say his name and place back and ask if that's "
@@ -503,15 +613,35 @@ class Desk:
         said, about = self._say(cid)
         owed, day = self._owes(cid)
         self.done.append(f"Opened {self.refs[cid].display_name}'s card")
-        return {
+        out: dict[str, Any] = {
             "name": said,
             "about": about,
             "owes": amount_words(owed) if owed else "कुछ बाकी नहीं",
             "days_since_last_paid": day,
         }
+        kept = memories.of_customer(self.con, cid)
+        told = sum(1 for m in kept if m.kind == "said")
+        p = pattern.of_customer(self.con, self.shop_id, cid, self.now.date())
+        out["how_they_pay"] = pattern.facts(p, told)
+        if kept:
+            out["remembered"] = [_remembered(m) for m in kept[:RECALLED]]
+        out["next"] = (
+            "Answer only what he asked: what they owe, if that is all he asked. Only "
+            "when he asks when they will pay, or what kind of customer they are, use "
+            "how_they_pay: a guess (मेरे हिसाब से…) with the reason in a few words, "
+            "never a promise. Owing nothing, there is nothing to expect. Their "
+            "promise, or a note about when they get money, outranks their rhythm. "
+            "Never give a date that has passed. If something remembered bears on "
+            "it, say it as said (आपने बताया था…, उन्होंने लिखा था…)."
+        )
+        return out
 
     def propose_entry(
-        self, customer_id: str, kind: str, amount_rupees: float
+        self,
+        customer_id: str,
+        kind: str,
+        amount_rupees: float,
+        called: str | None = None,
     ) -> dict[str, Any]:
         cid = self.resolve(customer_id)
         if cid is None:
@@ -530,6 +660,18 @@ class Desk:
         paise, problem = _paise(amount_rupees)
         if problem is not None:
             return {"ok": False, "problem": problem}
+        earlier = self._earlier_name(cid) if called is None else None
+        if earlier:
+            # A name that found nobody, then this person: most often what he
+            # calls them. The model decides, with the whole conversation in front
+            # of it; the card is not shown until it has.
+            return {
+                "ok": False,
+                "problem": f"Earlier he said {earlier}, a name nobody in the book "
+                f"has. If that was this person, propose again with called "
+                f"'{earlier}': his yes to the card remembers it. If he meant someone "
+                "else by it, propose again with called ''.",
+            }
         owed, _ = self._owes(cid)
         if kind_en == "payment" and paise > owed:
             words = amount_words(owed) if owed else "कुछ नहीं"
@@ -557,19 +699,28 @@ class Desk:
             reasons,
             self.his_seq,
             self.now,
+            called=self._nickname(cid, called),
         )
         said, about = self._say(cid)
+        nick = self._nickname(cid, called)
         self.done.append(
             f"Showed a card: {self.refs[cid].display_name} ₹{paise // 100} "
             f"{KIND_HI[kind_en]}"
         )
-        return {
+        out: dict[str, Any] = {
             "ok": True,
             "card": f"{said}, {about}, {amount_words(paise)} {KIND_HI[kind_en]}",
             "needs_clear_yes": bool(reasons),
             "next": "The card is waiting for his yes. Read it back in one short "
             "sentence and ask पक्का?",
         }
+        if nick:
+            out["he_calls_them"] = nick
+            out["next"] = (
+                "The card is waiting for his yes. Read it back in one short sentence, "
+                f"saying it is the one he calls {nick}, and ask पक्का?"
+            )
+        return out
 
     def propose_correction(
         self,
@@ -745,6 +896,21 @@ class Desk:
                     "longest_gap_before": p.rhythm.max_gap,
                 }
             )
+        waiting = []
+        for p in t.plans:
+            if p.wait is not None:
+                said, about = self._say(p.customer_id)
+                waiting.append(
+                    {
+                        "name": said,
+                        "about": about,
+                        "why": "they promised in chat"
+                        if p.wait.said_by == "customer"
+                        else "your note",
+                        "said": p.wait.body,
+                        "quiet_until": p.wait.until.isoformat(),
+                    }
+                )
         self.done.append(f"Worked out tomorrow: {len(sending)} of {t.owing_count}")
         out: dict[str, Any] = {
             "reminders_tomorrow": sending,
@@ -758,7 +924,181 @@ class Desk:
         if stopped:
             # He stopped these himself on the Tomorrow screen.
             out["stopped_by_shopkeeper"] = stopped
+        if waiting:
+            # Past their gap, but held for what was said: say who and why.
+            out["held_for_what_was_said"] = waiting
         return out
+
+    def remember(
+        self, customer_id: str, note: str, until: str | None = None
+    ) -> dict[str, Any]:
+        cid = self.resolve(customer_id)
+        if cid is None or cid not in self.seen:
+            return {"ok": False, "problem": "look this customer up with find_customer"}
+        note = (note or "").strip()
+        if not note or len(note) > NOTE_CHARS:
+            return {"ok": False, "problem": f"the note must be 1 to {NOTE_CHARS} letters"}
+        day: date | None = None
+        if until:
+            try:
+                day = date.fromisoformat(str(until).strip())
+            except ValueError:
+                return {"ok": False, "problem": "until must be a date, YYYY-MM-DD"}
+        try:
+            keeping.keep(
+                self.con, self.shop_id, cid, "note", note, "shop", self.now, until=day
+            )
+        except (Conflict, NotFound) as e:
+            return {"ok": False, "problem": f"{e}; ask him"}
+        name = self.refs[cid].display_name
+        self.done.append(
+            f"Remembered about {name}" + (f", quiet until {day:%d %b}" if day else "")
+        )
+        return {
+            "ok": True,
+            "remembered": note,
+            "quiet_until": day.isoformat() if day else None,
+            "next": "Say in one short sentence that you'll remember it (याद रख लिया), "
+            "and until when BAHI stays quiet, if he gave a day. Never tell the "
+            "customer.",
+        }
+
+    def expected_payments(self, days: int = 7) -> dict[str, Any]:
+        days = min(max(_whole(days) or 7, 1), 31)
+        today = self.now.date()
+        end = today + timedelta(days=days)
+        owing = {
+            c.id: ln
+            for c in book_store.load(self.con, self.shop_id)
+            if (ln := book_domain.line(c, today)) is not None and ln.balance_paise > 0
+        }
+        waiting = memories.waits(self.con, self.shop_id, today)
+        promised, due, late = [], [], []
+        for cid, p in pattern.of_shop(self.con, self.shop_id, today).items():
+            if cid not in owing or cid not in self.refs:
+                continue
+            said, about = self._say(cid)
+            who = {"name": said, "about": about}
+            wait = waiting.get(cid)
+            if wait is not None and wait.until is not None and wait.until >= today:
+                who["note"] = f"{wait.body} (quiet until {wait.until:%d %b})"
+            if p.promised and p.promised <= end:
+                promised.append({**who, "promised_by": f"{p.promised:%d %b}"})
+            elif p.now == "due" or (
+                p.now == "early" and p.expect_from and p.expect_from <= end
+            ):
+                assert p.expect_from and p.expect_by
+                due.append(
+                    {
+                        **who,
+                        "usual_window": f"{p.expect_from:%d %b} to {p.expect_by:%d %b}",
+                    }
+                )
+            elif p.now == "late":
+                late.append({**who, "days_since_paid": p.rhythm.day})
+        self.done.append(f"Worked out who is likely to pay in {days} days")
+        return {
+            "from": f"{today:%d %b}",
+            "to": f"{end:%d %b}",
+            "promised_in_chat": promised[:LISTED],
+            "due_by_their_rhythm": due[:LISTED],
+            "late_by_their_rhythm": late[:LISTED],
+            "next": "Say who is likely, in one or two sentences: promises first, then "
+            "those due by their rhythm; mention the late ones briefly. Names and "
+            "places only, never amounts. It is a guess from the book, and you say so.",
+        }
+
+    def recall(self, question: str) -> dict[str, Any]:
+        question = (question or "").strip()
+        if not question:
+            return {"error": "ask a question"}
+        found, how = "", "cognee"
+        memory = cognee_client.get()
+        if memory is not None:
+            try:
+                found = memory.recall(self.shop_id, question)
+            except Exception as e:  # noqa: BLE001 - the book's own list is next
+                log.warning("Cognee couldn't recall: %s", e)
+                memory = None
+        if memory is None:
+            # Cognee is off or failed: what this shop remembers, as kept.
+            how = "the book's list"
+            found = "\n".join(
+                f"{m.display_name}: {_remembered(m)['said']}"
+                for m in memories.of_shop(self.con, self.shop_id)[:RECALLED_ALL]
+            )
+        self.done.append(f"Searched memory: {question}")
+        return {
+            "found": found or "nothing remembered about that",
+            "searched": how,
+            "next": "Answer from what was found only, in one or two short sentences. "
+            "If it doesn't answer him, say you don't remember that.",
+        }
+
+    def _called(self, name: str, description: str | None) -> dict[str, Any] | None:
+        """Nobody in the book has this name, but he has called someone this before
+        and said yes to the card: that person, as a hint to say back, never as
+        proof. The card for them waits for his clear yes (a weak match)."""
+        nicks = [
+            m
+            for m in memories.of_shop(self.con, self.shop_id, "nickname")
+            if m.customer_id in self.refs
+        ]
+        if not nicks:
+            return None
+        by_nick = [Person(m.id, m.body, None, m.body, None) for m in nicks]
+        hits = {f.person.ref for f in find(by_nick, name, None).found}
+        matched = [m for m in nicks if m.id in hits]
+        if description:  # what else he said about them must fit too
+            fits = {f.person.ref for f in find(self.people, None, description).found}
+            matched = [m for m in matched if m.customer_id in fits]
+        if not matched:
+            return None
+        rows = []
+        for m in matched[:LISTED]:
+            said, about = self._say(m.customer_id)
+            rows.append(
+                {
+                    "id": short(m.customer_id),
+                    "name": said,
+                    "about": about,
+                    "match": f"you have called them {m.body} before",
+                }
+            )
+            self.seen[m.customer_id] = True  # weak: he must say it's them
+        return {
+            "looked_for": {"name": name, "description": description},
+            "count": len(rows),
+            "customers": rows,
+            "next": "Nobody in the book is named that, but he has called this person "
+            "that before. Say the book's name and place back and ask if that's who "
+            "he means.",
+        }
+
+    def _earlier_name(self, cid: str) -> str | None:
+        """The latest name he said in this conversation that found nobody, unless
+        it sounds like this person's own name (a mishearing, not a nickname) or
+        is already what he calls them."""
+        me = [p for p in self.people if p.ref == cid]
+        known = {
+            m.body.casefold()
+            for m in memories.of_customer(self.con, cid)
+            if m.kind == "nickname"
+        }
+        for name in reversed(self.unfound):
+            if name.casefold() in known or find(me, name, None).found:
+                continue
+            return self._nickname(cid, name)
+        return None
+
+    def _nickname(self, cid: str, called: str | None) -> str | None:
+        """The name he used, if it is a name the book doesn't already have."""
+        called = (called or "").strip()
+        if not called or len(called) > NICKNAME_CHARS:
+            return None
+        c = self.refs[cid]
+        own = {x.casefold() for x in (c.display_name, c.name_hi) if x}
+        return None if called.casefold() in own else called
 
     def _usual(self, cid: str) -> int | None:
         past = [e.amount_paise for e in entries.of_customer(self.con, cid)]
@@ -782,6 +1122,39 @@ class Desk:
         store.decide(self.con, d.id, "cancelled", self.now)
         self.done.append("Took the card away")
         return {"ok": True, "cancelled": True}
+
+
+def _remembered(m: Memory) -> dict[str, Any]:
+    """A memory as the munshi is shown it."""
+    by = {"shop": "you (the shopkeeper)", "customer": "the customer, in chat"}
+    if m.kind == "said":
+        by = {**by, "customer": "the customer's chat, as the munshi read it"}
+    out: dict[str, Any] = {"said": m.body, "by": by[m.said_by], "kind": m.kind}
+    if m.kind == "nickname":
+        out["said"] = f"you call them {m.body}"
+    if m.until is not None:
+        out["quiet_until"] = m.until.isoformat()
+    return out
+
+
+def _keep_nickname(
+    con: Conn, shop_id: str, customer_id: str, called: str, now: datetime
+) -> bool:
+    """His yes to a card made out to what he calls them: remembered, once. True
+    when it is newly remembered."""
+    known = {
+        m.body.casefold()
+        for m in memories.of_customer(con, customer_id)
+        if m.kind == "nickname"
+    }
+    if called.casefold() in known:
+        return False
+    try:
+        keeping.keep(con, shop_id, customer_id, "nickname", called, "shop", now)
+    except (Conflict, NotFound) as e:
+        log.info("nickname not kept: %s", e)
+        return False
+    return True
 
 
 def save(
@@ -853,6 +1226,10 @@ def save(
     except Conflict as e:
         return {"ok": False, "problem": f"the book refused it: {e}"}
     store.decide(con, d.id, "saved", now, entry_id, customer_id=c.id)
+    nick = None
+    if d.called and _keep_nickname(con, shop_id, c.id, d.called, now):
+        nick = d.called
+        done.append(f"Remembered: you call {c.display_name} {nick}")
     if added:
         done.append(f"Added {c.display_name} to the book, by name only")
     if d.amount_paise is None:
@@ -872,6 +1249,7 @@ def save(
         "kind": KIND_HI[d.kind],
         "amount": amount_words(d.amount_paise),
         "sent_to_customer_phone": sent,
+        "remembered": f"he calls them {nick}" if nick else None,
         "why_not_sent": None
         if sent
         else "just added by name only, with no phone to send to; invite them from "

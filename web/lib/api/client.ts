@@ -33,6 +33,12 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
   return read<T>(res);
 }
 
+/** A DELETE: forgetting something. */
+export async function apiDelete(path: string): Promise<void> {
+  const res = await fetch(`/api${path}`, { method: "DELETE", cache: "no-store" });
+  return read<void>(res);
+}
+
 /** A POST of a file (a recording), as multipart form data. */
 export async function apiForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`/api${path}`, { method: "POST", body: form, cache: "no-store" });

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, Request, Response
 
 from bahi import clock, paytm, voice
 from bahi.domain.book import book
-from bahi.service import chat, ledger, views
+from bahi.service import chat, ledger, memory, views
 from bahi.service.deps import Con, etagged
 from bahi.service.errors import Conflict, NotFound
 from bahi.service.models import (
@@ -17,6 +19,7 @@ from bahi.service.models import (
     EntryOut,
     InviteIn,
     LinkIn,
+    MemoryIn,
     NameOnlyIn,
     RecordIn,
     ShopBookOut,
@@ -169,6 +172,26 @@ def edit_customer(
     """What the shop calls him, and where he lives or works."""
     ledger.rename(con, shop_id, customer_id, body.display_name, body.tag, voice.hindi)
     return _detail(con, shop_id, customer_id)
+
+
+@router.post("/shops/{shop_id}/customers/{customer_id}/memories", status_code=201)
+def remember_note(
+    shop_id: str, customer_id: str, body: MemoryIn, con: Con
+) -> CustomerDetailOut:
+    """M3. A note the shopkeeper types about him ("pays through his son"), and a
+    day to stay quiet until, if it asks to wait."""
+    c = ledger.customer_here(con, shop_id, customer_id)
+    memory.keep(
+        con, shop_id, c.id, "note", body.body, "shop", clock.now(), until=body.until
+    )
+    return _detail(con, shop_id, customer_id)
+
+
+@router.delete("/shops/{shop_id}/memories/{memory_id}", status_code=204)
+def forget(shop_id: str, memory_id: UUID, con: Con) -> None:
+    """M3. Forget it: gone from his page and from Tonight at once, and from
+    Cognee's search right after."""
+    memory.forget(con, shop_id, str(memory_id), clock.now())
 
 
 @router.post("/shops/{shop_id}/customers/{customer_id}/invite")

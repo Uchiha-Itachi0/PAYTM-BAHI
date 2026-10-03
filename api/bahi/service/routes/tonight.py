@@ -21,6 +21,7 @@ from bahi.service.models import (
     RhythmOut,
     SentOut,
     TonightOut,
+    WaitOut,
 )
 from bahi.store import customers
 from bahi.store.db import Conn
@@ -63,6 +64,9 @@ def _out(con: Conn, shop_id: str, e: tonight.Evening) -> TonightOut:
             reminded_on=p.reminded_on,
             # A reminder already sent for tomorrow stays on the list as sent.
             reminder=_reminder(e.reminders.get(p.customer_id)),
+            wait=WaitOut(until=p.wait.until, said_by=p.wait.said_by, body=p.wait.body)
+            if p.wait
+            else None,
         )
         for p in t.plans
     ]

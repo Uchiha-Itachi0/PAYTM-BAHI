@@ -198,6 +198,57 @@ own sentence. The shopkeeper can stop any of them. `POST /tonight` is the 11 pm
 run and `POST /tonight/send` sends each at its hour; n8n will call both (V8a).
 Until then, Send now posts them at once for the demo.
 
+## Memory: what was said (Cognee)
+
+The book has the arithmetic. Memory keeps what people said, which the numbers
+can't show:
+
+- **The shopkeeper's note.** "इकबाल भाई की सैलरी 10 तारीख को आती है, तब तक याद मत
+  दिलाना" to the munshi, or typed on the customer's page (`/m/customers/…`, "BAHI
+  remembers"), with a day to stay quiet until.
+- **A customer's promise in chat.** Raju writes "भैया 6 तारीख को दे दूँगा"; a few
+  seconds later Sarvam has read it as a promise for the 6th, kept with his own
+  words and the message it came from.
+- **A nickname.** A card he confirmed for Raju after calling him "पप्पू": next
+  time "पप्पू" finds Raju, as a hint, and the card waits for a clear हाँ. When a
+  name finds nobody and he then names someone ("चिंटू" … "डिसूज़ा"), the card isn't
+  shown until the munshi has said whether that was their name; the card shows it.
+- **What else they say.** Each customer message is read once for anything worth
+  remembering: a complaint ("तेल का दाम ज़्यादा लगा, शिकायत की"), a hardship, a
+  request. A dispute's reason is his own message, so it is read too.
+- **How they pay** (`domain/pattern.py`, on the customer's page). Code works out,
+  from his own book: his usual gap, the gap 8 in 10 of his payments fall within,
+  his latest gaps, the time of day he pays, when his next payment is likely (or
+  that he is past it), promises kept, and entries he said were wrong.
+
+Ask the munshi "पाटिल कब देगा?" and it answers as a guess from his card, his
+promise and your notes, which outrank his rhythm, and never with a date that has
+passed ("मेरे हिसाब से लेट है, 40 दिन हो गए…"). "इस हफ़्ते कौन देगा?" is worked out
+at that moment (`expected_payments`); "कौन ज़्यादा शिकायत करता है?" is searched in
+Cognee, which also keeps each customer's pattern as a sentence, rewritten when
+his book changes.
+
+Tomorrow holds anyone past their gap while what was said still asks to wait:
+"Raju said in chat: 'भैया 6 तारीख को पक्का दे दूँगा'. Nothing is sent until after 6
+Oct." A memory can only hold a reminder, never send one; it never writes an entry
+or changes an amount, and the customer never sees the shopkeeper's notes. Forget
+takes a memory back at once.
+
+The record is the book's own `memories` table: what the page lists, what
+Tomorrow reads. Cognee keeps a copy to search by meaning ("इस हफ़्ते कौन देने
+वाला है?" → the munshi's `recall`), all on this machine: its own role and
+database on the local Postgres (graph and vectors, each shop in its own
+schema), Sarvam's `sarvam-105b` to read and extract, and OpenAI's
+`text-embedding-3-small` for the vectors, because Sarvam has no embeddings API.
+Its telemetry is off. A worker in the API does this in the background; without
+Cognee, notes, promises and Tomorrow's holds still work.
+
+```bash
+brew install pgvector   # once, into the local Postgres
+make memory-db          # its role and databases; writes MEMORY_DATABASE_URL to api/.env
+make memory-check       # live: Sarvam, OpenAI and Cognee end to end, on the check databases
+```
+
 ## Voice before the munshi
 
 The V2 path is still in the code, though no longer on the screen: Sarvam-105B read

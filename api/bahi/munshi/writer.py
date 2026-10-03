@@ -12,6 +12,11 @@ anyone sees it:
 If the model is offline, slow or writes something that fails a check, the
 reminder is our own sentence (`wording.reminder`) and says so. Suggested replies
 are only offered: the shopkeeper taps one to send it, or ignores them.
+
+`read` goes through a customer's chat message for memory (M3): a day he
+promises to pay by, and one line worth remembering (a complaint, a hardship, a
+request). The model only reads; code keeps a promise's day only from today to
+three months on, and a promise always with his own words.
 """
 
 from __future__ import annotations
@@ -20,6 +25,7 @@ import logging
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Literal
 
 from bahi import voice
@@ -152,3 +158,90 @@ def replies(customer: str, shop: str, said: Sequence[Said]) -> list[str]:
         return []
     out = [str(r).strip() for r in answer.get("replies") or [] if str(r).strip()]
     return [r for r in out if len(r) <= LONGEST][:2]
+
+
+READ = """You read one chat message that a kirana shop's customer sent the shop, where
+the customer has udhaar (goods on credit). Answer two things.
+
+1. Does it promise to pay, in full or in part, by a particular day?
+   - A day counts in any form: a date (5 तारीख, 10th), a weekday (सोमवार), कल,
+     परसों, "next week", "when salary comes on the 1st".
+   - Only the customer's own promise counts. A question, a complaint, or "I'll pay
+     soon" with no day is not a promise.
+   - Today is {today}. Give pay_by as the calendar date the day means (YYYY-MM-DD),
+     the first such date on or after today.
+2. Is there anything else in it worth the shopkeeper remembering about this
+   customer? A complaint (prices, quality, weights, an entry he says is wrong), a
+   hardship or excuse (lost work, illness), a request (pay in parts, deliver), a
+   preference. If so, one short line saying it, in the customer's own language and
+   script, e.g. "तेल का दाम ज़्यादा लगा, शिकायत की". Greetings, thanks, and plain
+   questions about the book are not. Otherwise "".
+
+Reply as JSON:
+{{"promise": true or false, "pay_by": "YYYY-MM-DD" or "", "remember": "..." or ""}}."""
+
+READ_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "promise": {"type": "boolean"},
+        "pay_by": {"type": "string"},
+        "remember": {"type": "string"},
+    },
+    "required": ["promise", "pay_by", "remember"],
+    "additionalProperties": False,
+}
+
+#: A promise further off than this is not taken as one to wait for.
+FARTHEST_PROMISE_DAYS = 90
+#: What is kept from a message is one line.
+SAID_CHARS = 200
+
+
+@dataclass(frozen=True, slots=True)
+class Read:
+    """What memory takes from one customer message."""
+
+    #: The day he promises to pay by, if he does.
+    pay_by: date | None
+    #: One line worth remembering about him, in his language, if any.
+    said: str | None
+
+
+NOTHING = Read(None, None)
+
+
+def read(message: str, today: date) -> Read:
+    """What his message tells memory: a day he promises to pay by (only from today
+    to three months on), and one line worth remembering. Nothing when the model is
+    off or answers out of shape."""
+    key = voice.api_key()
+    if voice.offline() or key is None or not message.strip():
+        return NOTHING
+    try:
+        answer = sarvam.chat_json(
+            READ.format(today=today.strftime("%A %d %B %Y")),
+            message.strip(),
+            READ_SCHEMA,
+            key=key,
+            name="read",
+        )
+    except sarvam.SarvamError as e:
+        log.warning("the munshi couldn't read a message: %s", e)
+        return NOTHING
+    said = str(answer.get("remember") or "").strip() or None
+    if said is not None and len(said) > SAID_CHARS:
+        said = None
+    return Read(_promised(answer, today), said)
+
+
+def _promised(answer: dict[str, object], today: date) -> date | None:
+    if answer.get("promise") is not True:
+        return None
+    try:
+        day = date.fromisoformat(str(answer.get("pay_by") or "").strip())
+    except ValueError:
+        return None
+    if not today <= day <= today + timedelta(days=FARTHEST_PROMISE_DAYS):
+        log.warning("a promise for %s isn't one to wait for", day)
+        return None
+    return day

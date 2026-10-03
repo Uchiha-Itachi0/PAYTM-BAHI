@@ -58,3 +58,6 @@ def voice_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     online path fakes Sarvam itself."""
     monkeypatch.setenv("SARVAM_OFFLINE", "1")
     monkeypatch.delenv("SARVAM_API_KEY", raising=False)
+    # Nor Cognee, nor memory's background worker: a test runs a round itself.
+    monkeypatch.setenv("MEMORY_WORKER", "off")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)

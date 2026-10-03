@@ -81,6 +81,7 @@ def _out(
             status=d.status,  # type: ignore[arg-type]
             reasons=d.reasons,  # type: ignore[arg-type]
             spoken_text=d.spoken_text,
+            called=d.called,
             entry_id=UUID(d.entry_id) if d.entry_id else None,
             on_bahi=c is not None and c.joined == "linked",
         )

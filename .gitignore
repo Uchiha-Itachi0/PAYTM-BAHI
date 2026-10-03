@@ -30,3 +30,6 @@ api/bahi/audio/raw/
 .agents/
 skills-lock.json
 .DS_Store
+
+# Cognee (M3): its copies of what was remembered, and its logs. Regenerated.
+api/.cognee/

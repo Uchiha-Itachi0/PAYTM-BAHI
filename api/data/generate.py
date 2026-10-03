@@ -188,6 +188,7 @@ class Builder:
                 body=body,
                 sent_at=when,
                 entry_id=entry,
+                read_for_memory_at=when,
             )
         )
 
@@ -228,12 +229,14 @@ def history(b: Builder, shop: str, p: Persona, cid: uuid.UUID, linked: bool) -> 
     prev = p.since or before
     disputed = False
 
+    name = SHOPS[shop][0]
     for pay_day in pays:
         span = (pay_day - prev).days
         k = max(1, min(4, round(span / spacing), span))
         offsets = sorted(rng.sample(range(1, span + 1), k))
         method = "upi" if rng.random() < p.upi else "cash"
         paid_at = at(pay_day, p.pays_at, rng.randrange(0, 60, 5))
+        paid_today: list[tuple[uuid.UUID, int]] = []
 
         for off in offsets:
             day = prev + timedelta(days=off)
@@ -245,22 +248,41 @@ def history(b: Builder, shop: str, p: Persona, cid: uuid.UUID, linked: bool) -> 
                 disputed = True
                 eid = dispute(b, shop, p, cid, when)
                 b.pay(eid, 15000, method, paid_at)
+                paid_today.append((eid, 15000))
+                continue
+
+            eid = b.entry(shop, p.key, cid, paise, "settled", when, note=note)
+            if linked:
+                b.ack(shop, eid, paise, when + timedelta(seconds=rng.randint(20, 90)))
+                # Its card in his thread, as the app posts it when it is written:
+                # his chat carries the same history as his book.
                 b.say(
                     shop,
                     p.key,
                     cid,
                     "bahi",
                     "entry",
-                    wording.paid(15000, method),
-                    paid_at,
+                    wording.recorded(name, paise),
+                    when + timedelta(seconds=5),
                     eid,
                 )
-                continue
-
-            eid = b.entry(shop, p.key, cid, paise, "settled", when, note=note)
-            if linked:
-                b.ack(shop, eid, paise, when + timedelta(seconds=rng.randint(20, 90)))
             b.pay(eid, paise, method, paid_at)
+            paid_today.append((eid, paise))
+
+        if linked and paid_today:
+            # One line for the day's payment, as the app posts it; nothing was
+            # left open after it (his open entries all come after his last
+            # payment).
+            b.say(
+                shop,
+                p.key,
+                cid,
+                "bahi",
+                "entry",
+                wording.paid(sum(x for _, x in paid_today), method, 0),
+                paid_at + timedelta(seconds=5),
+                paid_today[-1][0],
+            )
         prev = pay_day
 
     for o in p.opens:
