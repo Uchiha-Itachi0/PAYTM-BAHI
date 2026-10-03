@@ -456,6 +456,13 @@ class PaidOut(BaseModel):
 class DemoPhoneOut(BaseModel):
     person_id: str
     name: str
+    #: Where he lives or works, as the shop that added him first describes him.
+    tag: str | None
+    #: linked: in at least one book. invited: waiting for his yes. paytm: on
+    #: Paytm, in nobody's book yet.
+    state: Literal["linked", "invited", "paytm"]
+    #: How many shops' books he is in.
+    shops: int
 
 
 # ── adding someone who can't scan (V6) ───────────────────────────────────────

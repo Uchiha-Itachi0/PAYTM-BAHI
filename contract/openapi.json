@@ -2058,7 +2058,7 @@
           "customer"
         ],
         "summary": "Demo Phones",
-        "description": "Whose phone the customer side can be, for the demo. Synthetic people.",
+        "description": "Whose phone the customer side can be, for the demo: every customer with a\nPaytm account in any shop's book, once each, and the synthetic accounts in\nnobody's book yet. Someone kept by name only has no phone, so is not here.",
         "operationId": "demo_phones_demo_phones_get",
         "responses": {
           "200": {
@@ -2875,12 +2875,39 @@
           "name": {
             "type": "string",
             "title": "Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "paytm"
+            ],
+            "title": "State"
+          },
+          "shops": {
+            "type": "integer",
+            "title": "Shops"
           }
         },
         "type": "object",
         "required": [
           "person_id",
-          "name"
+          "name",
+          "tag",
+          "state",
+          "shops"
         ],
         "title": "DemoPhoneOut"
       },

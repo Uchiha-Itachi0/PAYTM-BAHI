@@ -835,7 +835,9 @@ export interface paths {
         };
         /**
          * Demo Phones
-         * @description Whose phone the customer side can be, for the demo. Synthetic people.
+         * @description Whose phone the customer side can be, for the demo: every customer with a
+         *     Paytm account in any shop's book, once each, and the synthetic accounts in
+         *     nobody's book yet. Someone kept by name only has no phone, so is not here.
          */
         get: operations["demo_phones_demo_phones_get"];
         put?: never;
@@ -1160,6 +1162,15 @@ export interface components {
             person_id: string;
             /** Name */
             name: string;
+            /** Tag */
+            tag: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "linked" | "invited" | "paytm";
+            /** Shops */
+            shops: number;
         };
         /** DisputeIn */
         DisputeIn: {

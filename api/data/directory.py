@@ -34,21 +34,3 @@ ACCOUNTS: tuple[Account, ...] = (
     Account(str(uid("person", "tushar")), "Tushar Pawar", "9867044556", "tushar@pthdfc"),
     Account(str(uid("person", "sharma")), "Sharma", "9819019019", "sharma19@ptsbi"),
 )
-
-#: Whose phone the customer side can be, for the demo: the cast who are on
-#: Paytm, then the accounts above that are in nobody's book yet.
-PHONES: tuple[tuple[str, str], ...] = (
-    ("sharma", "Sharma"),
-    ("patil", "Patil"),
-    ("anil", "Anil"),
-    ("iqbal", "Iqbal bhai"),
-    ("kamla", "Kamla behen"),
-    ("rukhsana", "Rukhsana Shaikh"),
-    ("kavita", "Kavita Rao"),
-    ("tushar", "Tushar Pawar"),
-)
-
-
-def phones() -> list[tuple[str, str]]:
-    """(person id, name) for each phone the demo can be."""
-    return [(str(uid("person", key)), name) for key, name in PHONES]

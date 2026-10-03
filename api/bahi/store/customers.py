@@ -127,3 +127,32 @@ def added_at(con: Conn, customer_id: str) -> datetime:
     ).fetchone()
     assert row is not None
     return row[0]  # type: ignore[no-any-return]
+
+
+@dataclass(frozen=True, slots=True)
+class Phone:
+    """A person on Paytm who is in some shop's book: linked, or invited."""
+
+    person_id: str
+    #: What the first shop to add him calls him, and how it describes him.
+    display_name: str
+    tag: str | None
+    linked: bool
+    shops: int
+
+
+def phones(con: Conn) -> list[Phone]:
+    """Everyone with a Paytm account in any shop's book, once each. Only for the
+    demo's "whose phone is this?": in Paytm the phone already knows."""
+    with con.cursor(row_factory=class_row(Phone)) as cur:
+        return cur.execute(
+            """
+            SELECT DISTINCT ON (person_id)
+                   person_id::text AS person_id, display_name, tag,
+                   bool_or(linked_at IS NOT NULL) OVER (PARTITION BY person_id) AS linked,
+                   count(*) OVER (PARTITION BY person_id)::int AS shops
+            FROM customers
+            WHERE person_id IS NOT NULL
+            ORDER BY person_id, added_at
+            """
+        ).fetchall()

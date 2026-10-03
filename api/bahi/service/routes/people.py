@@ -12,6 +12,7 @@ from bahi import clock
 from bahi.service import chat, ledger, views
 from bahi.service.deps import Con, etagged
 from bahi.service.models import DemoPhoneOut, MyUdhaarOut, PaidOut, PersonIn
+from bahi.store import customers
 from data import directory
 
 router = APIRouter(tags=["customer"])
@@ -53,6 +54,24 @@ def decline(shop_id: str, body: PersonIn, con: Con) -> None:
 
 
 @router.get("/demo/phones")
-def demo_phones() -> list[DemoPhoneOut]:
-    """Whose phone the customer side can be, for the demo. Synthetic people."""
-    return [DemoPhoneOut(person_id=pid, name=name) for pid, name in directory.phones()]
+def demo_phones(con: Con) -> list[DemoPhoneOut]:
+    """Whose phone the customer side can be, for the demo: every customer with a
+    Paytm account in any shop's book, once each, and the synthetic accounts in
+    nobody's book yet. Someone kept by name only has no phone, so is not here."""
+    out = [
+        DemoPhoneOut(
+            person_id=p.person_id,
+            name=p.display_name,
+            tag=p.tag,
+            state="linked" if p.linked else "invited",
+            shops=p.shops,
+        )
+        for p in customers.phones(con)
+    ]
+    known = {p.person_id for p in out}
+    out += [
+        DemoPhoneOut(person_id=a.person_id, name=a.name, tag=None, state="paytm", shops=0)
+        for a in directory.ACCOUNTS
+        if a.person_id not in known
+    ]
+    return sorted(out, key=lambda p: p.name.casefold())
