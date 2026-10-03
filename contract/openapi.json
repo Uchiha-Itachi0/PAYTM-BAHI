@@ -1503,6 +1503,58 @@
         }
       }
     },
+    "/shops/{shop_id}/munshi/{conversation_id}": {
+      "get": {
+        "tags": [
+          "munshi"
+        ],
+        "summary": "History",
+        "description": "A conversation so far, to show again: Paytm Assistant keeps its history.\nHis words (what the mic heard, or what he typed; a tap as Yes or No) and the\nmunshi's replies. Tool calls and results are the model's, not shown.",
+        "operationId": "history_shops__shop_id__munshi__conversation_id__get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MunshiHistoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/yes": {
       "post": {
         "tags": [
@@ -4814,6 +4866,40 @@
         ],
         "title": "MessageOut"
       },
+      "MunshiHistoryOut": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/MunshiLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "lines",
+          "card"
+        ],
+        "title": "MunshiHistoryOut",
+        "description": "A conversation so far: his words and the munshi's replies, in order, and\nthe card still waiting for his answer, if one is."
+      },
       "MunshiIn": {
         "properties": {
           "conversation_id": {
@@ -4841,6 +4927,35 @@
         ],
         "title": "MunshiIn",
         "description": "His words, typed. No conversation_id: a new conversation."
+      },
+      "MunshiLineOut": {
+        "properties": {
+          "who": {
+            "type": "string",
+            "enum": [
+              "you",
+              "munshi"
+            ],
+            "title": "Who"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "who",
+          "text",
+          "at"
+        ],
+        "title": "MunshiLineOut",
+        "description": "One line of a conversation so far, as the screen shows it."
       },
       "MunshiOut": {
         "properties": {

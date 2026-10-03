@@ -381,6 +381,23 @@ class MunshiOut(BaseModel):
     finished: bool
 
 
+class MunshiLineOut(BaseModel):
+    """One line of a conversation so far, as the screen shows it."""
+
+    who: Literal["you", "munshi"]
+    text: str
+    at: datetime
+
+
+class MunshiHistoryOut(BaseModel):
+    """A conversation so far: his words and the munshi's replies, in order, and
+    the card still waiting for his answer, if one is."""
+
+    conversation_id: UUID
+    lines: list[MunshiLineOut]
+    card: CardOut | None
+
+
 # ── chat (V5) ────────────────────────────────────────────────────────────────
 
 

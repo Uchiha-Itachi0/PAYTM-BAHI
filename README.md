@@ -82,7 +82,8 @@ The main flows:
 - **Paytm Assistant.** The same munshi on a page of its own (`/m/assistant`), for
   asking rather than writing: who pays this week, someone's account, tomorrow's
   reminders, or how something in the app works. Anything it writes is still a card
-  that waits for his yes.
+  that waits for his yes. The conversation carries on between visits; New chat
+  starts another.
 - **Chat and disputes.** One thread per shop and customer. Each udhaar appears as a
   live card with its state on a badge (waiting, agreed, part paid, paid), and each
   payment as its own card with Paytm's green tick. The customer answers Yes,

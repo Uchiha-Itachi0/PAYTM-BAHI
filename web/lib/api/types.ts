@@ -23,6 +23,7 @@ export type Answer = S["AnswerOut"];
 export type HeardPerson = S["PersonOut"];
 export type Clip = S["ClipOut"];
 export type Munshi = S["MunshiOut"];
+export type MunshiHistory = S["MunshiHistoryOut"];
 export type MunshiCard = S["CardOut"];
 export type Thread = S["ThreadOut"];
 export type ThreadEntry = S["ThreadEntryOut"];

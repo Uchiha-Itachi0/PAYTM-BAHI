@@ -612,6 +612,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/munshi/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * History
+         * @description A conversation so far, to show again: Paytm Assistant keeps its history.
+         *     His words (what the mic heard, or what he typed; a tap as Yes or No) and the
+         *     munshi's replies. Tool calls and results are the model's, not shown.
+         */
+        get: operations["history_shops__shop_id__munshi__conversation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shop_id}/munshi/{conversation_id}/cards/{draft_id}/yes": {
         parameters: {
             query?: never;
@@ -1846,6 +1868,21 @@ export interface components {
             passbook?: components["schemas"]["PassbookOut"] | null;
         };
         /**
+         * MunshiHistoryOut
+         * @description A conversation so far: his words and the munshi's replies, in order, and
+         *     the card still waiting for his answer, if one is.
+         */
+        MunshiHistoryOut: {
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /** Lines */
+            lines: components["schemas"]["MunshiLineOut"][];
+            card: components["schemas"]["CardOut"] | null;
+        };
+        /**
          * MunshiIn
          * @description His words, typed. No conversation_id: a new conversation.
          */
@@ -1854,6 +1891,24 @@ export interface components {
             conversation_id?: string | null;
             /** Text */
             text: string;
+        };
+        /**
+         * MunshiLineOut
+         * @description One line of a conversation so far, as the screen shows it.
+         */
+        MunshiLineOut: {
+            /**
+             * Who
+             * @enum {string}
+             */
+            who: "you" | "munshi";
+            /** Text */
+            text: string;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
         };
         /** MunshiOut */
         MunshiOut: {
@@ -3425,6 +3480,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MunshiOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_shops__shop_id__munshi__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MunshiHistoryOut"];
                 };
             };
             /** @description Validation Error */

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Mic } from "@/components/icons";
 import { type CardEdit, EntryCard } from "@/components/munshi/EntryCard";
 import { Card } from "@/components/ui/Card";
 import { api, ApiError, apiForm } from "@/lib/api/client";
-import type { Munshi as Turn, MunshiCard } from "@/lib/api/types";
+import type { MunshiHistory, Munshi as Turn, MunshiCard } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { useRecorder } from "@/lib/useRecorder";
 import { hush, sayLine } from "@/lib/voice";
@@ -28,7 +28,32 @@ import { hush, sayLine } from "@/lib/voice";
  * `full`: the whole page is the conversation (Paytm Assistant). The thread grows
  * down the page, the mic and the box stay at the bottom, and before the first
  * question a few `starters` are offered; tapping one asks it.
+ *
+ * `keep`: the conversation carries on across visits. Its id is kept in this
+ * browser under that name, and on arrival what was said so far (and a card still
+ * waiting) is fetched back from the server, which keeps every turn anyway.
  */
+
+/** Storage has no change events of its own worth listening to here. */
+const noChange = (): (() => void) => () => undefined;
+
+/** The kept conversation's id, if this browser has one. Storage can be off. */
+function kept(name: string): string | null {
+  try {
+    return localStorage.getItem(name);
+  } catch {
+    return null;
+  }
+}
+
+function keepAs(name: string, id: string | null): void {
+  try {
+    if (id) localStorage.setItem(name, id);
+    else localStorage.removeItem(name);
+  } catch {
+    // Private mode: the conversation just doesn't carry over.
+  }
+}
 
 type Line = { key: string; who: "you" | "munshi"; text: string; done?: string[] };
 
@@ -48,6 +73,7 @@ export function Munshi({
   onWritten,
   full = false,
   starters = [],
+  keep,
 }: {
   /** Open the mic straight away. */
   listen: boolean;
@@ -57,6 +83,8 @@ export function Munshi({
   full?: boolean;
   /** Questions to offer before the first one. */
   starters?: string[];
+  /** Carry the conversation over between visits, kept under this name. */
+  keep?: string;
 }): React.ReactElement {
   // A ref, not state: the mic can reopen before React has re-rendered, and the
   // next turn must still land in this conversation.
@@ -88,6 +116,7 @@ export function Munshi({
   const take = useCallback(
     async (out: Turn): Promise<void> => {
       conversation.current = out.conversation_id;
+      if (keep) keepAs(keep, out.conversation_id);
       const said: Line[] = [];
       if (out.heard) said.push({ key: `you-${Date.now()}`, who: "you", text: out.heard });
       if (out.reply)
@@ -108,8 +137,33 @@ export function Munshi({
       if (waiting && out.card?.reasons.length === 0) setCounting(true);
       if (!out.finished && (!full || byVoice.current)) listenAgain.current();
     },
-    [onWritten, full],
+    [onWritten, full, keep],
   );
+
+  // Arriving: what was said so far, if this conversation is kept. Storage is
+  // read as an external store, so the server's render (no storage) and the
+  // browser's agree; `undefined` there means "not looked yet".
+  const keptId = useSyncExternalStore(
+    noChange,
+    () => (keep ? kept(keep) : null),
+    () => undefined,
+  );
+  const [lost, setLost] = useState(false);
+  useEffect(() => {
+    // Nothing kept, or it is the conversation already on screen.
+    if (!keep || !keptId || conversation.current === keptId) return;
+    api<MunshiHistory>(`/shops/${SHOP_ID}/munshi/${keptId}`)
+      .then((h) => {
+        conversation.current = h.conversation_id;
+        setLines(h.lines.map((l, i) => ({ key: `kept-${i}`, who: l.who, text: l.text })));
+        setCard(h.card ?? null);
+      })
+      .catch(() => {
+        keepAs(keep, null);
+        setLost(true);
+      });
+  }, [keep, keptId]);
+  const fresh = !keep || keptId === null || lost;
 
   const failed = useCallback((e: unknown) => {
     setProblem(e instanceof ApiError ? e.message : "The munshi couldn't be reached.");
@@ -337,7 +391,7 @@ export function Munshi({
   if (full) {
     return (
       <div className="flex flex-1 flex-col">
-        {lines.length === 0 && starters.length ? (
+        {lines.length === 0 && starters.length && fresh ? (
           <div className="flex flex-col items-start gap-2 pb-3">
             <p className="px-1 text-[12.5px] font-semibold text-sub">Try asking</p>
             {starters.map((q) => (
