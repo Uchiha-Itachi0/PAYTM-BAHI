@@ -32,7 +32,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
 from bahi.domain.wording import acknowledgment
-from data import db
+from data import db, names_hi
 from data.personas import CAST, CROWD, Open, Persona
 from data.rows import (
     AcknowledgmentRow,
@@ -49,6 +49,10 @@ from data.world import HOME, SEED, SHOPS, START, TODAY, at, uid
 #: The usual gap for a generated customer is drawn from this, in days. Weighted
 #: toward weekly and fortnightly, with a few who settle once a month.
 HABITS = (3, 4, 5, 6, 7, 7, 7, 8, 9, 10, 10, 12, 14, 14, 15, 15, 20, 21, 30)
+
+#: Every seeded name in Devanagari, as Sarvam writes it. Committed, so the seed
+#: still rebuilds identically with the wifi off.
+HINDI = names_hi.load()
 
 #: Of the generated customers, how many owe something today. With the eleven
 #: owing members of the cast that makes 38 of 60.
@@ -111,6 +115,7 @@ class Builder:
                 tag=tag,
                 added_at=added_at,
                 linked_at=linked_at,
+                name_hi=HINDI.get(name),
             )
         )
         return cid

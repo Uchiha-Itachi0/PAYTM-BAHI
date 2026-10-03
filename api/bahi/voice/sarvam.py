@@ -1,14 +1,16 @@
-"""Sarvam speech-to-text, over HTTP. The only code that talks to Sarvam.
+"""Sarvam, over HTTP. The only code that talks to Sarvam.
 
-It returns the words and nothing else. The amount and the person are found by the
-rules in `bahi.domain`, from the transcript: the model never sees the book and
-never produces the number that is recorded.
+- `transcribe`: speech to words (saaras:v4). It takes `keyterms`, words to listen
+  out for: we pass the names of the people at the counter, then the book, so
+  "Iqbal" is heard as Iqbal. That biases what it hears; it does not decide who.
+- `chat_json`: Sarvam-105B, answering in a JSON schema. `bahi.voice.reader` asks
+  it to read the words; `bahi.domain.check` then checks everything it says.
+- `transliterate`: a customer's name in Devanagari, once, when he joins, so a
+  transcript in either script can be matched to him.
 
-`saaras:v4` takes `keyterms`: words to listen out for. We pass the names of the
-people at the counter (then the book), so "Iqbal" is heard as Iqbal. That biases
-what it hears; it does not decide who the entry is for.
-
-API: https://docs.sarvam.ai/api-reference-docs/speech-to-text/transcribe
+APIs: https://docs.sarvam.ai/api-reference-docs/speech-to-text/transcribe
+      https://docs.sarvam.ai/api-reference-docs/chat/chat-completions
+      https://docs.sarvam.ai/api-reference-docs/text/transliterate
 """
 
 from __future__ import annotations
@@ -16,13 +18,21 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Sequence
+from typing import Any
 
 import httpx
 
 URL = "https://api.sarvam.ai/speech-to-text"
+CHAT_URL = "https://api.sarvam.ai/v1/chat/completions"
+TRANSLITERATE_URL = "https://api.sarvam.ai/transliterate"
 LANGUAGE = "hi-IN"
 MAX_KEYTERMS, MAX_KEYTERM_LEN = 50, 64
 TIMEOUT_S = 15.0
+#: Sarvam-105B took at most 3.8 s on 1,338 readings, and 1.4 s as a rule; one
+#: reading on 25 Sep took over 6. Past this, our parser reads, and the screen
+#: asks the shopkeeper to tap Send rather than sending by itself.
+CHAT_TIMEOUT_S = 8.0
+TRANSLITERATE_TIMEOUT_S = 3.0
 
 
 class SarvamError(Exception):
@@ -64,3 +74,56 @@ def transcribe(
     if not isinstance(transcript, str):
         raise SarvamError("Sarvam sent no transcript")
     return transcript
+
+
+def _post_json(url: str, body: dict[str, Any], *, key: str, timeout: float) -> Any:
+    try:
+        r = httpx.post(
+            url, headers={"api-subscription-key": key}, json=body, timeout=timeout
+        )
+    except httpx.HTTPError as e:
+        raise SarvamError(f"could not reach Sarvam: {e}") from e
+    if r.status_code != 200:
+        raise SarvamError(f"Sarvam said {r.status_code}: {r.text[:200]}")
+    return r.json()
+
+
+def chat_json(
+    system: str, user: str, schema: dict[str, Any], *, key: str, name: str
+) -> dict[str, Any]:
+    """Sarvam-105B's answer, parsed. Raises SarvamError if it is not JSON."""
+    body = {
+        "model": os.environ.get("SARVAM_CHAT_MODEL", "sarvam-105b"),
+        "temperature": 0,
+        "reasoning_effort": None,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": name, "schema": schema, "strict": True},
+        },
+    }
+    reply = _post_json(CHAT_URL, body, key=key, timeout=CHAT_TIMEOUT_S)
+    try:
+        answer = json.loads(reply["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as e:
+        raise SarvamError(f"Sarvam-105B's reply was not the JSON asked for: {e}") from e
+    if not isinstance(answer, dict):
+        raise SarvamError("Sarvam-105B's reply was not a JSON object")
+    return answer
+
+
+def transliterate(text: str, *, key: str) -> str:
+    """ "Gaikwad" -> गायकवाड़, the way Sarvam's speech-to-text writes it."""
+    body = {
+        "input": text,
+        "source_language_code": "en-IN",
+        "target_language_code": LANGUAGE,
+    }
+    reply = _post_json(TRANSLITERATE_URL, body, key=key, timeout=TRANSLITERATE_TIMEOUT_S)
+    out = reply.get("transliterated_text") if isinstance(reply, dict) else None
+    if not isinstance(out, str) or not out:
+        raise SarvamError("Sarvam sent no transliteration")
+    return out

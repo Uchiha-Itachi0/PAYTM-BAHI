@@ -159,13 +159,15 @@ class HeardIn(BaseModel):
 class PersonOut(BaseModel):
     customer_id: str
     display_name: str
+    #: Room, wing or work: how the shopkeeper tells two Anubhavs apart.
+    tag: str | None
     #: His scan, if he is at the counter: the entry should use it.
     scan_id: str | None
 
 
 class PickedOut(BaseModel):
     kind: Literal["picked"] = "picked"
-    #: Why him: the only one waiting, his name said at the counter, or in the book.
+    #: Why him: the only one waiting, the words fit him at the counter, or in the book.
     how: Literal["only_one", "at_counter", "in_book"]
     person: PersonOut
 
@@ -173,8 +175,9 @@ class PickedOut(BaseModel):
 class AskOut(BaseModel):
     kind: Literal["ask"] = "ask"
     #: who: several waiting, no name. nobody: nobody waiting, no name.
-    #: not_found: the name fits nobody. several: the name fits more than one.
-    why: Literal["who", "nobody", "not_found", "several"]
+    #: several: the words fit more than one. maybe: only a weak match, offered.
+    #: not_found: the words fit nobody. not_said: the reader quoted words not said.
+    why: Literal["who", "nobody", "several", "maybe", "not_found", "not_said"]
     among: list[PersonOut]
 
 
@@ -185,20 +188,48 @@ class ReadbackOut(BaseModel):
     devanagari: str
 
 
+class CheckOut(BaseModel):
+    """One check our code made on the reading."""
+
+    kind: Literal["amount_said", "amount_read", "person_said", "person_fits"]
+    ok: bool
+    #: The check, in the shopkeeper's words.
+    says: str
+
+
 #: typed; sarvam (live); sarvam_cached (Sarvam heard this recording before);
 #: clip_script (a demo clip not yet run through Sarvam: its script, not a transcript)
 HeardSource = Literal["typed", "sarvam", "sarvam_cached", "clip_script"]
 
 
 class HeardOut(BaseModel):
-    """What was heard, and what the rules made of it. Nothing is recorded yet."""
+    """What was heard, what read it, and what our checks made of it. Nothing is
+    recorded yet."""
 
     transcript: str
     source: HeardSource
+    #: sarvam: Sarvam-105B read the words. rules: our parser did.
+    reader: Literal["sarvam", "rules"]
+    #: Why our parser read it: voice is offline, or Sarvam-105B gave no usable answer.
+    fallback: Literal["offline", "no_answer"] | None
+    #: udhaar is the only one recorded here. A payment is shown, not recorded (V3).
+    intent: Literal["udhaar", "payment", "unclear"]
+    #: The words that name the person, as the reader quoted them.
     name: str | None
+    #: Our parser's reading of the amount words. None unless every amount check passed.
     amount_paise: int | None
     amount_words: str | None
-    problem: Literal["no_amount", "unclear_amount"] | None
+    problem: (
+        Literal[
+            "no_amount",
+            "unclear_amount",
+            "amount_not_said",
+            "amount_mismatch",
+            "invented_customer",
+        ]
+        | None
+    )
+    checks: list[CheckOut]
     readback: ReadbackOut | None
     who: PickedOut | AskOut = Field(discriminator="kind")
 

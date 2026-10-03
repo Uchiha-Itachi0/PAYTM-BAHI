@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
 
-from bahi import clock
+from bahi import clock, voice
 from bahi.service import ledger, views
 from bahi.service.deps import Con, etagged
 from bahi.service.models import (
@@ -23,7 +23,7 @@ router = APIRouter(tags=["customer"])
 @router.post("/join/{shop_id}", status_code=201)
 def join(shop_id: str, body: JoinIn, con: Con) -> JoinOut:
     """B0. He scanned the shop's udhaar QR: he is at the counter."""
-    j = ledger.join(con, shop_id, body.person_id, body.name, clock.now())
+    j = ledger.join(con, shop_id, body.person_id, body.name, clock.now(), voice.hindi)
     return JoinOut(
         customer_id=j.customer.id,
         scan_id=j.scan_id,

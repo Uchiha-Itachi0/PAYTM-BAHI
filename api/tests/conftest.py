@@ -49,3 +49,12 @@ def tx(con: db.Conn) -> Iterator[db.Conn]:
     assert con.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS
     yield con
     con.rollback()
+
+
+@pytest.fixture(autouse=True)
+def voice_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test calls Sarvam. api/.env may hold a key and SARVAM_OFFLINE=0 for the
+    app; the suite runs voice as the demo does with the wifi off, and a test of the
+    online path fakes Sarvam itself."""
+    monkeypatch.setenv("SARVAM_OFFLINE", "1")
+    monkeypatch.delenv("SARVAM_API_KEY", raising=False)

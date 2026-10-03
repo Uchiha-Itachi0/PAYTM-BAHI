@@ -701,8 +701,10 @@
             "enum": [
               "who",
               "nobody",
+              "several",
+              "maybe",
               "not_found",
-              "several"
+              "not_said"
             ],
             "title": "Why"
           },
@@ -770,6 +772,36 @@
           "lines"
         ],
         "title": "BookOut"
+      },
+      "CheckOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "amount_said",
+              "amount_read",
+              "person_said",
+              "person_fits"
+            ],
+            "title": "Kind"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "says": {
+            "type": "string",
+            "title": "Says"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "ok",
+          "says"
+        ],
+        "title": "CheckOut",
+        "description": "One check our code made on the reading."
       },
       "ClipOut": {
         "properties": {
@@ -1061,6 +1093,38 @@
             ],
             "title": "Source"
           },
+          "reader": {
+            "type": "string",
+            "enum": [
+              "sarvam",
+              "rules"
+            ],
+            "title": "Reader"
+          },
+          "fallback": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "offline",
+                  "no_answer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "udhaar",
+              "payment",
+              "unclear"
+            ],
+            "title": "Intent"
+          },
           "name": {
             "anyOf": [
               {
@@ -1100,7 +1164,10 @@
                 "type": "string",
                 "enum": [
                   "no_amount",
-                  "unclear_amount"
+                  "unclear_amount",
+                  "amount_not_said",
+                  "amount_mismatch",
+                  "invented_customer"
                 ]
               },
               {
@@ -1108,6 +1175,13 @@
               }
             ],
             "title": "Problem"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckOut"
+            },
+            "type": "array",
+            "title": "Checks"
           },
           "readback": {
             "anyOf": [
@@ -1142,15 +1216,19 @@
         "required": [
           "transcript",
           "source",
+          "reader",
+          "fallback",
+          "intent",
           "name",
           "amount_paise",
           "amount_words",
           "problem",
+          "checks",
           "readback",
           "who"
         ],
         "title": "HeardOut",
-        "description": "What was heard, and what the rules made of it. Nothing is recorded yet."
+        "description": "What was heard, what read it, and what our checks made of it. Nothing is\nrecorded yet."
       },
       "JoinIn": {
         "properties": {
@@ -1296,6 +1374,17 @@
             "type": "string",
             "title": "Display Name"
           },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
           "scan_id": {
             "anyOf": [
               {
@@ -1312,6 +1401,7 @@
         "required": [
           "customer_id",
           "display_name",
+          "tag",
           "scan_id"
         ],
         "title": "PersonOut"

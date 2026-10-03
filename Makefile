@@ -4,6 +4,7 @@
 # them on a tool that changed its output overnight.
 
 .PHONY: help db db-migrate db-check rhythm decide expire voice voice-list \
+        voice-eval names-hi \
         api web web-check check lint typecheck test
 
 help:
@@ -20,6 +21,8 @@ help:
 	@echo ""
 	@echo "voice        render the demo clips; with SARVAM_API_KEY, Sarvam transcribes them"
 	@echo "voice-list   what is already in the offline cache"
+	@echo "voice-eval   replay the 1,338-recording test through today's checker (no network)"
+	@echo "names-hi     fetch the seed's names in Devanagari from Sarvam (needs the key)"
 	@echo ""
 	@echo "check        ruff, ruff format, mypy strict, pytest"
 	@echo "web-check    tsc, eslint, vitest"
@@ -88,6 +91,15 @@ voice:
 
 voice-list:
 	cd api && uv run python -m bahi.voice list
+
+# The test behind slide 4: 1,338 recordings Sarvam heard and read on 24 Sep,
+# replayed through the checker the app runs today. No network, no credits.
+voice-eval:
+	cd api && uv run python -m bahi.voice.replay
+
+# Only names missing from api/data/names_hi.json are fetched.
+names-hi:
+	cd api && uv run python -m data.names_hi
 
 # ---------------------------------------------------------------------------
 # Python
