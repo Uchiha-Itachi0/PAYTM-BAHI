@@ -18,19 +18,23 @@ const TONE: Record<Tone, string> = {
 export function Pill({
   tone = "navy",
   href,
+  onClick,
+  disabled = false,
   children,
 }: {
   tone?: Tone;
   href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
 }): React.ReactElement {
-  const cls = `block w-full rounded-pill p-[13px] text-center text-[15px] font-extrabold tracking-[-0.015em] ${TONE[tone]}`;
+  const cls = `block w-full rounded-pill p-[13px] text-center text-[15px] font-extrabold tracking-[-0.015em] disabled:opacity-40 ${TONE[tone]}`;
   return href ? (
     <Link href={href} className={cls}>
       {children}
     </Link>
   ) : (
-    <button type="button" className={cls}>
+    <button type="button" className={cls} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );

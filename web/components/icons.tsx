@@ -82,3 +82,27 @@ export const Person = (p: IconProps): React.ReactElement => (
     <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
   </Svg>
 );
+
+export const Check = (p: IconProps): React.ReactElement => (
+  <Svg {...p}>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Svg>
+);
+
+export const Moon = (p: IconProps): React.ReactElement => (
+  <Svg {...p}>
+    <path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" />
+  </Svg>
+);
+
+export const Chat = (p: IconProps): React.ReactElement => (
+  <Svg {...p}>
+    <path d="M4 5h16v11H9l-5 4z" />
+  </Svg>
+);
+
+export const Plus = (p: IconProps): React.ReactElement => (
+  <Svg {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Svg>
+);

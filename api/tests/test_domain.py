@@ -171,3 +171,24 @@ def test_the_book_is_alphabetical_never_by_amount() -> None:
     )
     assert [ln.display_name for ln in b.lines] == ["Amit", "meena", "zaheer"]
     assert (b.owing_count, b.outstanding_paise) == (3, 141000)
+
+
+# ── the life of an entry ─────────────────────────────────────────────────────
+
+
+def test_every_move_is_either_in_the_table_or_refused() -> None:
+    from bahi.domain.lifecycle import ACTIONS, MOVES, STATUSES, IllegalMove, move
+
+    for status in STATUSES:
+        for action in ACTIONS:
+            if (status, action) in MOVES:
+                assert move(status, action) == MOVES[(status, action)]
+            else:
+                with pytest.raises(IllegalMove):
+                    move(status, action)
+
+
+def test_nothing_leaves_settled_or_corrected() -> None:
+    from bahi.domain.lifecycle import MOVES
+
+    assert not [k for k in MOVES if k[0] in ("settled", "corrected")]

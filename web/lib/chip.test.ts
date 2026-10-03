@@ -15,3 +15,10 @@ describe("status chips", () => {
     expect(CHIPS).not.toContain(verdict);
   });
 });
+
+// The UI's words and the API's words are the same set. If the server adds a
+// status, this stops compiling until the UI has words for it.
+import type { BookLine } from "./api/types";
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+const sameAsTheApi: Same<Chip, BookLine["chip"]> = true;
+void sameAsTheApi;

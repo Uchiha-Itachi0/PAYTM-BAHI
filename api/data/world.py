@@ -11,10 +11,12 @@ import uuid
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
+from bahi import clock
+
 SEED = 20261003
 
 #: The day of the hackathon. Every "day N" on every screen is counted to here.
-TODAY = date(2026, 10, 3)
+TODAY = clock.DEMO_TODAY
 
 #: Six months of history before it.
 START = date(2026, 4, 3)

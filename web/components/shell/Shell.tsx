@@ -1,14 +1,22 @@
+import Link from "next/link";
+
 import { Bell, Person, Search } from "@/components/icons";
 
 /**
  * The two app shells. BAHI is not a new app: these are screens inside Paytm for
  * Business (the shopkeeper) and the Paytm app (the customer), so each shell is
  * that app's own frame: the sky ground, its top bar, and a scrolling column of
- * cards.
+ * cards. A screen deeper in gets Paytm's back-style header instead of the top bar.
  *
  * Both carry a "Demo data" label. Every figure on every screen is synthetic, and
  * we would rather say so than be asked.
  */
+
+interface Heading {
+  title: string;
+  sub?: string;
+  back: string;
+}
 
 function Frame({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
@@ -51,27 +59,51 @@ function TopBar({
   );
 }
 
+function BackHeader({ title, sub, back }: Heading): React.ReactElement {
+  return (
+    <header className="flex items-center gap-3 px-3.5 pb-3.5 pt-3">
+      <Link href={back} aria-label="Back" className="flex-none text-[20px] leading-none">
+        ←
+      </Link>
+      <div className="min-w-0 flex-1">
+        <h1 className="text-[19px] font-extrabold tracking-[-0.025em]">{title}</h1>
+        {sub ? <p className="mt-px text-[12px] font-medium text-sub">{sub}</p> : null}
+      </div>
+      <DemoLabel />
+    </header>
+  );
+}
+
 function Column({ children }: { children: React.ReactNode }): React.ReactElement {
   return <main className="flex flex-1 flex-col gap-[11px] px-2.5 pb-3">{children}</main>;
 }
 
-/** Paytm for Business, with the shop's initials in the corner. */
-export function MerchantShell({
-  shopName,
-  children,
-}: {
-  shopName: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  const initials = shopName
+function initials(name: string): string {
+  return name
     .split(/\s+/)
     .slice(0, 2)
     .map((w) => w.charAt(0))
     .join("")
     .toUpperCase();
+}
+
+/** Paytm for Business, with the shop's initials in the corner. */
+export function MerchantShell({
+  shopName,
+  heading,
+  children,
+}: {
+  shopName?: string;
+  heading?: Heading;
+  children: React.ReactNode;
+}): React.ReactElement {
   return (
     <Frame>
-      <TopBar avatar={initials} business />
+      {heading ? (
+        <BackHeader {...heading} />
+      ) : (
+        <TopBar avatar={initials(shopName ?? "")} business />
+      )}
       <Column>{children}</Column>
     </Frame>
   );
@@ -79,13 +111,15 @@ export function MerchantShell({
 
 /** The Paytm app, as the customer sees it. */
 export function CustomerShell({
+  heading,
   children,
 }: {
+  heading?: Heading;
   children: React.ReactNode;
 }): React.ReactElement {
   return (
     <Frame>
-      <TopBar avatar={<Person />} business={false} />
+      {heading ? <BackHeader {...heading} /> : <TopBar avatar={<Person />} business={false} />}
       <Column>{children}</Column>
     </Frame>
   );

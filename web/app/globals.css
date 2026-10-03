@@ -72,6 +72,10 @@
   --font-sans: var(--ff-manrope), ui-sans-serif, system-ui, sans-serif;
 
   --shadow-pill: 0 6px 18px rgb(15 46 126 / 0.35);
+  --shadow-sheet: 0 -8px 28px rgb(16 24 40 / 0.13);
+
+  /* Behind a bottom sheet. */
+  --color-scrim: rgb(28 28 28 / 0.35);
 }
 
 /* The sky band behind every screen. */

@@ -1,0 +1,1227 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BAHI",
+    "description": "The udhaar book both sides can see. All data is synthetic.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops": {
+      "get": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "List Shops",
+        "operationId": "list_shops_shops_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShopOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Shops Shops Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/book": {
+      "get": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Get Book",
+        "description": "A1. Every figure here is computed by bahi/domain from the ledger.",
+        "operationId": "get_book_shops__shop_id__book_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopBookOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/counter": {
+      "get": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Get Counter",
+        "description": "A2. Everyone who scanned the udhaar QR in the last three minutes.",
+        "operationId": "get_counter_shops__shop_id__counter_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/customers": {
+      "get": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "List Customers",
+        "description": "Everyone in the book, for picking someone who is not at the counter.",
+        "operationId": "list_customers_shops__shop_id__customers_get",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerOut"
+                  },
+                  "title": "Response List Customers Shops  Shop Id  Customers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/entries": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Record Entry",
+        "description": "Record udhaar: for a scan at the counter, or a customer from the book.",
+        "operationId": "record_entry_shops__shop_id__entries_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/join/{shop_id}": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Join",
+        "description": "B0. He scanned the shop's udhaar QR: he is at the counter.",
+        "operationId": "join_join__shop_id__post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scans/{scan_id}": {
+      "get": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Get Scan",
+        "description": "What happened to his scan. Once the shopkeeper records an amount, the entry\ncomes back here and his phone shows the confirmation sheet.",
+        "operationId": "get_scan_scans__scan_id__get",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scans/{scan_id}/leave": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Leave",
+        "description": "He tapped Cancel.",
+        "operationId": "leave_scans__scan_id__leave_post",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entries/{entry_id}": {
+      "get": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Get Entry",
+        "operationId": "get_entry_entries__entry_id__get",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entries/{entry_id}/confirm": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Confirm",
+        "description": "B1. \"Yes, I owe ₹200\".",
+        "operationId": "confirm_entries__entry_id__confirm_post",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entries/{entry_id}/dispute": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Dispute",
+        "description": "B1. \"That's not right\".",
+        "operationId": "dispute_entries__entry_id__dispute_post",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BookOut": {
+        "properties": {
+          "customer_count": {
+            "type": "integer",
+            "title": "Customer Count"
+          },
+          "invited_count": {
+            "type": "integer",
+            "title": "Invited Count"
+          },
+          "owing_count": {
+            "type": "integer",
+            "title": "Owing Count"
+          },
+          "outstanding_paise": {
+            "type": "integer",
+            "title": "Outstanding Paise"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_count",
+          "invited_count",
+          "owing_count",
+          "outstanding_paise",
+          "lines"
+        ],
+        "title": "BookOut"
+      },
+      "CounterOut": {
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "waiting": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingOut"
+            },
+            "type": "array",
+            "title": "Waiting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_id",
+          "waiting"
+        ],
+        "title": "CounterOut",
+        "description": "Everyone at the counter, oldest scan first."
+      },
+      "CustomerOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "joined": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "name_only"
+            ],
+            "title": "Joined"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "tag",
+          "joined"
+        ],
+        "title": "CustomerOut"
+      },
+      "DisputeIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 280
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id"
+        ],
+        "title": "DisputeIn"
+      },
+      "EntryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "shop_id": {
+            "type": "string",
+            "title": "Shop Id"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "paid_paise": {
+            "type": "integer",
+            "title": "Paid Paise"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "recorded",
+              "confirmed",
+              "disputed",
+              "corrected",
+              "settled"
+            ],
+            "title": "Status"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "spoken_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken Text"
+          },
+          "corrects_entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Entry Id"
+          },
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "button": {
+            "type": "string",
+            "title": "Button"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "customer_id",
+          "display_name",
+          "shop_id",
+          "shop_name",
+          "amount_paise",
+          "paid_paise",
+          "status",
+          "recorded_at",
+          "note",
+          "spoken_text",
+          "corrects_entry_id",
+          "acknowledged_at",
+          "button"
+        ],
+        "title": "EntryOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "now"
+        ],
+        "title": "Health"
+      },
+      "JoinIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id"
+        ],
+        "title": "JoinIn",
+        "description": "He scanned the udhaar QR. A first-timer tells us the name to use."
+      },
+      "JoinOut": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "scan_id": {
+            "type": "string",
+            "title": "Scan Id"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "first_time": {
+            "type": "boolean",
+            "title": "First Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "scan_id",
+          "shop",
+          "first_time"
+        ],
+        "title": "JoinOut"
+      },
+      "LineOut": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "joined": {
+            "type": "string",
+            "enum": [
+              "linked",
+              "invited",
+              "name_only"
+            ],
+            "title": "Joined"
+          },
+          "balance_paise": {
+            "type": "integer",
+            "title": "Balance Paise"
+          },
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "chip": {
+            "type": "string",
+            "enum": [
+              "on_rhythm",
+              "changed",
+              "not_confirmed",
+              "new"
+            ],
+            "title": "Chip"
+          },
+          "rhythm": {
+            "$ref": "#/components/schemas/RhythmOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "display_name",
+          "tag",
+          "joined",
+          "balance_paise",
+          "day",
+          "chip",
+          "rhythm"
+        ],
+        "title": "LineOut"
+      },
+      "PersonIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id"
+        ],
+        "title": "PersonIn"
+      },
+      "RecordIn": {
+        "properties": {
+          "amount_paise": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Paise"
+          },
+          "scan_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Id"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "spoken_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount_paise"
+        ],
+        "title": "RecordIn",
+        "description": "An udhaar entry. Either a scan (he is at the counter) or a customer."
+      },
+      "RhythmOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "median_gap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Gap"
+          },
+          "max_gap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Gap"
+          },
+          "last_paid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Paid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "median_gap",
+          "max_gap",
+          "last_paid"
+        ],
+        "title": "RhythmOut"
+      },
+      "ScanOut": {
+        "properties": {
+          "scan_id": {
+            "type": "string",
+            "title": "Scan Id"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "recorded",
+              "left",
+              "expired"
+            ],
+            "title": "State"
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EntryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "scan_id",
+          "state",
+          "entry"
+        ],
+        "title": "ScanOut"
+      },
+      "ShopBookOut": {
+        "properties": {
+          "synthetic": {
+            "type": "boolean",
+            "const": true,
+            "title": "Synthetic",
+            "default": true
+          },
+          "about": {
+            "type": "string",
+            "title": "About",
+            "default": "Synthetic demo data for one seeded shop."
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "book": {
+            "$ref": "#/components/schemas/BookOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "shop",
+          "book"
+        ],
+        "title": "ShopBookOut",
+        "description": "The shopkeeper's book. Also written to contract/shop.json by `make db`."
+      },
+      "ShopOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "locality": {
+            "type": "string",
+            "title": "Locality"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "locality"
+        ],
+        "title": "ShopOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WaitingOut": {
+        "properties": {
+          "scan_id": {
+            "type": "string",
+            "title": "Scan Id"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "scanned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Scanned At"
+          },
+          "waited_s": {
+            "type": "integer",
+            "title": "Waited S"
+          },
+          "first_time": {
+            "type": "boolean",
+            "title": "First Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scan_id",
+          "customer_id",
+          "display_name",
+          "tag",
+          "scanned_at",
+          "waited_s",
+          "first_time"
+        ],
+        "title": "WaitingOut"
+      }
+    }
+  }
+}
