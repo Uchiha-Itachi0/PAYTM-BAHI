@@ -34,6 +34,9 @@ export interface CardActions {
 function status(e: ThreadEntry, side: Side, name: string, shop: string): string {
   if (e.expired) return "Udhaar · no longer claimable";
   const who = side === "shop" ? name : "you";
+  const part = e.paid_paise > 0 && e.status !== "settled";
+  if (part)
+    return `Udhaar · ${formatPaise(e.paid_paise)} paid, ${formatPaise(e.amount_paise - e.paid_paise)} left`;
   switch (e.status) {
     case "recorded":
       return side === "shop" ? `Udhaar · waiting on ${name}` : "Udhaar · waiting for your yes";
@@ -75,7 +78,14 @@ function EntryBubble({
   const done = e.status === "confirmed" || e.status === "settled";
   const struck = e.expired || e.status === "corrected";
   const answer = side === "customer" && e.status === "recorded" && !e.expired;
-  const fix = side === "shop" && e.status === "disputed";
+  // The shopkeeper can correct any entry nothing has been paid against: one he
+  // says is wrong gets the button up front, any other a quieter link.
+  const fix =
+    side === "shop" &&
+    ["recorded", "confirmed", "disputed"].includes(e.status) &&
+    e.paid_paise === 0 &&
+    !e.expired;
+  const urgent = e.status === "disputed";
   const mine = side === "shop";
 
   return (
@@ -157,7 +167,11 @@ function EntryBubble({
           <button
             type="button"
             onClick={() => setMode("fix")}
-            className="mt-3 w-full rounded-pill border-[1.5px] border-cyan bg-white px-4 py-2 text-[14px] font-extrabold text-cyan-text"
+            className={
+              urgent
+                ? "mt-3 w-full rounded-pill border-[1.5px] border-cyan bg-white px-4 py-2 text-[14px] font-extrabold text-cyan-text"
+                : "mt-2 text-[12.5px] font-extrabold text-cyan-text"
+            }
           >
             Correct the amount
           </button>

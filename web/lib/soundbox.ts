@@ -63,9 +63,13 @@ export function tone(kind: Tone): void {
   }
 }
 
-/** "दो सौ रुपये", in Sarvam's voice from the API; a chime if it can't be said. */
-export function sayAmount(paise: number): void {
+/**
+ * Money arrived: "सौ रुपये मिले, सौ रुपये बाकी", in Sarvam's voice from the API.
+ * The sum and what is still open, never who: the screen shows that. A tone if
+ * it can't be said.
+ */
+export function sayReceived(paidPaise: number, leftPaise: number): void {
   if (!ctx || ctx.state !== "running") return;
-  const audio = new Audio(`/api/voice/say/${paise}.wav`);
+  const audio = new Audio(`/api/voice/received/${paidPaise}/${leftPaise}.wav`);
   audio.play().catch(() => tone("done"));
 }

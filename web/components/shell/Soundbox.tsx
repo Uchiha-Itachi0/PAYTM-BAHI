@@ -5,15 +5,16 @@ import { useEffect, useRef, useState } from "react";
 import type { Events, ShopEvent } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
-import { sayAmount, tone, unlock } from "@/lib/soundbox";
+import { sayReceived, tone, unlock } from "@/lib/soundbox";
 
 /**
  * V7 · The Soundbox, and the news strip above the shopkeeper's screen.
  *
  * Asks the API every two seconds what happened since it last asked: a scan at
  * the counter, a customer's yes, a dispute, a UPI payment, a message. Each one
- * plays its tone (money arriving says the amount), and the strip shows who, for
- * a few seconds. The sound never carries a name; the screen does.
+ * plays its tone; money arriving says the sum and what is still open ("सौ रुपये
+ * मिले, सौ रुपये बाकी"). The strip shows who, for a few seconds. The sound never
+ * carries a name; the screen does.
  */
 
 const EVERY_MS = 2000;
@@ -29,14 +30,16 @@ function news(e: ShopEvent): string {
     case "disputed":
       return `${e.display_name} says ${amount} is not right`;
     case "paid":
-      return `${amount} received from ${e.display_name} by UPI`;
+      return `${amount} received from ${e.display_name} by UPI · ${
+        e.left_paise ? `${formatPaise(e.left_paise)} left` : "all paid"
+      }`;
     case "message":
       return `New message from ${e.display_name}`;
   }
 }
 
 function play(e: ShopEvent): void {
-  if (e.kind === "paid" && e.amount_paise) sayAmount(e.amount_paise);
+  if (e.kind === "paid" && e.amount_paise) sayReceived(e.amount_paise, e.left_paise ?? 0);
   else if (e.kind === "scanned") tone("chime");
   else if (e.kind === "disputed") tone("question");
   else if (e.kind === "confirmed") tone("done");

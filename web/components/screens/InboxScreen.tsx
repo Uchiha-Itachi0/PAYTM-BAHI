@@ -27,6 +27,9 @@ import { clockTime, shortDate, shortWhen } from "@/lib/when";
 function line(r: InboxRow): { mark: "ok" | "wait" | "warn" | null; text: string } {
   if (r.reminder_at) return { mark: "warn", text: `Reminder scheduled · ${clockTime(r.reminder_at)}` };
   const e = r.entry;
+  // A line about an entry (a payment, a dispute) says what happened.
+  if (r.kind === "entry" && !r.card)
+    return { mark: e?.status === "disputed" ? "warn" : "ok", text: r.body };
   if (r.kind === "entry" && e) {
     const amount = formatPaise(e.amount_paise);
     if (e.status === "confirmed") return { mark: "ok", text: `${amount} confirmed` };

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "@/components/chat/Composer";
@@ -17,7 +18,8 @@ import { tone, unlock } from "@/lib/soundbox";
  * An entry waiting for him carries its two answers: "Yes, I owe ₹200" (the
  * button's words come from the server, because they are what is stored) and
  * "That's not right", with his reason if he gives one. A correction from the
- * shop is a new card, and needs its own yes.
+ * shop is a new card, and needs its own yes. Pay, beside the message box, opens
+ * the payment screen with what he owes here filled in.
  */
 export function CustomerThreadScreen({ shopId }: { shopId: string }): React.ReactElement {
   const person = usePerson();
@@ -101,6 +103,16 @@ export function CustomerThreadScreen({ shopId }: { shopId: string }): React.Reac
       {t && person ? (
         <Composer
           placeholder={`Message ${t.shop.name}…`}
+          before={
+            t.balance_paise > 0 ? (
+              <Link
+                href={`/c/pay/${shopId}`}
+                className="flex-none rounded-pill bg-cyan px-4 py-2 text-[13.5px] font-extrabold text-white"
+              >
+                Pay
+              </Link>
+            ) : null
+          }
           onSend={(text) =>
             act(
               () => api<Thread>(`/shops/${shopId}/thread`, { person_id: person.id, text }),

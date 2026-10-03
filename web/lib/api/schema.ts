@@ -424,6 +424,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/voice/received/{paid}/{left}.wav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Say Received
+         * @description The Soundbox when money arrives: "सौ रुपये मिले, सौ रुपये बाकी।" Amounts
+         *     only: this route cannot say a name. 503 when voice is offline and it was never
+         *     spoken; the Soundbox then plays its tone.
+         */
+        get: operations["say_received_voice_received__paid___left__wav_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/voice/ask/{question}.wav": {
         parameters: {
             query?: never;
@@ -779,8 +801,9 @@ export interface paths {
         put?: never;
         /**
          * Pay
-         * @description B3. He paid this shop everything he owes it, by UPI. Paytm moves the
-         *     money; the book records which entries it paid, and the shop is told.
+         * @description B3. He paid this shop by UPI: everything he owes it, or the part he chose.
+         *     Paytm moves the money; the book records which entries it paid, oldest first,
+         *     and the shop is told with what is still open.
          */
         post: operations["pay_shops__shop_id__pay_post"];
         delete?: never;
@@ -1076,7 +1099,9 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "udhaar" | "payment" | "customer";
+            kind: "udhaar" | "payment" | "customer" | "correction";
+            /** Corrects Amount Paise */
+            corrects_amount_paise?: number | null;
             /** New */
             new: boolean;
             /**
@@ -1085,7 +1110,7 @@ export interface components {
              */
             status: "shown" | "saved" | "replaced" | "cancelled";
             /** Reasons */
-            reasons: ("weak_match" | "large" | "unusual" | "new_customer")[];
+            reasons: ("weak_match" | "large" | "unusual" | "new_customer" | "correction")[];
             /** Spoken Text */
             spoken_text: string | null;
             /** Entry Id */
@@ -1241,6 +1266,8 @@ export interface components {
             display_name: string;
             /** Amount Paise */
             amount_paise: number | null;
+            /** Left Paise */
+            left_paise?: number | null;
         };
         /** EventsOut */
         EventsOut: {
@@ -1359,6 +1386,8 @@ export interface components {
              */
             sent_at: string;
             entry: components["schemas"]["ThreadEntryOut"] | null;
+            /** Card */
+            card: boolean;
             /** Unread */
             unread: number;
             /** Needs Reply */
@@ -1499,6 +1528,8 @@ export interface components {
             display_name: string;
             /** Balance Paise */
             balance_paise: number;
+            /** Payable Paise */
+            payable_paise: number;
             /** Day */
             day: number | null;
             /** Entries */
@@ -1534,6 +1565,8 @@ export interface components {
             shop: components["schemas"]["ShopOut"];
             /** Amount Paise */
             amount_paise: number;
+            /** Left Paise */
+            left_paise: number;
             /**
              * Paid At
              * Format: date-time
@@ -1550,6 +1583,19 @@ export interface components {
             entry_ids: string[];
             /** Elsewhere */
             elsewhere: components["schemas"]["MyShopOut"][];
+        };
+        /**
+         * PayIn
+         * @description He pays this shop by UPI: what he owes it, or the part he chose.
+         */
+        PayIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Amount Paise */
+            amount_paise?: number | null;
         };
         /** PersonIn */
         PersonIn: {
@@ -2558,6 +2604,36 @@ export interface operations {
             };
         };
     };
+    say_received_voice_received__paid___left__wav_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paid: number;
+                left: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     say_ask_voice_ask__question__wav_get: {
         parameters: {
             query?: never;
@@ -3152,7 +3228,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PersonIn"];
+                "application/json": components["schemas"]["PayIn"];
             };
         };
         responses: {

@@ -3,24 +3,23 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { Chat, Check } from "@/components/icons";
+import { Chat } from "@/components/icons";
 import { CustomerShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
 import { Figure } from "@/components/ui/Figure";
 import { Dots, Notice } from "@/components/ui/Notice";
 import { Pill } from "@/components/ui/Pill";
-import { api, ApiError, usePoll } from "@/lib/api/client";
-import type { MyShop, MyUdhaar, Paid, ThreadEntry } from "@/lib/api/types";
+import { api, usePoll } from "@/lib/api/client";
+import type { MyShop, MyUdhaar, ThreadEntry } from "@/lib/api/types";
 import { formatPaise } from "@/lib/money";
 import { usePerson } from "@/lib/person";
-import { clockTime, fullDate, shortDate } from "@/lib/when";
+import { fullDate, shortDate } from "@/lib/when";
 
 /**
  * B2 · My udhaar: what he owes across every shop, each entry, and Pay.
- * B3 · Cleared: what he just paid, and what is still open elsewhere.
  *
- * Every figure is from the API. Paying pays everything he owes that shop, by UPI,
- * each entry named; a disputed entry waits until it is agreed. An entry past the
+ * Every figure is from the API. Pay opens the payment screen for that shop, with
+ * what he owes there filled in; a disputed entry waits until it is agreed. An entry past the
  * limitation line is shown struck through: kept, and claiming nothing.
  * Invitations from shops wait at the top for his yes.
  */
@@ -67,104 +66,21 @@ function EntryLine({ e }: { e: ThreadEntry }): React.ReactElement {
   );
 }
 
-function Cleared({
-  paid,
-  onBack,
-}: {
-  paid: Paid;
-  onBack: () => void;
-}): React.ReactElement {
-  return (
-    <CustomerShell heading={{ title: "Cleared", sub: paid.shop.name, back: "/c/udhaar" }}>
-      <Card>
-        <div className="py-3 text-center">
-          <div className="mx-auto mb-3 grid size-16 place-items-center rounded-full bg-ok-bg text-paid [&_svg]:size-8">
-            <Check />
-          </div>
-          <p className="text-[26px] font-extrabold tracking-[-0.03em]">
-            {formatPaise(paid.amount_paise)} paid
-          </p>
-          <p className="mt-1.5 text-[13px] font-medium leading-normal text-sub">
-            {fullDate(paid.paid_at)}, {clockTime(paid.paid_at)} · UPI
-            <br />
-            {paid.shop.name} has been told.
-          </p>
-        </div>
-      </Card>
-      <Card title={paid.shop.name} tight>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[14.5px] font-extrabold">Nothing outstanding</p>
-            <p className="mt-0.5 text-[12px] font-medium text-sub">
-              {paid.settled_in === 0
-                ? "Settled the same day"
-                : `Settled in ${paid.settled_in} ${paid.settled_in === 1 ? "day" : "days"}`}
-            </p>
-          </div>
-          <p className="text-[15px] font-extrabold tabular-nums">{formatPaise(0)}</p>
-        </div>
-      </Card>
-      {paid.elsewhere.length ? (
-        <Card title="Still open elsewhere" tight>
-          {paid.elsewhere.map((s) => (
-            <div
-              key={s.shop.id}
-              className="flex items-start justify-between border-b border-hair py-2.5 last:border-b-0"
-            >
-              <div>
-                <p className="text-[14.5px] font-extrabold">{s.shop.name}</p>
-                {s.day !== null ? (
-                  <p className="mt-0.5 text-[12px] font-medium text-sub">day {s.day}</p>
-                ) : null}
-              </div>
-              <p className="text-[15px] font-extrabold tabular-nums">
-                {formatPaise(s.balance_paise)}
-              </p>
-            </div>
-          ))}
-        </Card>
-      ) : null}
-      <Pill tone="outline" onClick={onBack}>
-        Back to my udhaar
-      </Pill>
-    </CustomerShell>
-  );
-}
-
 export function MyUdhaarScreen(): React.ReactElement {
   const person = usePerson();
   const mine = usePoll<MyUdhaar>(person ? `/people/${person.id}/udhaar` : null);
   const [picked, setPicked] = useState<string | null>(null);
-  const [paid, setPaid] = useState<Paid | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
 
   const heading = { title: "My udhaar", back: "/c" };
   const m = mine.data;
   const shop: MyShop | undefined = m?.shops.find((s) => s.shop.id === picked) ?? m?.shops[0];
   const owing = m?.shops.filter((s) => s.balance_paise > 0) ?? [];
 
-  async function pay(s: MyShop): Promise<void> {
-    if (!person) return;
-    setBusy(true);
-    setProblem(null);
-    try {
-      setPaid(await api<Paid>(`/shops/${s.shop.id}/pay`, { person_id: person.id }));
-      mine.refresh();
-    } catch (e) {
-      setProblem(e instanceof ApiError ? e.message : "The payment didn't go through.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function invite(shopId: string, yes: boolean): Promise<void> {
     if (!person) return;
     await api(`/shops/${shopId}/invite/${yes ? "accept" : "decline"}`, { person_id: person.id });
     mine.refresh();
   }
-
-  if (paid) return <Cleared paid={paid} onBack={() => setPaid(null)} />;
 
   if (person === null) {
     return (
@@ -182,7 +98,6 @@ export function MyUdhaarScreen(): React.ReactElement {
 
   return (
     <CustomerShell heading={heading}>
-      {problem ? <Notice tone="warn">{problem}</Notice> : null}
       {!m ? (
         <Card>
           <Dots />
@@ -270,9 +185,9 @@ export function MyUdhaarScreen(): React.ReactElement {
             </Notice>
           )}
 
-          {shop && shop.balance_paise > 0 ? (
-            <Pill tone="cyan" onClick={() => void pay(shop)} disabled={busy}>
-              Pay {formatPaise(shop.balance_paise)} now
+          {shop && shop.payable_paise > 0 ? (
+            <Pill tone="cyan" href={`/c/pay/${shop.shop.id}?from=udhaar`}>
+              Pay {formatPaise(shop.payable_paise)} now
             </Pill>
           ) : null}
         </>

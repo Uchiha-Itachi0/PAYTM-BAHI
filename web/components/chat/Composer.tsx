@@ -10,12 +10,15 @@ export function Composer({
   placeholder,
   disabled,
   why,
+  before,
   onSend,
 }: {
   placeholder: string;
   disabled?: boolean;
   /** Why it is off, shown in its place. */
   why?: string;
+  /** Something at the start of the bar: the customer's Pay. */
+  before?: React.ReactNode;
   onSend: (text: string) => Promise<void>;
 }): React.ReactElement {
   const [text, setText] = useState("");
@@ -30,7 +33,7 @@ export function Composer({
   }
   return (
     <form
-      className="sticky bottom-2 mt-auto flex items-center gap-2 rounded-pill bg-card p-1.5 pl-4 shadow-sheet"
+      className={`sticky bottom-2 mt-auto flex items-center gap-2 rounded-pill bg-card p-1.5 shadow-sheet ${before ? "" : "pl-4"}`}
       onSubmit={(e) => {
         e.preventDefault();
         const words = text.trim();
@@ -41,6 +44,7 @@ export function Composer({
           .finally(() => setBusy(false));
       }}
     >
+      {before}
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}

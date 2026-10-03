@@ -12,16 +12,23 @@ import { formatPaise } from "@/lib/money";
  * waits for a clear हाँ.
  *
  * Someone not in the book yet is on the card as "New": his yes adds them by name
- * only, then writes their first udhaar if there is one.
+ * only, then writes their first udhaar if there is one. A correction shows the
+ * old amount struck through beside the right one.
  */
 
-const KIND = { udhaar: "उधार", payment: "जमा", customer: "नया ग्राहक" } as const;
+const KIND = {
+  udhaar: "उधार",
+  payment: "जमा",
+  customer: "नया ग्राहक",
+  correction: "सुधार",
+} as const;
 
 const REASON: Record<MunshiCard["reasons"][number], string> = {
   weak_match: "The name only sounded close",
   large: "A large amount",
   unusual: "Much more than they usually take",
   new_customer: "Not in your book yet: added by name only",
+  correction: "A new entry replaces the old one; they confirm it",
 };
 
 export function EntryCard({
@@ -58,6 +65,11 @@ export function EntryCard({
           {card.tag ? <p className="text-[12px] font-semibold opacity-80">{card.tag}</p> : null}
         </div>
         <div className="text-right">
+          {card.corrects_amount_paise ? (
+            <p className="text-[14px] font-bold leading-none tabular-nums line-through opacity-70">
+              {formatPaise(card.corrects_amount_paise)}
+            </p>
+          ) : null}
           {card.amount_paise !== null ? (
             <p className="text-[26px] font-extrabold leading-none tracking-[-0.035em] tabular-nums">
               {formatPaise(card.amount_paise)}
@@ -116,6 +128,10 @@ export function EntryCard({
         <p className="mt-2.5 text-[13px] font-extrabold">
           {card.kind === "customer"
             ? `Added to your book · ${card.display_name}, by name only`
+            : card.kind === "correction"
+              ? card.on_bahi
+                ? `Corrected · sent to ${card.display_name}'s phone to confirm`
+                : `Corrected · ${card.display_name} isn't on BAHI, so nothing was sent`
             : card.on_bahi
               ? `Written · sent to ${card.display_name}'s phone to confirm`
               : card.new
