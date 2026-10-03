@@ -91,10 +91,26 @@ def record(
     if c.joined == "invited":
         raise Conflict(f"{c.display_name} has not accepted your invite yet")
 
+    # She asked for an amount on this scan: whatever he writes answers it. Her
+    # note goes on the entry unless he wrote one of his own.
+    asking = sc is not None and sc.asking
+    if asking and sc is not None and note is None:
+        note = sc.asked_note
     eid = entries.record(con, cid, amount_paise, now, note=note, spoken_text=spoken_text)
     if sc is not None and not scans.claim(con, sc.id, eid, now):
         raise Conflict("that scan was already used, or has expired")
     e = entry(con, eid)
+    if asking and sc is not None:
+        if amount_paise == sc.asked_paise:
+            # Exactly what she asked for: her ask is her yes, so it is agreed by
+            # both now, stored in her own words.
+            scans.answer(con, sc.id, "yes", now)
+            entries.acknowledge(con, e.id, wording.asked(amount_paise, e.shop_name), now)
+            entries.set_status(con, e.id, move(e.status, "confirm"))
+            e = entry(con, eid)
+        else:
+            # A different amount: an ordinary entry, for her own yes.
+            scans.answer(con, sc.id, "changed", now)
     _card(con, e, wording.recorded(e.shop_name, amount_paise), now)
     return e
 
@@ -366,6 +382,61 @@ def join(
     first = created or not entries.of_customer(con, c.id)
     scan_id = scans.waiting_for(con, c.id, now) or scans.add(con, c.id, now)
     return Joined(customer=c, scan_id=scan_id, first_time=first)
+
+
+#: The most a customer can ask for at the counter, as the munshi's own limit.
+MOST_ASKED_PAISE = 1_00_000_00
+
+
+def ask(
+    con: Conn,
+    scan_id: str,
+    person_id: UUID,
+    amount_paise: int,
+    note: str | None,
+    now: datetime,
+) -> Scan:
+    """She asks for an amount on her scan: "₹200, atta and oil". Nothing is
+    written; the shopkeeper is asked. Whole rupees only."""
+    sc = scan(con, scan_id)
+    c = customers.get(con, sc.customer_id)
+    if c is None or c.person_id != str(person_id):
+        raise Forbidden("this scan is someone else's")
+    if amount_paise % 100 or not 0 < amount_paise <= MOST_ASKED_PAISE:
+        raise Conflict("ask for whole rupees, up to ₹1,00,000")
+    note = " ".join((note or "").split()) or None
+    if not scans.ask(con, sc.id, amount_paise, note, now):
+        raise Conflict(
+            "the shop has already answered, or you are no longer at the counter"
+        )
+    return scan(con, sc.id)
+
+
+def answer_ask(
+    con: Conn,
+    shop_id: str,
+    scan_id: str,
+    said: str,
+    now: datetime,
+    amount_paise: int | None = None,
+) -> EntryRef | None:
+    """His answer to her ask, from the pop-up. Yes writes exactly what she asked
+    for, agreed by both. No writes nothing. A different amount is an ordinary
+    entry she confirms. Yes and a change go through `record`, like every entry."""
+    sc = scan(con, scan_id)
+    if sc.shop_id != shop_id:
+        raise NotFound(f"no scan {scan_id} at this shop")
+    if not sc.asking or sc.asked_paise is None:
+        raise Conflict("there is nothing waiting for your answer on this scan")
+    if said == "no":
+        if not scans.answer(con, sc.id, "no", now):
+            raise Conflict("this was already answered")
+        return None
+    if said == "yes":
+        amount_paise = sc.asked_paise
+    if amount_paise is None:
+        raise Conflict("say the amount it should be")
+    return record(con, shop_id, amount_paise, now, scan_id=UUID(sc.id))
 
 
 def leave(con: Conn, scan_id: str, now: datetime) -> None:

@@ -65,11 +65,22 @@ export function tone(kind: Tone): void {
 
 /**
  * Money arrived: "दो सौ रुपये का उधार था, उसमें से सौ रुपये मिले, सौ रुपये
- * बाकी", in Sarvam's voice from the API. The amounts, never who: the screen shows that. A tone if
- * it can't be said.
+ * बाकी", in Sarvam's voice from the API. The amounts, never who: the screen shows
+ * that. A tone if it can't be said.
  */
 export function sayReceived(paidPaise: number, leftPaise: number): void {
   if (!ctx || ctx.state !== "running") return;
   const audio = new Audio(`/api/voice/received/${paidPaise}/${leftPaise}.wav`);
   audio.play().catch(() => tone("done"));
+}
+
+/**
+ * Someone at the counter asked for udhaar: "दो सौ रुपये का उधार माँगा है". The
+ * amount only, never who or what for: those are on his screen, in the pop-up.
+ * A chime if it can't be said.
+ */
+export function sayAsked(paise: number): void {
+  if (!ctx || ctx.state !== "running") return;
+  const audio = new Audio(`/api/voice/asked/${paise}.wav`);
+  audio.play().catch(() => tone("chime"));
 }

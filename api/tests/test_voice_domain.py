@@ -156,3 +156,9 @@ def test_money_arriving_says_what_was_owed_what_came_and_what_is_left() -> None:
         "दो सौ रुपये का उधार था, उसमें से सौ रुपये मिले, सौ रुपये बाकी।"
     )
     assert received(20000, 0) == "दो सौ रुपये का उधार था, पूरे दो सौ रुपये मिले, हिसाब पूरा।"
+
+
+def test_an_ask_is_said_as_its_amount_only() -> None:
+    from bahi.voice.said import asked
+
+    assert asked(20000) == "दो सौ रुपये का उधार माँगा है।"

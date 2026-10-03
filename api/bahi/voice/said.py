@@ -63,6 +63,13 @@ def received(paid_paise: int, left_paise: int) -> str:
     )
 
 
+def asked(paise: int) -> str:
+    """What the Soundbox says when someone at the counter asks for udhaar: the
+    amount, never who or what for. The shopkeeper reads those on his screen.
+    ValueError beyond what is said aloud."""
+    return f"{amount_words(paise)} का उधार माँगा है।"
+
+
 def _name(text: str, voice: str, language: str = sarvam.LANGUAGE) -> str:
     # Hindi, the first language, keeps the names its files were made under.
     lang = "" if language == sarvam.LANGUAGE else f"|{language}"

@@ -120,6 +120,17 @@ def say_amount(paise: int) -> FileResponse:
     return FileResponse(said.speech(words), media_type="audio/wav")
 
 
+@router.get("/voice/asked/{paise}.wav", response_class=FileResponse)
+def say_asked(paise: int) -> FileResponse:
+    """The Soundbox when someone at the counter asks for udhaar: "दो सौ रुपये का
+    उधार माँगा है।" The amount only: who, and what for, are on his screen."""
+    try:
+        words = said.asked(paise)
+    except ValueError as e:
+        raise HTTPException(404, f"{paise} paise is not said aloud") from e
+    return FileResponse(said.speech(words), media_type="audio/wav")
+
+
 @router.get("/voice/received/{paid}/{left}.wav", response_class=FileResponse)
 def say_received(paid: int, left: int) -> FileResponse:
     """The Soundbox when money arrives: "दो सौ रुपये का उधार था, उसमें से सौ

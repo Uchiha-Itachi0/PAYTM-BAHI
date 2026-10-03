@@ -96,6 +96,10 @@ class WaitingOut(BaseModel):
     #: disagree with the product's (the demo pins the date), so it never does this sum.
     waited_s: int
     first_time: bool
+    #: She asked for this much, and he hasn't answered: the pop-up asks him.
+    asked_paise: int | None = None
+    #: What for, in her words.
+    asked_note: str | None = None
 
 
 class CounterOut(BaseModel):
@@ -150,8 +154,27 @@ class JoinOut(BaseModel):
 
 class ScanOut(BaseModel):
     scan_id: str
-    state: Literal["waiting", "recorded", "left", "expired"]
+    state: Literal["waiting", "recorded", "left", "expired", "declined"]
     entry: EntryOut | None
+    #: What she asked for, if she did, and the shop's answer once it gives one.
+    asked_paise: int | None = None
+    answer: Literal["yes", "no", "changed"] | None = None
+
+
+class AskIn(BaseModel):
+    """She asks for an amount at the counter: whole rupees, and what for."""
+
+    person_id: UUID
+    amount_rupees: int = Field(gt=0, le=1_00_000)
+    note: str | None = Field(default=None, max_length=80)
+
+
+class AnswerAskIn(BaseModel):
+    """His answer on the pop-up: yes, no, or the amount it really is."""
+
+    answer: Literal["yes", "no", "change"]
+    #: Only with change.
+    amount_rupees: int | None = Field(default=None, gt=0, le=1_00_000)
 
 
 class PersonIn(BaseModel):
@@ -790,7 +813,7 @@ class EventOut(BaseModel):
     """Something the shop should hear about. The Soundbox plays a tone, or says
     an amount; it never says a name. The screen shows who."""
 
-    kind: Literal["scanned", "confirmed", "disputed", "paid", "message"]
+    kind: Literal["scanned", "asked", "confirmed", "disputed", "paid", "message"]
     at: datetime
     customer_id: str
     display_name: str

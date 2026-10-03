@@ -13,6 +13,7 @@ from bahi.service.deps import Con, etagged
 from bahi.service.errors import Conflict, NotFound
 from bahi.service.models import (
     AccountOut,
+    AnswerAskIn,
     CounterOut,
     CustomerDetailOut,
     CustomerOut,
@@ -48,7 +49,8 @@ def get_book(shop_id: str, request: Request, con: Con) -> Response:
 
 @router.get("/shops/{shop_id}/counter", response_model=CounterOut)
 def get_counter(shop_id: str, request: Request, con: Con) -> Response:
-    """A2. Everyone who scanned the udhaar QR in the last three minutes."""
+    """A2. Everyone who scanned the udhaar QR in the last three minutes, and
+    anyone still waiting on his answer to what they asked for."""
     ledger.shop(con, shop_id)
     now = clock.now()
     waiting = scans.waiting(con, shop_id, now)
@@ -63,6 +65,8 @@ def get_counter(shop_id: str, request: Request, con: Con) -> Response:
                 scanned_at=w.scanned_at,
                 waited_s=int((now - w.scanned_at).total_seconds()),
                 first_time=w.first_time,
+                asked_paise=w.asked_paise,
+                asked_note=w.asked_note,
             )
             for w in waiting
         ],
@@ -95,6 +99,23 @@ def record_entry(shop_id: str, body: RecordIn, con: Con) -> EntryOut:
         spoken_text=body.spoken_text,
     )
     return views.entry_out(e)
+
+
+@router.post("/shops/{shop_id}/scans/{scan_id}/answer")
+def answer_ask(
+    shop_id: str, scan_id: str, body: AnswerAskIn, con: Con
+) -> EntryOut | None:
+    """His answer to what she asked for at the counter. Yes writes exactly that,
+    agreed by both; change writes his amount for her own yes; no writes nothing."""
+    e = ledger.answer_ask(
+        con,
+        shop_id,
+        scan_id,
+        body.answer,
+        clock.now(),
+        amount_paise=body.amount_rupees * 100 if body.amount_rupees else None,
+    )
+    return views.entry_out(e) if e else None
 
 
 # ── V6: adding someone who can't scan ────────────────────────────────────────

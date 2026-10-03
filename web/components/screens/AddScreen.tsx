@@ -124,7 +124,13 @@ export function AddScreen(): React.ReactElement {
             <Row
               key={w.scan_id}
               name={w.display_name}
-              sub={`${w.first_time ? "New here" : (w.tag ?? "Regular")} · scanned ${ago(w.waited_s)}`}
+              sub={[
+                w.asked_paise ? `Asking ${formatPaise(w.asked_paise)}` : null,
+                w.first_time ? "New here" : (w.tag ?? "Regular"),
+                `scanned ${ago(w.waited_s)}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
               selected={who?.kind === "scan" && who.scanId === w.scan_id}
               onSelect={() => setPicked({ kind: "scan", scanId: w.scan_id, name: w.display_name })}
             />

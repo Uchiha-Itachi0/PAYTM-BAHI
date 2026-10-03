@@ -22,6 +22,13 @@ def acknowledgment(amount_paise: int, shop_name: str) -> str:
     return f"{button(amount_paise)} to {shop_name}"
 
 
+def asked(amount_paise: int, shop_name: str) -> str:
+    """What her ask is stored as, when the shopkeeper writes exactly that: her own
+    words of acknowledgment. Never her note: that is what it was for, and a note
+    could carry a date ("pay by Friday"), which an acknowledgment must not."""
+    return f"I'm taking {rupees(amount_paise)} udhaar from {shop_name}"
+
+
 # ── what BAHI writes in a thread ─────────────────────────────────────────────
 #
 # BAHI's own lines: the entry card's caption, and a short line when something

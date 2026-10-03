@@ -101,7 +101,7 @@
           "shopkeeper"
         ],
         "summary": "Get Counter",
-        "description": "A2. Everyone who scanned the udhaar QR in the last three minutes.",
+        "description": "A2. Everyone who scanned the udhaar QR in the last three minutes, and\nanyone still waiting on his answer to what they asked for.",
         "operationId": "get_counter_shops__shop_id__counter_get",
         "parameters": [
           {
@@ -272,6 +272,76 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/scans/{scan_id}/answer": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Answer Ask",
+        "description": "His answer to what she asked for at the counter. Yes writes exactly that,\nagreed by both; change writes his amount for her own yes; no writes nothing.",
+        "operationId": "answer_ask_shops__shop_id__scans__scan_id__answer_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerAskIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/EntryOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Answer Ask Shops  Shop Id  Scans  Scan Id  Answer Post"
                 }
               }
             }
@@ -823,6 +893,59 @@
         }
       }
     },
+    "/scans/{scan_id}/ask": {
+      "post": {
+        "tags": [
+          "customer"
+        ],
+        "summary": "Ask",
+        "description": "She asks for an amount at the counter. Nothing is written: the shopkeeper\nanswers on his screen.",
+        "operationId": "ask_scans__scan_id__ask_post",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/scans/{scan_id}/leave": {
       "post": {
         "tags": [
@@ -1288,6 +1411,42 @@
         "summary": "Say Amount",
         "description": "The amount said back in Sarvam's voice. An amount only: this route cannot\nsay a name. 503 when voice is offline and it was never spoken; the screen then\nuses the browser's own voice.",
         "operationId": "say_amount_voice_say__paise__wav_get",
+        "parameters": [
+          {
+            "name": "paise",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Paise"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voice/asked/{paise}.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Say Asked",
+        "description": "The Soundbox when someone at the counter asks for udhaar: \"दो सौ रुपये का\nउधार माँगा है।\" The amount only: who, and what for, are on his screen.",
+        "operationId": "say_asked_voice_asked__paise__wav_get",
         "parameters": [
           {
             "name": "paise",
@@ -3121,6 +3280,38 @@
         "title": "AccountOut",
         "description": "The Paytm account behind a number or UPI ID. The number is not kept."
       },
+      "AnswerAskIn": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no",
+              "change"
+            ],
+            "title": "Answer"
+          },
+          "amount_rupees": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Rupees"
+          }
+        },
+        "type": "object",
+        "required": [
+          "answer"
+        ],
+        "title": "AnswerAskIn",
+        "description": "His answer on the pop-up: yes, no, or the amount it really is."
+      },
       "AnswerIn": {
         "properties": {
           "text": {
@@ -3189,6 +3380,40 @@
         ],
         "title": "AnswerOut",
         "description": "Who the answer names, or the question again. The amount is the one already\nheard; nothing is recorded yet."
+      },
+      "AskIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "amount_rupees": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Rupees"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "amount_rupees"
+        ],
+        "title": "AskIn",
+        "description": "She asks for an amount at the counter: whole rupees, and what for."
       },
       "AskOut": {
         "properties": {
@@ -4048,6 +4273,7 @@
             "type": "string",
             "enum": [
               "scanned",
+              "asked",
               "confirmed",
               "disputed",
               "paid",
@@ -5962,7 +6188,8 @@
               "waiting",
               "recorded",
               "left",
-              "expired"
+              "expired",
+              "declined"
             ],
             "title": "State"
           },
@@ -5975,6 +6202,33 @@
                 "type": "null"
               }
             ]
+          },
+          "asked_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked Paise"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "yes",
+                  "no",
+                  "changed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
           }
         },
         "type": "object",
@@ -6487,6 +6741,28 @@
           "first_time": {
             "type": "boolean",
             "title": "First Time"
+          },
+          "asked_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked Paise"
+          },
+          "asked_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked Note"
           }
         },
         "type": "object",
