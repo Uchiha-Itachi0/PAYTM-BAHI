@@ -219,6 +219,16 @@ h2{font-size:clamp(22px,2.8vw,29px);font-weight:800;letter-spacing:-.025em;margi
 .led.dead .v{text-decoration:line-through}
 .led.ok .v{color:#00a550}
 
+/* scan → pay or udhaar */
+.payamt{margin-top:16px;border-bottom:2px solid var(--pt-hair);padding-bottom:8px;font-size:26px;
+  font-weight:800;color:var(--pt-text);letter-spacing:-.03em}
+.payamt span{color:#b3b9c2;font-size:19px;font-weight:700;letter-spacing:-.01em}
+.or{display:flex;align-items:center;gap:10px;color:var(--pt-sub);font-size:12px;font-weight:700}
+.or::before,.or::after{content:"";flex:1;height:1px;background:#b9d7e8}
+.pcard.choose{border:1.5px solid var(--pt-cyan)}
+.finec{font-size:11.5px;color:var(--pt-sub);text-align:center;line-height:1.5;font-weight:500;padding:0 12px}
+.src{font-style:normal;font-weight:600;font-size:11px;color:var(--pt-sub);margin-left:5px}
+
 .tick{width:56px;height:56px;border-radius:50%;background:#e2f6ea;color:#00a550;display:grid;
   place-items:center;font-size:27px;margin:0 auto 12px;font-weight:800}
 
@@ -337,7 +347,7 @@ footer b{color:var(--ink);font-weight:700}
 <header class="mast">
   <p class="kicker">Paytm Build for India · Mumbai · 3 Oct 2026</p>
   <h1>BAHI screens</h1>
-  <p class="lede">Nine screens drawn in the real Paytm app language — sky-blue ground, floating white cards, black headings, navy tiles, cyan for actions. Neither surface is a new app: these are <strong>screens inside Paytm for Business and the Paytm consumer app</strong>, already on both phones.</p>
+  <p class="lede">Eleven screens drawn in the real Paytm app language — sky-blue ground, floating white cards, black headings, navy tiles, cyan for actions. Neither surface is a new app: these are <strong>screens inside Paytm for Business and the Paytm consumer app</strong>, already on both phones.</p>
   <div class="meta">
     <span class="tag"><b>Ground</b> #C8E8F8 sky</span>
     <span class="tag"><b>Tiles</b> #0F2E7E navy</span>
@@ -392,29 +402,31 @@ footer b{color:var(--ink);font-weight:700}
     <!-- A2 -->
     <div class="unit">
       <div class="phone">
-        <div class="sbar"><span>3:23</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
-        <div class="hdr"><span class="bk">←</span><div><h3>Add udhaar</h3><p class="who">Speak it, then check it</p></div></div>
+        <div class="sbar"><span>9:38</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Add udhaar</h3><p class="who">Sharma scanned just now</p></div></div>
         <div class="scroll">
+          <div class="pcard tight">
+            <div class="row" style="padding:0;border:0"><div class="circ c-blue">S</div><div class="rmid"><div class="t">Sharma</div><div class="s">Room 19, B wing · 9:38 am</div></div><div class="rend"><div class="chip g" style="margin-top:0">Scanned</div></div></div>
+          </div>
           <div class="mic">
             <div class="wave"><i style="height:11px"></i><i style="height:24px"></i><i style="height:34px"></i><i style="height:18px"></i><i style="height:29px"></i><i style="height:13px"></i><i style="height:22px"></i></div>
-            <div class="said">"Sharma ko do sau udhaar"</div>
-            <div class="hint">Sarvam saaras:v4 · Hindi + English</div>
+            <div class="said">"Do sau"</div>
+            <div class="hint">Say the amount, or type it · Sarvam saaras:v4</div>
           </div>
           <div class="pcard">
-            <h5>Heard as</h5>
-            <div class="kv"><span>Customer</span><span>Sharma</span></div>
-            <div class="kv"><span>Tag</span><span>Room 19, B wing</span></div>
-            <div class="kv"><span>Amount</span><span>₹200</span></div>
+            <h5>Check it</h5>
+            <div class="kv"><span>Customer</span><span>Sharma<em class="src">from scan</em></span></div>
+            <div class="kv"><span>Amount</span><span>₹200<em class="src">from voice</em></span></div>
             <div class="kv"><span>Date</span><span>22 Sep 2026</span></div>
           </div>
           <button class="btn navy">Send to Sharma</button>
-          <button class="btn out">Say it again</button>
+          <div class="btnrow"><button class="btn out">Say it again</button><button class="btn out">Type it</button></div>
         </div>
       </div>
       <div class="cap">
-        <h4>A2 · Speaking the entry</h4>
-        <p>His hands are full and there is a queue, so the whole interaction is one sentence and one tap. The parsed fields are shown before sending — the model transcribes, it never decides the amount.</p>
-        <p class="note">Amount parsed by rule from the transcript, never generated.</p>
+        <h4>A2 · He scanned, you say the amount</h4>
+        <p>The scan already says who, so the shopkeeper only says how much. The Soundbox plays a chime, never the customer's name out loud. For someone without a phone, he says "Sharma ko do sau" and the name is matched against his book.</p>
+        <p class="note">Amount parsed by rule from the transcript, never generated. Typing is always one tap away.</p>
       </div>
     </div>
 
@@ -438,6 +450,38 @@ footer b{color:var(--ink);font-weight:700}
       </div>
     </div>
 
+    <!-- A4 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>3:40</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Add a customer</h3><p class="who">For someone who can't scan</p></div></div>
+        <div class="scroll">
+          <div class="pcard tight">
+            <div class="amtblk"><div class="lab">Mobile number or UPI ID</div></div>
+            <div class="search" style="margin:8px 0 0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span style="color:var(--pt-text);font-weight:700">98765 43210</span></div>
+          </div>
+          <div class="pcard">
+            <h5>Found on Paytm</h5>
+            <div class="row" style="padding-top:0"><div class="circ c-blue">AS</div><div class="rmid"><div class="t">Ashok Sharma</div><div class="s">Name as registered on Paytm</div></div></div>
+            <div class="kv"><span>You call him</span><span>Sharma · Room 19</span></div>
+            <div style="height:12px"></div>
+            <button class="btn navy">Send invite</button>
+            <div class="finec" style="margin-top:9px">Nothing is recorded against him until he accepts.</div>
+          </div>
+          <div class="pcard">
+            <h5>No phone at all?</h5>
+            <div style="font-size:12.5px;color:var(--pt-sub);line-height:1.5;font-weight:500;margin-bottom:12px">Add him by name. It works like your notebook: no confirmation, no reminders.</div>
+            <button class="btn out">Add by name only</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>A4 · Adding someone who can't scan</h4>
+        <p>His number or UPI ID finds his Paytm account, the same lookup "To Mobile" already does. We keep the link to the account, not the number. And it sends an invite rather than attaching a debt, so nobody can put an entry on a stranger's phone.</p>
+        <p class="note">Invite, never attach. Name-only customers stay one-sided, exactly as the notebook is today.</p>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -448,10 +492,40 @@ footer b{color:var(--ink);font-weight:700}
 
   <div class="screens">
 
+    <!-- B0 -->
+    <div class="unit">
+      <div class="phone">
+        <div class="sbar"><span>9:38</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="hdr"><span class="bk">←</span><div><h3>Scanned</h3><p class="who">Paytm QR at the till</p></div></div>
+        <div class="scroll">
+          <div class="pcard" style="text-align:center;padding:20px 15px 18px">
+            <div class="circ c-blue" style="width:56px;height:56px;font-size:21px;margin:0 auto 10px">R</div>
+            <div style="font-size:17px;font-weight:800;letter-spacing:-.02em">Ramesh Kirana Store</div>
+            <div style="font-size:12px;color:var(--pt-sub);font-weight:500;margin-top:2px">Kurla West</div>
+            <div class="payamt">₹ <span>Enter amount</span></div>
+          </div>
+          <button class="btn navy">Pay</button>
+          <div class="or"><span>or</span></div>
+          <div class="pcard choose">
+            <div style="display:flex;gap:12px;align-items:center">
+              <div class="tile solid" style="width:46px;height:46px;margin:0;flex:none"><svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 012 2v16H8a2 2 0 01-2-2z"/><path d="M6 17a2 2 0 012-2h11"/><path d="M10 7h5M10 10h3"/></svg></div>
+              <div><div style="font-size:15px;font-weight:800;letter-spacing:-.02em">Take on udhaar</div><div style="font-size:12px;color:var(--pt-sub);font-weight:500;margin-top:2px;line-height:1.45">Ramesh says the amount. You confirm it here.</div></div>
+            </div>
+          </div>
+          <div class="finec">Only a chime plays at the counter. Your name shows on his screen, never out loud.</div>
+        </div>
+      </div>
+      <div class="cap">
+        <h4>B0 · Scan, then choose</h4>
+        <p>The same Paytm QR he already pays with, with one new choice under Pay. Choosing udhaar makes the shopkeeper's Soundbox chime and puts his name on the shopkeeper's screen; the confirmation (B1) arrives seconds later.</p>
+        <p class="note">The scan answers "who", so the voice only has to answer "how much".</p>
+      </div>
+    </div>
+
     <!-- B1 -->
     <div class="unit">
       <div class="phone">
-        <div class="sbar"><span>3:23</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+        <div class="sbar"><span>9:38</span><span class="rt"><span class="bars"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
         <div class="topbar" style="opacity:.4">
           <div class="ava">AS</div><div class="mark">Paytm</div>
           <svg class="ticon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -694,22 +768,22 @@ footer b{color:var(--ink);font-weight:700}
   <div class="shead"><span class="snum">D</span><h2>Four rules, as UI decisions</h2></div>
   <p class="sub">Not principles on a slide. Each is a specific thing the interface must say or must never say, and each comes from a statute.</p>
   <div class="rules">
-    <div class="rc"><div class="rl">Rule 1 · IT Act s.4</div><h4>Acknowledge, never promise</h4>
-      <p>An acknowledgment of debt is recognised electronically. A promise to pay a fixed sum is a promissory note, which falls outside the Act entirely.</p>
+    <div class="rc"><div class="rl">Rule 1 · IT Act s.1(4), First Schedule</div><h4>Acknowledge, never promise</h4>
+      <p>A dated promise to pay can be a promissory note, which the IT Act does not cover. An acknowledgment of the debt carries no date, so it stays an ordinary electronic record.</p>
       <div class="yes"><b>Yes</b><span>"Yes, I owe ₹200"</span></div>
       <div class="no"><b>No</b><span>"I'll pay by Friday"</span></div></div>
-    <div class="rc"><div class="rl">Rule 2 · Money-Lenders Acts</div><h4>Never a rupee above the price</h4>
-      <p>A loan is defined as an advance "at interest". One late fee makes the shopkeeper an unlicensed money-lender in Karnataka and Delhi.</p>
+    <div class="rc"><div class="rl">Rule 2 · Money-lending Acts</div><h4>Never a rupee above the price</h4>
+      <p>State money-lending laws define a loan by the interest it carries. So the price of the goods is the whole amount, always.</p>
       <div class="yes"><b>Yes</b><span>"Pay ₹200 now"</span></div>
       <div class="no"><b>No</b><span>"₹200 + ₹10 late fee"</span></div></div>
     <div class="rc"><div class="rl">Rule 3 · Limitation Act s.18</div><h4>Let debts die</h4>
-      <p>Every confirmation restarts a fresh three years, with no cap. Prompt forever and a ₹200 debt becomes legally immortal.</p>
+      <p>Each written acknowledgment restarts the three-year limit. Ask again and again and a ₹200 debt never ends. So we ask once, and show old debts as expired.</p>
       <div class="yes"><b>Yes</b><span>"Expired · no longer claimable"</span></div>
       <div class="no"><b>No</b><span>"Outstanding since 2023"</span></div></div>
-    <div class="rc"><div class="rl">Rule 4 · BNS s.308 · CCPA</div><h4>Never shame, never charge</h4>
-      <p>Threatening exposure to extract payment is extortion. A reminder carrying a fee or an upsell supplies the "commercial gain" that makes nagging a dark pattern.</p>
+    <div class="rc"><div class="rl">Rule 4 · BNS s.356 · CCPA 2023</div><h4>Never shame, never charge</h4>
+      <p>Public "defaulter" labels risk defamation, and repeated nudges for commercial gain are "nagging" under CCPA's dark-pattern guidelines.</p>
       <div class="yes"><b>Yes</b><span>"Day 40 — ask, don't chase"</span></div>
-      <div class="no"><b>No</b><span>Defaulter lists · share · leaderboards</span></div></div>
+      <div class="no"><b>No</b><span>Defaulter lists · his name announced aloud · leaderboards</span></div></div>
   </div>
 </section>
 
@@ -718,10 +792,10 @@ footer b{color:var(--ink);font-weight:700}
   <div class="shead"><span class="snum">E</span><h2>The forty seconds</h2></div>
   <p class="sub">The order the screens appear in on stage. Two devices, one write, no typing.</p>
   <div class="beat">
-    <div class="step"><div class="t">0:00 → 0:08</div><h4>He speaks it</h4><p>"Sharma ko do sau udhaar." The parsed fields appear. One tap to send.</p><div class="dev">Laptop · A2</div></div>
-    <div class="step"><div class="t">0:08 → 0:18</div><h4>A phone buzzes</h4><p>On the judges' table. The sheet is already open when they pick it up.</p><div class="dev">Judge's phone · B1</div></div>
-    <div class="step"><div class="t">0:18 → 0:26</div><h4>They tap Confirm</h4><p>Both ledgers update inside one 2-second tick. They watch the laptop change.</p><div class="dev">Both · A1 + B2</div></div>
-    <div class="step"><div class="t">0:26 → 0:40</div><h4>Tomorrow's list</h4><p>"Four of thirty-eight. Sharma is on day 4 and he pays on day 9 — we leave him alone."</p><div class="dev">Laptop · A3</div></div>
+    <div class="step"><div class="t">0:00 → 0:06</div><h4>A judge scans</h4><p>Our QR on the table. They tap "Take on udhaar".</p><div class="dev">Judge's phone · B0</div></div>
+    <div class="step"><div class="t">0:06 → 0:14</div><h4>He says the amount</h4><p>A chime; the name is already on the laptop. "Do sau." One tap to send.</p><div class="dev">Laptop · A2</div></div>
+    <div class="step"><div class="t">0:14 → 0:24</div><h4>They confirm, right there</h4><p>"Yes, I owe ₹200" is on the phone still in their hand. Both ledgers update inside one 2-second tick.</p><div class="dev">Both · B1 + A1</div></div>
+    <div class="step"><div class="t">0:24 → 0:40</div><h4>Tomorrow's list</h4><p>"Four of thirty-eight. Sharma is on day 4 and he pays on day 9, so we leave him alone."</p><div class="dev">Laptop · A3</div></div>
   </div>
 </section>
 

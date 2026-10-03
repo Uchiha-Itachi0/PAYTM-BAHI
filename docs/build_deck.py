@@ -223,9 +223,10 @@ tf = tb(s, ML, I(1.55), I(7.0), I(4.6))
 para(tf, "BAHI", 70, WHITE, bold=True, first=True, line=0.95)
 para(tf, "Udhaar, confirmed by both sides.", 28, WHITE, bold=True, before=10,
      line=1.1)
-para(tf, "The shopkeeper speaks a credit entry to his Paytm Soundbox. The "
-         "customer confirms it on his own phone and pays in one tap. Every "
-         "night, an agent decides who actually needs a reminder.",
+para(tf, "The customer scans the shop’s Paytm QR and chooses udhaar. The "
+         "shopkeeper says the amount to his Soundbox, and the customer confirms "
+         "it on his own phone. Every night, an agent decides who actually needs "
+         "a reminder.",
      15, RGBColor(0xC9, 0xD8, 0xEE), before=18, line=1.4)
 rect(s, ML, I(5.55), I(0.5), Pt(3), CYAN)
 tf = tb(s, ML, I(5.75), I(7.3), I(0.8))
@@ -292,21 +293,23 @@ eyebrow(s, "2 · Proposed solution")
 title(s, "The same book, now confirmed by both sides.")
 
 steps = [
-    ("docs/screens/A2-speak.png", "He speaks it",
-     "“Sharma ko do sau udhaar” is shown back to check before it is sent."),
-    ("docs/screens/B1-confirm.png", "The customer confirms",
-     "He taps “Yes, I owe ₹200” in his own Paytm app."),
+    ("docs/screens/B0-scan.png", "He scans at the till",
+     "The shop’s Paytm QR. He taps “Take on udhaar”."),
+    ("docs/screens/A2-speak.png", "The shopkeeper says the amount",
+     "The scan says who. He says “do sau”, or types it."),
+    ("docs/screens/B1-confirm.png", "Confirmed, right there",
+     "“Yes, I owe ₹200”, on the phone in his hand."),
     ("docs/screens/B2-mybook.png", "He sees every shop",
-     "One total across all his shops, and one tap to pay."),
+     "One total across his shops, one tap to pay."),
     ("docs/screens/A3-tonight.png", "The agent picks the day",
-     "Sharma always pays on day 9, so on day 4 he hears nothing."),
+     "Sharma pays on day 9, so on day 4 he hears nothing."),
 ]
-PW = I(1.95)
-for i, ((x, w), (path, head, body)) in enumerate(zip(cols(4, I(0.28)), steps)):
-    phone(s, path, x + (w - PW) // 2, I(1.66), PW)
-    num(s, x + I(0.05), I(5.64), i + 1)
-    tf = tb(s, x + I(0.52), I(5.66), w - I(0.52), I(1.2))
-    para(tf, head, 14, NAVY, bold=True, first=True, line=1.1)
+PW = I(1.72)
+for i, ((x, w), (path, head, body)) in enumerate(zip(cols(5, I(0.2)), steps)):
+    phone(s, path, x + (w - PW) // 2, I(1.62), PW)
+    num(s, x + I(0.04), I(5.14), i + 1, I(0.32), size=11)
+    tf = tb(s, x + I(0.44), I(5.14), w - I(0.44), I(1.5))
+    para(tf, head, 13, NAVY, bold=True, first=True, line=1.1)
     para(tf, body, 12, MUTED, before=4, line=1.3)
 footer(s, "Screens from our working prototype. Names and amounts are demo data.")
 
@@ -342,9 +345,9 @@ def row(s, y, label, items):
 
 
 row(s, I(2.12), "During the day — recording an entry", [
-    ("Shopkeeper speaks", "to the Soundbox", None),
+    ("Shopkeeper speaks", "after the customer scans", None),
     ("Sarvam", "speech → text", "AI"),
-    ("“Sharma ko do sau udhaar”", "text only", None),
+    ("“do sau”", "text only", None),
     ("Rule-based parser", "text → ₹200", "CODE"),
     ("Ledger", "Postgres 17", "CODE"),
 ])
@@ -423,7 +426,7 @@ for r, cells in enumerate(ROWS):
 
 usps = [
     ("Two-sided", "An entry becomes a fact only when the customer confirms it."),
-    ("Voice-first", "Spoken to the Soundbox already on the counter. No typing."),
+    ("Scan, then speak", "The QR says who, his voice says how much. Nothing to type."),
     ("Timed per person",
      "Reminders follow each customer’s own repayment pattern."),
 ]
@@ -586,9 +589,9 @@ LW = I(4.75)
 card(s, ML, TOP, LW, BOTTOM - TOP)
 tf = tb(s, ML + I(0.3), TOP + I(0.28), LW - I(0.6), I(0.4))
 para(tf, "The demo", 15, NAVY, bold=True, first=True)
-demo = ["The shopkeeper speaks an entry.",
-        "A judge’s phone buzzes.",
-        "The judge taps Confirm.",
+demo = ["A judge scans our QR and taps Udhaar.",
+        "The shopkeeper says the amount.",
+        "The judge confirms on their own phone.",
         "Both books update, live.",
         "The agent says who gets a reminder tonight, and why."]
 y = TOP + I(0.85)
