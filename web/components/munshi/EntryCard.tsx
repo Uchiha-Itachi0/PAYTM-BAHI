@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import type { MunshiCard } from "@/lib/api/types";
+import { NAME_CHARS, TAG_CHARS } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
 
 /**
@@ -128,13 +129,19 @@ function Editor({
         <>
           <label className="text-[12px] font-bold opacity-80">
             Name
-            <input value={name} onChange={(e) => setName(e.target.value)} className={input} />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={NAME_CHARS}
+              className={input}
+            />
           </label>
           <label className="text-[12px] font-bold opacity-80">
             Where they live or work
             <input
               value={tag}
               onChange={(e) => setTag(e.target.value)}
+              maxLength={TAG_CHARS}
               placeholder="Room 4, C wing"
               className={input}
             />

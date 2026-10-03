@@ -78,6 +78,14 @@ export function CustomerThreadScreen({ shopId }: { shopId: string }): React.Reac
     sub: t ? `${t.shop.locality} · Business` : undefined,
     back: "/c/udhaar",
     avatar: t?.shop.name,
+    below: t ? (
+      <Owes
+        label={`You owe ${t.shop.name}`}
+        owed={t.balance_paise}
+        waiting={t.waiting_paise ?? 0}
+        disputed={t.disputed_paise ?? 0}
+      />
+    ) : undefined,
   };
 
   if (person === null) {
@@ -90,14 +98,6 @@ export function CustomerThreadScreen({ shopId }: { shopId: string }): React.Reac
 
   return (
     <CustomerShell heading={heading}>
-      {t ? (
-        <Owes
-          label={`You owe ${t.shop.name}`}
-          owed={t.balance_paise}
-          waiting={t.waiting_paise ?? 0}
-          disputed={t.disputed_paise ?? 0}
-        />
-      ) : null}
       {t ? (
         <ThreadView
           messages={t.messages}

@@ -22,7 +22,7 @@ export function Owes({
     disputed > 0 ? `${formatPaise(disputed)} questioned` : null,
   ].filter(Boolean);
   return (
-    <div className="sticky top-2 z-10 flex items-center justify-between gap-3 rounded-card bg-card px-3.5 py-2.5 shadow-sheet">
+    <div className="flex items-center justify-between gap-3 rounded-card bg-card px-3.5 py-2.5">
       <div className="min-w-0">
         <p className="text-[12px] font-semibold text-sub">{label}</p>
         {apart.length ? (

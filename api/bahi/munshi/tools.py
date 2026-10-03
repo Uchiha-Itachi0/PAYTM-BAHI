@@ -44,6 +44,7 @@ from uuid import UUID
 from bahi import voice
 from bahi.domain import book as book_domain
 from bahi.domain import limitation
+from bahi.domain.book import TAG_CHARS
 from bahi.domain.find import Found, find
 from bahi.domain.money import rupees
 from bahi.domain.who import Person
@@ -1020,7 +1021,7 @@ class Desk:
             new_tag = None
         if new_name is None and new_tag is None:
             return {"ok": False, "problem": "nothing to change: ask what to change"}
-        if (new_name and len(new_name) > 40) or (new_tag and len(new_tag) > 60):
+        if (new_name and len(new_name) > 40) or (new_tag and len(new_tag) > TAG_CHARS):
             return {"ok": False, "problem": "that is too long; ask for a shorter one"}
         store.show(
             self.con,

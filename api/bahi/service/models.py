@@ -16,7 +16,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from bahi.domain.book import Chip, Joined
+from bahi.domain.book import TAG_CHARS, Chip, Joined
 
 EntryStatus = Literal[
     "recorded", "confirmed", "disputed", "corrected", "settled", "removed"
@@ -310,7 +310,7 @@ class CardEditIn(BaseModel):
     amount_rupees: int | None = Field(default=None, gt=0, le=1_00_000)
     #: Only for someone new to the book.
     new_name: str | None = Field(default=None, min_length=1, max_length=40)
-    new_tag: str | None = Field(default=None, max_length=40)
+    new_tag: str | None = Field(default=None, max_length=TAG_CHARS)
 
 
 class CardOut(BaseModel):
@@ -599,7 +599,7 @@ class AccountOut(BaseModel):
 class InviteIn(BaseModel):
     #: A mobile number or UPI ID, looked up again here and never stored.
     query: str = Field(min_length=3, max_length=60)
-    tag: str | None = Field(default=None, max_length=40)
+    tag: str | None = Field(default=None, max_length=TAG_CHARS)
     #: The name to keep him under, when Paytm didn't give one.
     display_name: str | None = Field(default=None, min_length=1, max_length=40)
 
@@ -687,7 +687,7 @@ class MemoryIn(BaseModel):
 
 class NameOnlyIn(BaseModel):
     display_name: str = Field(min_length=1, max_length=40)
-    tag: str | None = Field(default=None, max_length=40)
+    tag: str | None = Field(default=None, max_length=TAG_CHARS)
 
 
 # ── Tonight (V4) ─────────────────────────────────────────────────────────────

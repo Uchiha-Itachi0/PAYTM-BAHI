@@ -18,7 +18,7 @@ import type {
   Remembered,
   ThreadEntry,
 } from "@/lib/api/types";
-import { SHOP_ID } from "@/lib/config";
+import { NAME_CHARS, SHOP_ID, TAG_CHARS } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
 import { fullDate, shortDate } from "@/lib/when";
 
@@ -421,8 +421,10 @@ export function CustomerScreen({ customerId }: { customerId: string }): React.Re
 
       <Card title="How you know them" tight>
         <div className="flex flex-col gap-3">
-          <Field label="Name" value={name} onChange={setName} />
-          <Field label="Where they live or work" value={tag} onChange={setTag} placeholder="Room 12, C wing" />
+          <Field label="Name" value={name} onChange={setName}
+                maxLength={NAME_CHARS} />
+          <Field label="Where they live or work" value={tag} onChange={setTag}
+                maxLength={TAG_CHARS} placeholder="Room 12, C wing" />
           <Pill
             tone="outline"
             onClick={() =>

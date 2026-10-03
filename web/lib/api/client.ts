@@ -45,13 +45,38 @@ export async function apiForm<T>(path: string, form: FormData): Promise<T> {
   return read<T>(res);
 }
 
+/** What the API's checks are called on screen. */
+const FIELDS: Record<string, string> = {
+  tag: "Where they live or work",
+  new_tag: "Where they live or work",
+  display_name: "Name",
+  new_name: "Name",
+  query: "Mobile number or UPI ID",
+};
+
+/**
+ * Words for a refusal. The API says why in `detail`: a sentence, or (when a
+ * field failed its check) a list, which becomes "Name: String should have at
+ * most 40 characters". Never just the status's name: over HTTP/2 there is none,
+ * and "Unprocessable Content" tells nobody what to fix.
+ */
+export function refusal(status: number, detail: unknown): string {
+  if (typeof detail === "string" && detail) return detail;
+  if (Array.isArray(detail) && detail.length) {
+    const first = detail[0] as { loc?: unknown[]; msg?: string };
+    const field = String(first.loc?.at(-1) ?? "");
+    const what = FIELDS[field] ?? field;
+    return [what, first.msg].filter(Boolean).join(": ");
+  }
+  if (status === 502 || status === 503 || status === 504)
+    return "The server isn't answering right now. Try again in a minute.";
+  return `Something went wrong (${status}).`;
+}
+
 async function read<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   const data: unknown = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const detail = (data as { detail?: unknown }).detail;
-    throw new ApiError(res.status, typeof detail === "string" ? detail : res.statusText);
-  }
+  if (!res.ok) throw new ApiError(res.status, refusal(res.status, (data as { detail?: unknown }).detail));
   return data as T;
 }
 
@@ -81,12 +106,15 @@ export function usePoll<T>(
           cache: "no-store",
         });
         if (!live || res.status === 304) return;
-        if (!res.ok) throw new ApiError(res.status, res.statusText);
+        if (!res.ok) {
+          const data: unknown = await res.json().catch(() => ({}));
+          throw new ApiError(res.status, refusal(res.status, (data as { detail?: unknown }).detail));
+        }
         etag.current = res.headers.get("etag");
         setData((await res.json()) as T);
         setError(undefined);
       } catch (e) {
-        if (live) setError(e instanceof Error ? e.message : "offline");
+        if (live) setError((e instanceof Error && e.message) || "offline");
       }
     }
 

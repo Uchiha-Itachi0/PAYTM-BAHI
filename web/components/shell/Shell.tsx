@@ -9,7 +9,9 @@ import { Soundbox } from "./Soundbox";
  * The two app shells. BAHI is not a new app: these are screens inside Paytm for
  * Business (the shopkeeper) and the Paytm app (the customer), so each shell is
  * that app's own frame: the sky ground, its top bar, and a scrolling column of
- * cards. A screen deeper in gets Paytm's back-style header instead of the top bar.
+ * cards. A screen deeper in gets Paytm's back-style header instead of the top bar;
+ * it stays at the top while the screen scrolls, so the way back is always there,
+ * with anything the screen pins under it (`below`: a thread's balance).
  *
  * Both carry a "Demo data" label. Every figure on every screen is synthetic, and
  * we would rather say so than be asked.
@@ -23,6 +25,8 @@ interface Heading {
   action?: React.ReactNode;
   /** A chat: the other side's avatar beside the name, as Paytm's chats show it. */
   avatar?: string;
+  /** Pinned under the header, with it: what stands now in a thread. */
+  below?: React.ReactNode;
 }
 
 /** `fixed`: the screen is exactly the phone's height, and only a `fill` card
@@ -84,9 +88,10 @@ function TopBar({
   );
 }
 
-function BackHeader({ title, sub, back, action, avatar }: Heading): React.ReactElement {
+function BackHeader({ title, sub, back, action, avatar, below }: Heading): React.ReactElement {
   return (
-    <header className="flex items-center gap-3 px-3.5 pb-3.5 pt-3">
+    <div className="sticky top-0 z-20 bg-sky-top pb-2.5">
+      <header className="flex items-center gap-3 px-3.5 pb-1 pt-3">
       <Link href={back} aria-label="Back" className="flex-none text-[20px] leading-none">
         ←
       </Link>
@@ -96,7 +101,9 @@ function BackHeader({ title, sub, back, action, avatar }: Heading): React.ReactE
         {sub ? <p className="mt-px truncate text-[12px] font-medium text-sub">{sub}</p> : null}
       </div>
       {action ?? <DemoLabel />}
-    </header>
+      </header>
+      {below ? <div className="px-2.5 pt-2">{below}</div> : null}
+    </div>
   );
 }
 

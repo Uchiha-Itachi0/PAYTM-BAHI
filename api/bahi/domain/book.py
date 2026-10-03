@@ -31,6 +31,10 @@ Joined = Literal["linked", "invited", "name_only"]
 #:   new            not enough history to know his rhythm yet
 Chip = Literal["on_rhythm", "changed", "not_confirmed", "new"]
 
+#: How the shop describes someone ("Room 19, B wing", "works at TCS, K
+#: building"), at most this long, wherever it is written.
+TAG_CHARS = 80
+
 #: Entries that still carry a claim. Corrected entries count for nothing, and
 #: settled ones are paid.
 OPEN = frozenset({"recorded", "confirmed", "disputed"})
