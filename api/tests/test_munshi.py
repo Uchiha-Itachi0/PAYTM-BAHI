@@ -254,6 +254,97 @@ def test_without_sarvam_the_munshi_says_so(api: TestClient) -> None:
     assert "by hand" in r.json()["detail"]
 
 
+# ── someone new, and tomorrow's list ─────────────────────────────────────────
+
+
+def added(tx: db.Conn, name: str) -> list[customers.CustomerRef]:
+    return [c for c in customers.of_shop(tx, SHOP) if c.display_name == name]
+
+
+def test_someone_not_in_the_book_is_added_by_name_on_his_yes(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    model.then(
+        tool("find_customer", {"name": "रमेश"}),
+        reply("रमेश बुक में नहीं हैं। नया ग्राहक जोड़ूँ?"),
+    )
+    out = say(api, "रमेश को पाँच सौ")
+    model.then(
+        tool(
+            "propose_new_customer",
+            {"name": "Ramesh", "description": "Chawl 7", "amount_rupees": 500},
+        ),
+        reply("रमेश, चॉल 7, नए ग्राहक, पाँच सौ उधार, पक्का?"),
+    )
+    out = say(api, "हाँ, चॉल सात वाले", out["conversation_id"])
+    card = out["card"]
+    assert (card["new"], card["customer_id"], card["display_name"]) == (
+        True,
+        None,
+        "Ramesh",
+    )
+    assert card["reasons"] == ["new_customer"], "someone new always waits for a yes"
+    assert added(tx, "Ramesh") == [], "a card adds nobody"
+
+    model.then(reply("रमेश को जोड़ दिया और पाँच सौ लिख दिया।"))
+    done = tap(api, out)
+    assert done["card"]["status"] == "saved" and done["card"]["customer_id"]
+    (ramesh,) = added(tx, "Ramesh")
+    assert (ramesh.joined, ramesh.tag) == ("name_only", "Chawl 7")
+    assert [e.amount_paise for e in entries.of_customer(tx, ramesh.id)] == [500_00]
+
+
+def test_a_card_can_only_add_someone(api: TestClient, model: Script, tx: db.Conn) -> None:
+    model.then(
+        tool("find_customer", {"name": "गणपत"}),
+        tool("propose_new_customer", {"name": "Ganpat"}),
+        reply("गणपत को नए ग्राहक की तरह जोड़ूँ, पक्का?"),
+    )
+    out = say(api, "नया ग्राहक जोड़ो, गणपत")
+    assert (out["card"]["kind"], out["card"]["amount_paise"]) == ("customer", None)
+    model.then(reply("जोड़ दिया।"))
+    tap(api, out)
+    (ganpat,) = added(tx, "Ganpat")
+    assert entries.of_customer(tx, ganpat.id) == []
+
+
+def test_nobody_is_added_before_a_search(api: TestClient, model: Script) -> None:
+    model.then(
+        tool("propose_new_customer", {"name": "Ramesh", "amount_rupees": 500}),
+        reply("पहले ढूँढता हूँ।"),
+    )
+    assert say(api, "रमेश को पाँच सौ")["card"] is None
+
+
+def test_a_name_already_in_the_book_is_asked_about_not_doubled(
+    api: TestClient, model: Script, tx: db.Conn
+) -> None:
+    model.then(
+        tool("find_customer", {"name": "Sharma", "description": "Chawl 9"}),
+        tool("propose_new_customer", {"name": "Sharma", "amount_rupees": 200}),
+        reply("बुक में एक शर्मा हैं, रूम 19, बी विंग। वही हैं?"),
+    )
+    out = say(api, "चॉल नौ वाले शर्मा को दो सौ")
+    assert out["card"] is None
+    assert len(added(tx, "Sharma")) == 1
+
+
+def test_tomorrows_list_is_read_from_the_code_not_made_up(
+    api: TestClient, model: Script
+) -> None:
+    seen: dict[str, Any] = {}
+
+    def remember(result: Any) -> dict[str, Any]:
+        seen.update(result)
+        return {}
+
+    model.then(tool("tonight"), tool("counter", remember), reply("कल चार लोगों को।"))
+    say(api, "कल किसको याद दिलाना है?")
+    names = {r["name"] for r in seen["reminders_tomorrow"]}
+    assert names == {"पाटिल", "इकबाल भाई", "राजू", "सलमा"}
+    assert (seen["owing"], seen["left_alone"]) == (38, 34)
+
+
 # ── money back, oldest first ─────────────────────────────────────────────────
 
 

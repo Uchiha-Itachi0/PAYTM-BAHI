@@ -9,7 +9,7 @@ gap the customer never had.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, time
 from typing import Any
 
 import psycopg
@@ -26,7 +26,7 @@ SELECT id::text                AS id,
        person_id IS NOT NULL   AS has_person,
        linked_at IS NOT NULL   AS has_linked
 FROM customers
-WHERE shop_id = %(shop)s
+WHERE shop_id = %(shop)s AND (%(customer)s::uuid IS NULL OR id = %(customer)s::uuid)
 """
 
 ENTRIES = """
@@ -41,7 +41,7 @@ FROM entries e
 JOIN customers c ON c.id = e.customer_id
 LEFT JOIN acknowledgments a ON a.entry_id = e.id
 LEFT JOIN repayments r ON r.entry_id = e.id
-WHERE c.shop_id = %(shop)s
+WHERE c.shop_id = %(shop)s AND (%(customer)s::uuid IS NULL OR c.id = %(customer)s::uuid)
 GROUP BY e.id, a.acknowledged_at
 ORDER BY e.recorded_at
 """
@@ -52,7 +52,7 @@ SELECT DISTINCT e.customer_id::text                        AS customer_id,
 FROM repayments r
 JOIN entries e ON e.id = r.entry_id
 JOIN customers c ON c.id = e.customer_id
-WHERE c.shop_id = %(shop)s
+WHERE c.shop_id = %(shop)s AND (%(customer)s::uuid IS NULL OR c.id = %(customer)s::uuid)
 """
 
 
@@ -62,8 +62,10 @@ def joined(has_person: bool, has_linked: bool) -> Joined:
     return "linked" if has_linked else "invited"
 
 
-def load(con: Conn, shop_id: str) -> list[Customer]:
-    args = {"shop": shop_id}
+def load(con: Conn, shop_id: str, customer_id: str | None = None) -> list[Customer]:
+    """The shop's customers with their entries and payment days; with
+    `customer_id`, only him."""
+    args = {"shop": shop_id, "customer": customer_id}
     entries: dict[str, list[Entry]] = defaultdict(list)
     paid_on: dict[str, list[date]] = defaultdict(list)
 
@@ -94,3 +96,24 @@ def load(con: Conn, shop_id: str) -> list[Customer]:
             )
             for r in cur.execute(CUSTOMERS, args).fetchall()
         ]
+
+
+PAID_AT = """
+SELECT DISTINCT e.customer_id::text                        AS customer_id,
+       r.paid_at,
+       (r.paid_at AT TIME ZONE 'Asia/Kolkata')::time       AS at
+FROM repayments r
+JOIN entries e ON e.id = r.entry_id
+JOIN customers c ON c.id = e.customer_id
+WHERE c.shop_id = %(shop)s
+"""
+
+
+def paid_times(con: Conn, shop_id: str) -> dict[str, list[time]]:
+    """The time of day of each of his payments, in IST. One UPI payment that
+    cleared three entries is one payment."""
+    out: dict[str, list[time]] = defaultdict(list)
+    with con.cursor(row_factory=dict_row) as cur:
+        for r in cur.execute(PAID_AT, {"shop": shop_id}):
+            out[r["customer_id"]].append(r["at"])
+    return dict(out)

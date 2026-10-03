@@ -46,6 +46,8 @@ class Persona:
     since: date | None = None
     #: Carries the dispute story: one August entry was wrong and was corrected.
     dispute: bool = False
+    #: The hour he usually pays, in Kurla. Tonight sends a reminder at that hour.
+    pays_at: int = 20
     why: str = field(default="", compare=False)
 
 
@@ -77,7 +79,9 @@ CAST: tuple[Persona, ...] = (
         ),
         ticket=260,
         upi=0.5,
-        why="Never went past 30 days. Today is day 40: something changed.",
+        pays_at=10,
+        why="Never went past 30 days. Today is day 40: something changed. Pays in "
+        "the morning, before his first ride.",
     ),
     Persona(
         key="meena",
@@ -104,7 +108,8 @@ CAST: tuple[Persona, ...] = (
         ),
         ticket=90,
         upi=0.6,
-        why="Usually 6 days, never more than 8. Day 12.",
+        pays_at=18,
+        why="Usually 6 days, never more than 8. Day 12. Pays when the garage shuts.",
     ),
     Persona(
         key="anil",

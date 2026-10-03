@@ -86,6 +86,14 @@ SCENARIOS = [
         "If the munshi says Ramesh is not in the book, say: अच्छा, रहने दो।",
     ),
     Scenario(
+        "new_customer",
+        "रमेश को पाँच सौ लिख दो।",
+        "udhaar ₹500 for Ramesh, a NEW customer from Chawl 7 who is not in the book "
+        "yet. You want him added.",
+        ("Ramesh", "udhaar", 500),
+        "If the munshi says Ramesh is not in the book, say: नया ग्राहक है, चॉल सात वाले।",
+    ),
+    Scenario(
         "correction",
         "मिश्रा जी को चार सौ लिख दो।",
         "udhaar for Mishra ji (Room 9, B wing). You first said ₹400, but it was really "
@@ -134,12 +142,12 @@ def run(s: Scenario, key: str) -> dict[str, Any]:
                 break
             line = shopkeeper(s, said, key)
         d = store.latest_draft(con, conversation) if conversation else None
-        if d is not None and d.status == "saved":
+        if d is not None and d.status == "saved" and d.customer_id:
             c = customers.get(con, d.customer_id)
             written = (
                 c.display_name if c else d.customer_id,
                 d.kind,
-                d.amount_paise // 100,
+                (d.amount_paise or 0) // 100,
             )
         con.rollback()
     return {

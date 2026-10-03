@@ -32,14 +32,19 @@ class Turn:
 class Draft:
     id: str
     conversation_id: str
-    customer_id: str
+    #: None for someone not in the book yet, until his yes adds him.
+    customer_id: str | None
+    #: udhaar, payment, or customer (only adds someone; no amount).
     kind: str
-    amount_paise: int
+    amount_paise: int | None
     spoken_text: str | None
     reasons: list[str]
     status: str
     shown_seq: int
     entry_id: str | None
+    #: Someone the munshi would add to the book: name and description.
+    new_name: str | None
+    new_tag: str | None
 
 
 def start(con: Conn, shop_id: str, now: datetime) -> str:
@@ -116,12 +121,10 @@ def add_turn(
     return row
 
 
-DRAFT = """
-SELECT id::text AS id, conversation_id::text AS conversation_id,
+COLUMNS = """id::text AS id, conversation_id::text AS conversation_id,
        customer_id::text AS customer_id, kind, amount_paise, spoken_text, reasons,
-       status, shown_seq, entry_id::text AS entry_id
-FROM drafts
-"""
+       status, shown_seq, entry_id::text AS entry_id, new_name, new_tag"""
+DRAFT = f"SELECT {COLUMNS} FROM drafts"
 
 
 def draft(con: Conn, draft_id: str) -> Draft | None:
@@ -141,13 +144,16 @@ def latest_draft(con: Conn, conversation_id: str) -> Draft | None:
 def show(
     con: Conn,
     conversation_id: str,
-    customer_id: str,
+    customer_id: str | None,
     kind: str,
-    amount_paise: int,
+    amount_paise: int | None,
     spoken_text: str | None,
     reasons: list[str],
     shown_seq: int,
     now: datetime,
+    *,
+    new_name: str | None = None,
+    new_tag: str | None = None,
 ) -> Draft:
     """The new card. A card already waiting in this conversation is replaced."""
     with con.cursor(row_factory=class_row(Draft)) as cur:
@@ -157,13 +163,12 @@ def show(
             (conversation_id,),
         )
         row = cur.execute(
-            """
+            f"""
             INSERT INTO drafts (conversation_id, customer_id, kind, amount_paise,
-                                spoken_text, reasons, shown_seq, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id::text AS id, conversation_id::text AS conversation_id,
-                      customer_id::text AS customer_id, kind, amount_paise, spoken_text,
-                      reasons, status, shown_seq, entry_id::text AS entry_id
+                                spoken_text, reasons, shown_seq, created_at,
+                                new_name, new_tag)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING {COLUMNS}
             """,
             (
                 conversation_id,
@@ -174,6 +179,8 @@ def show(
                 reasons,
                 shown_seq,
                 now,
+                new_name,
+                new_tag,
             ),
         ).fetchone()
     assert row is not None
@@ -181,15 +188,22 @@ def show(
 
 
 def decide(
-    con: Conn, draft_id: str, status: str, now: datetime, entry_id: str | None = None
+    con: Conn,
+    draft_id: str,
+    status: str,
+    now: datetime,
+    entry_id: str | None = None,
+    customer_id: str | None = None,
 ) -> bool:
     """Moves a waiting card to saved or cancelled, once. False if it was not
-    waiting any more: a second tap, or a card already replaced."""
+    waiting any more: a second tap, or a card already replaced. `customer_id` is
+    the customer a new-customer card added."""
     with con.cursor() as cur:
         row = cur.execute(
-            "UPDATE drafts SET status = %s, decided_at = %s, entry_id = %s "
+            "UPDATE drafts SET status = %s, decided_at = %s, entry_id = %s, "
+            "customer_id = coalesce(%s, customer_id) "
             "WHERE id = %s AND status = 'shown' RETURNING id",
-            (status, now, entry_id, draft_id),
+            (status, now, entry_id, customer_id, draft_id),
         ).fetchone()
     return row is not None
 

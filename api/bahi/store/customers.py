@@ -76,17 +76,27 @@ def add(
     tag: str | None = None,
     linked: bool = False,
     name_hi: str | None = None,
+    tag_hi: str | None = None,
 ) -> str:
     """A new customer. Linked (he scanned), invited (a person, not yet linked),
     or name only (no person at all)."""
     row = con.execute(
         """
-        INSERT INTO customers
-            (shop_id, person_id, display_name, tag, added_at, linked_at, name_hi)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO customers (shop_id, person_id, display_name, tag, added_at,
+                               linked_at, name_hi, tag_hi)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id::text
         """,
-        (shop_id, person_id, display_name, tag, now, now if linked else None, name_hi),
+        (
+            shop_id,
+            person_id,
+            display_name,
+            tag,
+            now,
+            now if linked else None,
+            name_hi,
+            tag_hi,
+        ),
     ).fetchone()
     assert row is not None
     return str(row[0])
@@ -98,3 +108,22 @@ def link(con: Conn, customer_id: str, now: datetime) -> None:
         "UPDATE customers SET linked_at = %s WHERE id = %s AND linked_at IS NULL",
         (now, customer_id),
     )
+
+
+def drop_invite(con: Conn, customer_id: str) -> bool:
+    """He said no to an invite: the shop's row for him goes. Only an invite that
+    was never accepted, so nothing was ever recorded against it."""
+    row = con.execute(
+        "DELETE FROM customers WHERE id = %s AND person_id IS NOT NULL "
+        "AND linked_at IS NULL RETURNING id",
+        (customer_id,),
+    ).fetchone()
+    return row is not None
+
+
+def added_at(con: Conn, customer_id: str) -> datetime:
+    row = con.execute(
+        "SELECT added_at FROM customers WHERE id = %s", (customer_id,)
+    ).fetchone()
+    assert row is not None
+    return row[0]  # type: ignore[no-any-return]

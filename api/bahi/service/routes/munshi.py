@@ -59,21 +59,24 @@ def _out(
     con: Conn, shop_id: str, o: brain.Outcome, heard: str | None, source: str
 ) -> MunshiOut:
     card = None
-    if o.draft is not None:
-        c = customers.get(con, o.draft.customer_id)
-        assert c is not None
+    d = o.draft
+    if d is not None:
+        c = customers.get(con, d.customer_id) if d.customer_id else None
+        name = c.display_name if c else d.new_name
+        assert name is not None
         card = CardOut(
-            draft_id=UUID(o.draft.id),
-            customer_id=UUID(c.id),
-            display_name=c.display_name,
-            tag=c.tag,
-            amount_paise=o.draft.amount_paise,
-            kind=o.draft.kind,  # type: ignore[arg-type]
-            status=o.draft.status,  # type: ignore[arg-type]
-            reasons=o.draft.reasons,  # type: ignore[arg-type]
-            spoken_text=o.draft.spoken_text,
-            entry_id=UUID(o.draft.entry_id) if o.draft.entry_id else None,
-            on_bahi=c.joined == "linked",
+            draft_id=UUID(d.id),
+            customer_id=UUID(c.id) if c else None,
+            display_name=name,
+            tag=c.tag if c else d.new_tag,
+            amount_paise=d.amount_paise,
+            kind=d.kind,  # type: ignore[arg-type]
+            new=d.new_name is not None,
+            status=d.status,  # type: ignore[arg-type]
+            reasons=d.reasons,  # type: ignore[arg-type]
+            spoken_text=d.spoken_text,
+            entry_id=UUID(d.entry_id) if d.entry_id else None,
+            on_bahi=c is not None and c.joined == "linked",
         )
     say = (
         f"/shops/{shop_id}/munshi/{o.conversation_id}/say/{o.reply_turn_id}.wav"

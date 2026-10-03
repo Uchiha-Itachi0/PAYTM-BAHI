@@ -275,15 +275,20 @@ class CardOut(BaseModel):
     stored on the draft, never the munshi's sentence."""
 
     draft_id: UUID
-    customer_id: UUID
+    #: None until his yes adds someone new to the book.
+    customer_id: UUID | None
     display_name: str
     tag: str | None
-    amount_paise: int
-    kind: Literal["udhaar", "payment"]
+    #: None on a card that only adds someone.
+    amount_paise: int | None
+    #: customer: only adds someone new to the book, by name.
+    kind: Literal["udhaar", "payment", "customer"]
+    #: Someone not in the book yet: his yes adds them, by name only.
+    new: bool
     #: shown: waiting for his yes. saved: written. cancelled: he said no.
     status: Literal["shown", "saved", "replaced", "cancelled"]
     #: Why it waits for a clear yes; empty means the three-second countdown.
-    reasons: list[Literal["weak_match", "large", "unusual"]]
+    reasons: list[Literal["weak_match", "large", "unusual", "new_customer"]]
     #: What he said, shown under the amount.
     spoken_text: str | None
     entry_id: UUID | None
@@ -305,3 +310,243 @@ class MunshiOut(BaseModel):
     card: CardOut | None
     #: A card was saved or taken away this turn: the conversation can rest.
     finished: bool
+
+
+# ── chat (V5) ────────────────────────────────────────────────────────────────
+
+
+class ThreadEntryOut(BaseModel):
+    """An entry, as its card in a thread shows it: now, not when it was posted."""
+
+    id: str
+    amount_paise: int
+    paid_paise: int
+    status: EntryStatus
+    recorded_at: datetime
+    note: str | None
+    #: The entry this one corrects, and what it said.
+    corrects_entry_id: str | None
+    corrects_amount_paise: int | None
+    disputed_at: datetime | None
+    acknowledged_at: datetime | None
+    last_paid_at: datetime | None
+    last_method: Literal["upi", "cash"] | None
+    #: Past the limitation line: kept, and claims nothing.
+    expired: bool
+    #: The confirm button's words, for the customer's side.
+    button: str
+
+
+class MessageOut(BaseModel):
+    id: str
+    author: Literal["shop", "customer", "bahi"]
+    kind: Literal["text", "entry", "reminder"]
+    body: str
+    sent_at: datetime
+    entry: ThreadEntryOut | None
+    #: The entry's first message draws its card; later ones about the same entry
+    #: (a dispute, a payment) are one line.
+    card: bool
+
+
+class ThreadOut(BaseModel):
+    """One shop and one customer, from either side."""
+
+    #: The product's today (the demo pins the date), for "Today" and "Yesterday".
+    today: date
+    thread_id: str | None
+    customer_id: str
+    shop: ShopOut
+    #: The name the shop keeps him under, and its description.
+    display_name: str
+    tag: str | None
+    joined: Joined
+    balance_paise: int
+    #: Days since he last paid, when he owes something.
+    day: int | None
+    messages: list[MessageOut]
+    #: A reminder planned for him, and when it goes.
+    reminder_at: datetime | None
+
+
+class InboxRowOut(BaseModel):
+    customer_id: str
+    display_name: str
+    tag: str | None
+    joined: Joined
+    author: Literal["shop", "customer", "bahi"]
+    kind: Literal["text", "entry", "reminder"]
+    body: str
+    sent_at: datetime
+    #: The last message's entry, for the row's status line.
+    entry: ThreadEntryOut | None
+    unread: int
+    #: He wrote last, or he says an entry is wrong.
+    needs_reply: bool
+    reminder_at: datetime | None
+
+
+class InboxOut(BaseModel):
+    today: date
+    rows: list[InboxRowOut]
+    unread: int
+
+
+class SayIn(BaseModel):
+    text: str = Field(min_length=1, max_length=500)
+
+
+class CustomerSayIn(BaseModel):
+    person_id: UUID
+    text: str = Field(min_length=1, max_length=500)
+
+
+class RepliesOut(BaseModel):
+    """Replies the munshi suggests. Only offered: nothing is sent until he taps."""
+
+    replies: list[str]
+
+
+class CorrectIn(BaseModel):
+    amount_paise: int = Field(gt=0)
+
+
+# ── the customer's own book (V3) ─────────────────────────────────────────────
+
+
+class MyShopOut(BaseModel):
+    shop: ShopOut
+    customer_id: str
+    #: What the shop calls him.
+    display_name: str
+    balance_paise: int
+    #: Days since he last paid here, when he owes something.
+    day: int | None
+    entries: list[ThreadEntryOut]
+    unread: int
+
+
+class InviteOut(BaseModel):
+    shop: ShopOut
+    display_name: str
+    invited_at: datetime
+
+
+class MyUdhaarOut(BaseModel):
+    today: date
+    person_id: str
+    total_paise: int
+    #: Every shop whose book he is in, the ones he owes first.
+    shops: list[MyShopOut]
+    invites: list[InviteOut]
+
+
+class PaidOut(BaseModel):
+    shop: ShopOut
+    amount_paise: int
+    paid_at: datetime
+    method: Literal["upi"]
+    #: From the oldest entry it paid to today.
+    settled_in: int
+    entry_ids: list[str]
+    #: What he still owes at other shops.
+    elsewhere: list[MyShopOut]
+
+
+class DemoPhoneOut(BaseModel):
+    person_id: str
+    name: str
+
+
+# ── adding someone who can't scan (V6) ───────────────────────────────────────
+
+
+class AccountOut(BaseModel):
+    """The Paytm account behind a number or UPI ID. The number is not kept."""
+
+    person_id: str
+    name: str
+    #: Already in this shop's book: linked, or invited and waiting.
+    here: Joined | None
+
+
+class InviteIn(BaseModel):
+    #: A mobile number or UPI ID, looked up again here and never stored.
+    query: str = Field(min_length=3, max_length=60)
+    tag: str | None = Field(default=None, max_length=40)
+
+
+class NameOnlyIn(BaseModel):
+    display_name: str = Field(min_length=1, max_length=40)
+    tag: str | None = Field(default=None, max_length=40)
+
+
+# ── Tonight (V4) ─────────────────────────────────────────────────────────────
+
+
+TonightWhy = Literal[
+    "past_longest_gap",
+    "inside_gap",
+    "not_confirmed",
+    "disputed",
+    "too_new",
+    "no_phone",
+    "reminded",
+]
+
+
+class ReminderOut(BaseModel):
+    id: str
+    send_at: datetime
+    body: str
+    #: munshi: Sarvam's model wrote it, and it passed our checks. words: ours.
+    written: Literal["munshi", "words"]
+    status: Literal["planned", "stopped", "sent"]
+
+
+class PlanOut(BaseModel):
+    customer_id: str
+    display_name: str
+    tag: str | None
+    joined: Joined
+    balance_paise: int
+    day: int
+    rhythm: RhythmOut
+    send: bool
+    why: TonightWhy
+    reminded_on: date | None
+    reminder: ReminderOut | None
+
+
+class TonightOut(BaseModel):
+    today: date
+    for_day: date
+    worked_out_at: datetime
+    owing_count: int
+    sending_count: int
+    #: Everyone who owes, the ones reminded first, then alphabetical.
+    plans: list[PlanOut]
+
+
+class SentOut(BaseModel):
+    sent: int
+
+
+# ── the Soundbox (V7) ────────────────────────────────────────────────────────
+
+
+class EventOut(BaseModel):
+    """Something the shop should hear about. The Soundbox plays a tone, or says
+    an amount; it never says a name. The screen shows who."""
+
+    kind: Literal["scanned", "confirmed", "disputed", "paid", "message"]
+    at: datetime
+    customer_id: str
+    display_name: str
+    amount_paise: int | None
+
+
+class EventsOut(BaseModel):
+    #: Ask again with this as `after`.
+    now: datetime
+    events: list[EventOut]

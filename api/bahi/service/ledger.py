@@ -10,10 +10,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from bahi import voice
+from bahi.domain import wording
 from bahi.domain.book import OPEN
 from bahi.domain.check import Checked
 from bahi.domain.lifecycle import move
@@ -21,7 +22,7 @@ from bahi.domain.limitation import expired
 from bahi.domain.who import Ask, Person, Picked, who
 from bahi.domain.wording import acknowledgment
 from bahi.service.errors import Conflict, Forbidden, NotFound
-from bahi.store import customers, entries, scans, shops
+from bahi.store import customers, entries, scans, shops, threads
 from bahi.store.customers import CustomerRef
 from bahi.store.db import Conn
 from bahi.store.entries import EntryRef
@@ -90,7 +91,41 @@ def record(
     eid = entries.record(con, cid, amount_paise, now, note=note, spoken_text=spoken_text)
     if sc is not None and not scans.claim(con, sc.id, eid, now):
         raise Conflict("that scan was already used, or has expired")
-    return entry(con, eid)
+    e = entry(con, eid)
+    _card(con, e, wording.recorded(e.shop_name, amount_paise), now)
+    return e
+
+
+def _card(con: Conn, e: EntryRef, body: str, now: datetime) -> None:
+    """BAHI's line about an entry, in his thread with the shop. The first one for
+    an entry is its card; the screens draw it with the entry's current state.
+    Someone kept by name only has no phone and no thread: nobody would read it."""
+    c = customers.get(con, e.customer_id)
+    if c is None or c.joined != "linked":
+        return
+    threads.post(con, e.customer_id, "bahi", "entry", body, now, entry_id=e.id)
+
+
+def correct(
+    con: Conn, shop_id: str, entry_id: str, amount_paise: int, now: datetime
+) -> EntryRef:
+    """The shopkeeper's answer to a dispute: the right amount, as a new entry.
+
+    The disputed entry is kept, marked corrected, and counts for nothing. The
+    correction points at it, is recorded like any entry, and needs the customer's
+    own yes. Nothing is rubbed out: the thread shows both.
+    """
+    old = entry(con, entry_id)
+    if old.shop_id != shop_id:
+        raise NotFound(f"no entry {entry_id} at this shop")
+    status = move(old.status, "correct")
+    new_id = entries.record(
+        con, old.customer_id, amount_paise, now, note=old.note, corrects=old.id
+    )
+    entries.set_status(con, old.id, status)
+    new = entry(con, new_id)
+    _card(con, new, wording.corrected(new.shop_name, amount_paise), now)
+    return new
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +231,8 @@ def pay_cash(con: Conn, customer_id: str, amount_paise: int, now: datetime) -> l
             entries.set_status(con, e.id, move(e.status, "settle"))
         left -= take
         paid.append(e.id)
+    if paid:
+        _card(con, entry(con, paid[-1]), wording.paid(amount_paise, "cash"), now)
     return paid
 
 
@@ -282,5 +319,160 @@ def dispute(
 ) -> EntryRef:
     """He tapped "That's not right". The entry stays, marked disputed."""
     e = mine(con, entry_id, person_id)
-    entries.set_status(con, e.id, move(e.status, "dispute"))
+    move(e.status, "dispute")  # refuses anything but a recorded entry
+    entries.dispute(con, e.id, now)
+    _card(con, e, wording.disputed(e.display_name, e.amount_paise), now)
+    if reason and reason.strip():
+        # His reason is his own words in the thread, just after BAHI's line.
+        threads.post(
+            con,
+            e.customer_id,
+            "customer",
+            "text",
+            reason.strip(),
+            now + timedelta(microseconds=1),
+        )
     return entry(con, e.id)
+
+
+@dataclass(frozen=True, slots=True)
+class Paid:
+    shop: Shop
+    customer_id: str
+    amount_paise: int
+    #: The entries it paid, oldest first. Each is now settled.
+    entry_ids: list[str]
+    #: From the oldest entry it paid to today, in days.
+    settled_in: int
+
+
+def payable(con: Conn, customer_id: str, today: date) -> list[EntryRef]:
+    """What he can pay now: his open entries that are still claimable, oldest
+    first. Not a disputed one (nothing is agreed yet), and not an expired one (a
+    payment must never quietly revive a dead debt)."""
+    return [
+        e
+        for e in entries.of_customer(con, customer_id)
+        if e.status in OPEN - {"disputed"}
+        and e.amount_paise > e.paid_paise
+        and not expired(
+            e.recorded_at.date(),
+            e.acknowledged_at.date() if e.acknowledged_at else None,
+            today,
+        )
+    ]
+
+
+def pay_upi(con: Conn, person_id: UUID, shop_id: str, now: datetime) -> Paid:
+    """He tapped Pay in his own app: everything he owes this shop, by UPI, each
+    entry named. Paytm moves the money; the book records which entries it paid."""
+    s = shop(con, shop_id)
+    c = customers.at_shop(con, shop_id, str(person_id))
+    if c is None or not c.linked:
+        raise NotFound("you are not in this shop's book")
+    owed = payable(con, c.id, now.date())
+    if not owed:
+        raise Conflict(f"you owe {s.name} nothing right now")
+    total = 0
+    for e in owed:
+        left = e.amount_paise - e.paid_paise
+        entries.pay(con, e.id, left, "upi", now)
+        entries.set_status(con, e.id, move(e.status, "settle"))
+        total += left
+    _card(con, entry(con, owed[-1].id), wording.paid(total, "upi"), now)
+    oldest = min(e.recorded_at for e in owed)
+    return Paid(
+        shop=s,
+        customer_id=c.id,
+        amount_paise=total,
+        entry_ids=[e.id for e in owed],
+        settled_in=max(0, (now.date() - oldest.date()).days),
+    )
+
+
+# ── adding someone who can't scan ────────────────────────────────────────────
+
+
+def add_by_name(
+    con: Conn,
+    shop_id: str,
+    name: str,
+    tag: str | None,
+    now: datetime,
+    hindi: Callable[[str], str | None] = lambda _: None,
+) -> CustomerRef:
+    """Someone with no phone, kept by name like the notebook. His book works; he
+    never sees it, and nothing is ever sent to him."""
+    shop(con, shop_id)
+    name, tag = name.strip(), (tag or "").strip() or None
+    if not name:
+        raise Conflict("a name is needed")
+    cid = customers.add(
+        con,
+        shop_id,
+        name,
+        now,
+        tag=tag,
+        name_hi=hindi(name),
+        tag_hi=hindi(tag) if tag else None,
+    )
+    c = customers.get(con, cid)
+    assert c is not None
+    return c
+
+
+def invite(
+    con: Conn,
+    shop_id: str,
+    person_id: str,
+    name: str,
+    tag: str | None,
+    now: datetime,
+    hindi: Callable[[str], str | None] = lambda _: None,
+) -> CustomerRef:
+    """An invitation to his Paytm account. Nothing can be recorded against him
+    until he accepts on his own phone."""
+    shop(con, shop_id)
+    here = customers.at_shop(con, shop_id, person_id)
+    if here is not None:
+        raise Conflict(
+            f"{here.display_name} is already in your book"
+            if here.linked
+            else f"{here.display_name} is already invited; waiting for their yes"
+        )
+    tag = (tag or "").strip() or None
+    cid = customers.add(
+        con,
+        shop_id,
+        name,
+        now,
+        person_id=person_id,
+        tag=tag,
+        name_hi=hindi(name),
+        tag_hi=hindi(tag) if tag else None,
+    )
+    c = customers.get(con, cid)
+    assert c is not None
+    return c
+
+
+def _invited(con: Conn, shop_id: str, person_id: UUID) -> CustomerRef:
+    c = customers.at_shop(con, shop_id, str(person_id))
+    if c is None or c.linked:
+        raise NotFound("no invitation from this shop")
+    return c
+
+
+def accept(con: Conn, shop_id: str, person_id: UUID, now: datetime) -> CustomerRef:
+    """He said yes to the shop's invite: from now on it can record against him."""
+    c = _invited(con, shop_id, person_id)
+    customers.link(con, c.id, now)
+    out = customers.get(con, c.id)
+    assert out is not None
+    return out
+
+
+def decline(con: Conn, shop_id: str, person_id: UUID) -> None:
+    """He said no. The shop's row for him goes; nothing was ever recorded on it."""
+    c = _invited(con, shop_id, person_id)
+    customers.drop_invite(con, c.id)

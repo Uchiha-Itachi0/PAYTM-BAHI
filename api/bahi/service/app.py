@@ -10,7 +10,16 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from bahi.service import errors
-from bahi.service.routes import customer, munshi, shop, system, voice
+from bahi.service.routes import (
+    chat,
+    customer,
+    munshi,
+    people,
+    shop,
+    system,
+    tonight,
+    voice,
+)
 
 app = FastAPI(
     title="BAHI",
@@ -23,3 +32,6 @@ app.include_router(shop.router)
 app.include_router(customer.router)
 app.include_router(voice.router)
 app.include_router(munshi.router)
+app.include_router(chat.router)
+app.include_router(people.router)
+app.include_router(tonight.router)
