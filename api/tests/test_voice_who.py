@@ -270,3 +270,53 @@ def test_offline_our_parser_reads_and_the_same_checks_decide_who() -> None:
     assert (c.reader, c.intent, c.amount_paise) == ("rules", "udhaar", 25000)
     assert c.who == Picked(SHARMA, "in_book")
     assert check_rules("अनुभव को दो सौ", [], BOOK).who == Ask("several", ANUBHAVS)
+
+
+# ── asking Sarvam twice when it's slow ──────────────────────────────────────
+
+
+def test_a_slow_answer_is_asked_for_again_and_the_first_answer_wins() -> None:
+    import threading
+    import time
+
+    from bahi.voice.sarvam import hedged
+
+    calls: list[int] = []
+    lock = threading.Lock()
+
+    def call() -> str:
+        with lock:
+            calls.append(len(calls))
+            n = len(calls)
+        time.sleep(2.0 if n == 1 else 0.05)  # the first is the slow one
+        return f"answer {n}"
+
+    started = time.monotonic()
+    assert hedged(call, timeout=3.0, after=0.2) == "answer 2"
+    assert time.monotonic() - started < 1.0 and len(calls) == 2
+
+
+def test_a_quick_answer_is_asked_for_once() -> None:
+    from bahi.voice.sarvam import hedged
+
+    calls: list[int] = []
+
+    def call() -> str:
+        calls.append(1)
+        return "quick"
+
+    assert hedged(call, timeout=3.0, after=0.2) == "quick" and calls == [1]
+
+
+def test_a_quick_refusal_is_not_asked_again() -> None:
+    from bahi.voice.sarvam import SarvamError, hedged
+
+    calls: list[int] = []
+
+    def call() -> str:
+        calls.append(1)
+        raise SarvamError("Sarvam said 400")
+
+    with pytest.raises(SarvamError):
+        hedged(call, timeout=3.0, after=0.2)
+    assert calls == [1]

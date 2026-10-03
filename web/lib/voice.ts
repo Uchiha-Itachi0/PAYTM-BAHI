@@ -17,6 +17,7 @@ import type { Heard } from "@/lib/api/types";
 export const QUESTIONS = {
   who: "किसके लिए?",
   how_much: "कितने रुपये?",
+  kind: "उधार या जमा?",
   again: "फिर से बोलिए।",
 } as const;
 export type Question = keyof typeof QUESTIONS;

@@ -833,7 +833,7 @@
           "voice"
         ],
         "summary": "Say Ask",
-        "description": "\"किसके लिए?\" (who), \"कितने रुपये?\" (how_much) or \"फिर से बोलिए।\" (again),\nin Sarvam's voice.",
+        "description": "\"किसके लिए?\" (who), \"कितने रुपये?\" (how_much), \"उधार या जमा?\" (kind) or\n\"फिर से बोलिए।\" (again), in Sarvam's voice.",
         "operationId": "say_ask_voice_ask__question__wav_get",
         "parameters": [
           {
@@ -998,7 +998,7 @@
           },
           "before": {
             "type": "string",
-            "maxLength": 200,
+            "maxLength": 400,
             "title": "Before",
             "default": ""
           }
@@ -1345,7 +1345,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 200
+                "maxLength": 400
               },
               {
                 "type": "null"

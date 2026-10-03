@@ -47,6 +47,7 @@ export function VoicePanel({
   onHeard,
   onAnswer,
   onProblem,
+  onSilence,
   answering,
   before,
   listenSignal,
@@ -54,6 +55,8 @@ export function VoicePanel({
   onHeard: (h: Heard) => void;
   onAnswer: (a: Answer) => void;
   onProblem: (message: string) => void;
+  /** Nothing was said. The screen may ask its question again. */
+  onSilence: () => void;
   /** Asking who: the customer ids offered, or [] for anyone. null: not asking. */
   answering: string[] | null;
   /** What he said before this, when the screen asked "कितने रुपये?". */
@@ -100,15 +103,7 @@ export function VoicePanel({
         void hearAudio(audio, audio.type.includes("mp4") ? "speech.mp4" : "speech.webm"),
       [hearAudio],
     ),
-    useCallback(
-      () =>
-        onProblem(
-          answering
-            ? "Didn't hear a name. Tap who it is for, or tap the mic."
-            : "Didn't hear anything. Tap the mic and say the amount.",
-        ),
-      [answering, onProblem],
-    ),
+    onSilence,
   );
   const { start: startMic, cancel: cancelMic } = mic;
 

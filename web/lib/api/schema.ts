@@ -387,8 +387,8 @@ export interface paths {
         };
         /**
          * Say Ask
-         * @description "किसके लिए?" (who), "कितने रुपये?" (how_much) or "फिर से बोलिए।" (again),
-         *     in Sarvam's voice.
+         * @description "किसके लिए?" (who), "कितने रुपये?" (how_much), "उधार या जमा?" (kind) or
+         *     "फिर से बोलिए।" (again), in Sarvam's voice.
          */
         get: operations["say_ask_voice_ask__question__wav_get"];
         put?: never;

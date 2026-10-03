@@ -7,8 +7,8 @@ call, so a spoken entry and a typed one are the same entry.
 
 When the screen asks "किसके लिए?", his answer goes to /answer: only who, among
 the people it offered (or the whole book), and the amount stays the one it heard.
-When it asks "कितने रुपये?", his answer comes back to /heard or /voice with
-`before`, what he said first, and the two are read as one sentence.
+When it asks "कितने रुपये?" or "उधार या जमा?", his answer comes back to /heard or
+/voice with `before`, what he said first, and the two are read as one sentence.
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ def heard_text(shop_id: str, body: HeardIn, con: Con) -> HeardOut:
 
 @router.post("/shops/{shop_id}/voice")
 def heard_voice(
-    shop_id: str, audio: UploadFile, con: Con, before: str = Form("", max_length=200)
+    shop_id: str, audio: UploadFile, con: Con, before: str = Form("", max_length=400)
 ) -> HeardOut:
     """A recording from the shop's mic. 503 when voice is offline and it isn't a
     recording we have heard before; the screen then asks him to type it.
@@ -122,8 +122,8 @@ def say_amount(paise: int) -> FileResponse:
 
 @router.get("/voice/ask/{question}.wav", response_class=FileResponse)
 def say_ask(question: str) -> FileResponse:
-    """ "किसके लिए?" (who), "कितने रुपये?" (how_much) or "फिर से बोलिए।" (again),
-    in Sarvam's voice."""
+    """ "किसके लिए?" (who), "कितने रुपये?" (how_much), "उधार या जमा?" (kind) or
+    "फिर से बोलिए।" (again), in Sarvam's voice."""
     words = said.ASKS.get(question)
     if words is None:
         raise HTTPException(404, f"no question {question}")

@@ -39,10 +39,11 @@ import { ask, PROBLEM_LINE, sayAmount, type Question } from "@/lib/voice";
  * A conversation, not a form: when the screen needs more, it asks aloud and
  * listens once its question has finished. "किसके लिए?" when the amount is
  * clear and the person isn't (his answer is looked for among those offered);
- * "कितने रुपये?" when the person is clear and the amount isn't (his answer is read
- * together with what he said first); "फिर से बोलिए।" when it couldn't make out the amount. Two tries, then
- * it stops listening and leaves the buttons, so a noisy shop never keeps the
- * mic open.
+ * "कितने रुपये?" when the person is clear and the amount isn't, and "उधार या जमा?"
+ * when it can't tell which (his answer is read together with what he said
+ * first); "फिर से बोलिए।" when it couldn't make out the amount. Silence after a
+ * question is asked again. Three tries in a row, then it stops listening and
+ * leaves the buttons, so a noisy shop never keeps the mic open.
  */
 
 type Pick =
@@ -53,7 +54,7 @@ type Pick =
 type Spoken = { paise: number; transcript: string; readback: string | null };
 
 /** How many times in a row the screen asks and listens again by itself. */
-const MAX_TRIES = 2;
+const MAX_TRIES = 3;
 
 function ago(seconds: number): string {
   return seconds < 60 ? `${seconds}s ago` : `${Math.floor(seconds / 60)}m ago`;
@@ -83,10 +84,30 @@ export function AddScreen(): React.ReactElement {
   const [before, setBefore] = useState<string | null>(null);
   const [tries, setTries] = useState(0);
   const [listenSignal, setListenSignal] = useState(0);
+  /** The question waiting for an answer, to ask again if he says nothing. */
+  const [question, setQuestion] = useState<Question | null>(null);
 
   /** Asks aloud and, once it has finished saying it, opens the mic. */
-  function askThenListen(question: Question): void {
-    void ask(question).then(() => setTimeout(() => setListenSignal((n) => n + 1), 200));
+  function askThenListen(q: Question): void {
+    setQuestion(q);
+    void ask(q).then(() => setTimeout(() => setListenSignal((n) => n + 1), 200));
+  }
+
+  /** He said nothing after a question: ask it again, up to the limit. */
+  function onSilence(): void {
+    if (question && tries < MAX_TRIES) {
+      setTries(tries + 1);
+      askThenListen(question);
+      return;
+    }
+    setQuestion(null);
+    setTries(0);
+    setNews({
+      tone: "warn",
+      text: asking
+        ? "Didn't hear a name. Tap who it is for, or tap the mic."
+        : "Didn't hear anything. Tap the mic and say the amount.",
+    });
   }
 
   // A picked scan that has expired or walked away is no longer a choice.
@@ -149,6 +170,7 @@ export function AddScreen(): React.ReactElement {
     setAsking(null);
     setPrefilled(null);
     setBefore(null);
+    setQuestion(null);
     const again = tries < MAX_TRIES;
     setTries(again ? tries + 1 : 0);
 
@@ -169,6 +191,12 @@ export function AddScreen(): React.ReactElement {
           : `${why} Nothing was sent. Tap the mic to say it again, or type it.`,
       });
       if (again) askThenListen("again");
+      return;
+    }
+    if (h.intent === "unclear" && again) {
+      setBefore(h.transcript);
+      setNews({ tone: "warn", text: `Heard ${formatPaise(h.amount_paise)}. Udhaar, or money paid back?` });
+      askThenListen("kind");
       return;
     }
     if (h.intent !== "udhaar") {
@@ -227,6 +255,7 @@ export function AddScreen(): React.ReactElement {
       const to = pickOf(a.who.person);
       setAsking(null);
       setTries(0);
+      setQuestion(null);
       setNews(null);
       setPending({ who: to, spoken: asking.spoken });
       if (asking.spoken.readback) void sayAmount(asking.spoken.paise, asking.spoken.readback);
@@ -251,6 +280,7 @@ export function AddScreen(): React.ReactElement {
   function choose(p: Pick): void {
     setTries(0);
     setBefore(null);
+    setQuestion(null);
     if (asking) {
       setPending({ who: p, spoken: asking.spoken });
       setAsking(null);
@@ -355,6 +385,7 @@ export function AddScreen(): React.ReactElement {
         onHeard={onHeard}
         onAnswer={onAnswer}
         onProblem={onProblem}
+        onSilence={onSilence}
         answering={
           askingWho
             ? askingWho.why === "several" || askingWho.why === "maybe"

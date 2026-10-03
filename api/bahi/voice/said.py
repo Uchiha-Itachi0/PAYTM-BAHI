@@ -1,7 +1,7 @@
 """What the counter says back, in Sarvam's voice, kept on disk.
 
 The Soundbox says only two kinds of thing: an amount ("दो सौ बीस रुपये") and
-one of three questions. Never a name: the customer's name is shown, not spoken
+one of its questions. Never a name: the customer's name is shown, not spoken
 aloud. So this module takes an amount in paise or a question's name, and nothing
 else.
 
@@ -27,6 +27,7 @@ LIVE = AUDIO / "raw" / "said"
 ASKS = {
     "who": "किसके लिए?",
     "how_much": "कितने रुपये?",
+    "kind": "उधार या जमा?",
     "again": "फिर से बोलिए।",
 }
 

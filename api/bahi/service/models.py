@@ -154,9 +154,9 @@ class HeardIn(BaseModel):
     """What the shopkeeper said, typed or tapped instead of spoken."""
 
     text: str = Field(min_length=1, max_length=200)
-    #: What he said before, when this answers "कितने रुपये?": "Sharma ko", then
-    #: "do sau" is read as one sentence.
-    before: str | None = Field(default=None, max_length=200)
+    #: What he said before, when this answers "कितने रुपये?" or "उधार या जमा?":
+    #: "Sharma ko", then "do sau", is read as one sentence.
+    before: str | None = Field(default=None, max_length=400)
 
 
 class PersonOut(BaseModel):

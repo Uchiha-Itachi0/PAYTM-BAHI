@@ -487,6 +487,7 @@ def test_the_demos_readbacks_play_with_the_wifi_off(api: TestClient) -> None:
         "/voice/say/25000.wav",
         "/voice/ask/who.wav",
         "/voice/ask/how_much.wav",
+        "/voice/ask/kind.wav",
         "/voice/ask/again.wav",
     ):
         r = api.get(path)
