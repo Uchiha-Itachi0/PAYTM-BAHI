@@ -108,6 +108,47 @@ off. The munshi needs Sarvam: set `SARVAM_OFFLINE=0` and `SARVAM_API_KEY` in
 `api/.env`. The deployed build is what a judge's phone reaches over its own mobile
 data.
 
+## Deploying it
+
+Three free plans (checked 1 Oct 2026). The API and the database sit in
+the same region, Singapore: a page makes many small queries, and each one going
+to another country would add up.
+
+| Part | Where | Free plan |
+|---|---|---|
+| `web/` | Vercel, Hobby | HTTPS, so a phone's mic works; `/api` goes through to the API |
+| `api/` | Render, free web service, Singapore | 512 MB; sleeps after 15 minutes idle, about a minute to wake |
+| the book | Supabase, free, Singapore | 500 MB of Postgres; pauses after a week idle |
+
+Cognee stays on the laptop. The image is built without it (`api/Dockerfile`,
+`--no-default-groups`) and runs with `COGNEE=off`: 68 MB at its peak instead of
+339 MB before Cognee does anything. Everything else works as on the laptop; a
+question across customers reads the book's own list of what was said.
+
+1. **Supabase.** A new project in Singapore. Under Connect, copy the *session
+   pooler* URL (port 5432): the direct one is IPv6 only, and Render has no IPv6.
+   Then build the book there, from the laptop:
+   ```bash
+   cd api
+   DATABASE_URL='<session pooler URL>' uv run python -m data.migrate
+   DATABASE_URL='<session pooler URL>' uv run python -m data.generate
+   git checkout ../contract/shop.json
+   ```
+2. **Render.** New web service from this repo: root directory `api`, runtime
+   Docker, region Singapore, instance Free, health check path `/health`.
+   Environment: `DATABASE_URL` (the same pooler URL) and `SARVAM_API_KEY`.
+3. **Vercel.** New project from this repo: root directory `web`. Environment:
+   `API_URL=https://<service>.onrender.com`, set before the first build: the
+   `/api` rewrite is fixed when it builds.
+4. **Share the production address** (`<project>.vercel.app`). Vercel's preview
+   addresses ask for a Vercel login. The udhaar QR is made from the address its
+   page is open on, so on the deployed site any phone, on any wifi or mobile
+   data, can scan it.
+
+Render's free service sleeps after 15 idle minutes, and the first visit then
+waits about a minute. Before a demo, open it once, or have something visit
+`/health` every ten minutes.
+
 ## The munshi: voice and chat
 
 The shopkeeper talks or types to the munshi, the shop's bookkeeper as an agent:
@@ -241,7 +282,9 @@ database on the local Postgres (graph and vectors, each shop in its own
 schema), Sarvam's `sarvam-105b` to read and extract, and OpenAI's
 `text-embedding-3-small` for the vectors, because Sarvam has no embeddings API.
 Its telemetry is off. A worker in the API does this in the background; without
-Cognee, notes, promises and Tomorrow's holds still work.
+Cognee, notes, promises and Tomorrow's holds still work. `COGNEE=off` turns it
+off entirely: it is never loaded and nothing is sent to it. The deployed server
+runs that way, without it installed.
 
 ```bash
 brew install pgvector   # once, into the local Postgres
