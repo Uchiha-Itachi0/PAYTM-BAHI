@@ -106,3 +106,11 @@ export const Plus = (p: IconProps): React.ReactElement => (
     <path d="M12 5v14M5 12h14" />
   </Svg>
 );
+
+/** The assistant: a spark, not a robot face. */
+export const Spark = (p: IconProps): React.ReactElement => (
+  <Svg {...p}>
+    <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+  </Svg>
+);

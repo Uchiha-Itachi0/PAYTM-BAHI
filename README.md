@@ -79,6 +79,10 @@ The main flows:
   English or a mix: "बी विंग में जो रहते हैं उनके नाम दो सौ लिख दो". It finds the
   customer in the real book, asks when it is unsure, and puts a card on screen.
   Only the shopkeeper's yes writes the entry.
+- **Paytm Assistant.** The same munshi on a page of its own (`/m/assistant`), for
+  asking rather than writing: who pays this week, someone's account, tomorrow's
+  reminders, or how something in the app works. Anything it writes is still a card
+  that waits for his yes.
 - **Chat and disputes.** One thread per shop and customer. Each udhaar appears as a
   live card with its state on a badge (waiting, agreed, part paid, paid), and each
   payment as its own card with Paytm's green tick. The customer answers Yes,
@@ -513,6 +517,7 @@ can colour a customer as a defaulter.
 | `/m/messages`, `/m/chat/{customer}`: chat | `/c/pay/{shop}`: Pay, Proceed securely, UPI PIN |
 | `/m/customers`, `/m/customers/{id}`, `/m/customers/new` | |
 | `/m/tonight`: tomorrow's reminders, edit, stop or pause, and everyone held | |
+| `/m/assistant`: Paytm Assistant, the munshi on a page of its own, to ask anything | |
 
 Both sides poll every two seconds, so the shopkeeper's laptop and the customer's
 phone move together. Annotated screens and the deck are in `docs/`.
