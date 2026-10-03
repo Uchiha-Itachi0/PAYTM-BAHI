@@ -26,9 +26,9 @@ export function hush(): void {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
-/** The API says a long sentence in pieces within ten seconds, or answers 503.
- *  Past this, the sentence isn't coming. */
-const START_MS = 15000;
+/** The API says a sentence within fifteen seconds (a long list of names takes
+ *  three to seven), or answers 503. Past this, it isn't coming. */
+const START_MS = 20000;
 /** Once it plays, it ends when its own length says; this is the slack before
  *  we stop waiting for the audio to report it. */
 const GRACE_MS = 1500;

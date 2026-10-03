@@ -618,7 +618,7 @@ def wav(seconds: float) -> bytes:
 
 @pytest.fixture
 def voice_on(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> list[str]:
-    """Sarvam's voice, faked: each piece takes a moment and a second of audio."""
+    """Sarvam's voice, faked: each sentence takes a moment and a second of audio."""
     from bahi.voice import said, sarvam
 
     monkeypatch.setenv("SARVAM_OFFLINE", "0")
@@ -636,39 +636,27 @@ def voice_on(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> list[str]:
     return asked
 
 
-def test_a_long_sentence_is_cut_only_where_a_speaker_pauses() -> None:
-    from bahi.voice.said import pieces
-
-    parts = pieces(NAMES)
-    assert len(parts) > 1 and all(len(p) <= 80 for p in parts)
-    assert " ".join(parts) == NAMES
-    assert all(p.endswith((";", "।", "?")) for p in parts)
-    assert pieces("सी विंग में पाँच लोग हैं। नाम बताऊँ?") == ["सी विंग में पाँच लोग हैं। नाम बताऊँ?"]
-    one_long_run = "क" * 120
-    assert pieces(one_long_run) == [one_long_run]
-
-
-def test_a_long_reply_is_said_in_pieces_at_once_and_joined(voice_on: list[str]) -> None:
+def test_a_long_reply_is_said_whole_in_one_voice(voice_on: list[str]) -> None:
+    """Never in pieces: each request to Sarvam is voiced afresh, and two halves of
+    one sentence sound like two people."""
     from bahi.voice import said
 
     path = said.sentence(NAMES)
-    assert sorted(voice_on) == sorted(said.pieces(NAMES))
-    with wave.open(str(path)) as w:  # every piece, one after the other
-        assert w.getnframes() == 24000 * len(voice_on)
+    assert voice_on == [NAMES]
+    with wave.open(str(path)) as w:
+        assert w.getnframes() == 24000
     said.sentence(NAMES)  # kept: never asked for twice
-    assert len(voice_on) == len(said.pieces(NAMES))
+    assert voice_on == [NAMES]
 
 
 def test_the_reply_is_said_before_the_screen_asks_and_only_once(
     api: TestClient, model: Script, voice_on: list[str]
 ) -> None:
-    from bahi.voice import said
-
     model.then(reply(NAMES))
     out = say(api, "पढ़ दो")
     r = api.get(out["say_url"])
     assert r.status_code == 200 and r.headers["content-type"] == "audio/wav"
-    assert len(voice_on) == len(said.pieces(NAMES))
+    assert voice_on == [NAMES]
 
 
 # ── money back, oldest first ─────────────────────────────────────────────────

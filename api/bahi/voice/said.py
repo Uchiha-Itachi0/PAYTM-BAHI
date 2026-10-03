@@ -11,20 +11,18 @@ is committed, so they play with the wifi off. Anything else is spoken on first
 use and kept in `audio/raw/said`, which git ignores.
 
 A munshi sentence can be long (a list of names he asked to hear), and bulbul
-takes longer the longer it is: 2.2 s for 61 characters, 6.7 s for 212. So it is
-cut where a speaker pauses anyway, the pieces are said at once and joined, and
-it takes about as long as its longest piece. It is started the moment the reply
-exists (`warm`), not when the screen asks for it.
+takes longer the longer it is: 1.3 s for a short one, 3.2 to 6.7 s for five
+names. It is always one request, never pieces joined: each request is voiced
+afresh, and on 30 Sep two halves of one sentence came back at 188 and 216 Hz,
+two voices to the ear. So it is started the moment the reply exists (`warm`),
+not when the screen asks for it.
 """
 
 from __future__ import annotations
 
 import contextlib
 import hashlib
-import io
-import re
 import threading
-import wave
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
@@ -88,77 +86,17 @@ def speech(text: str, *, keep_in: Path | None = None) -> Path:
 
 # ── the munshi's sentences ───────────────────────────────────────────────────
 
-#: A piece of a long sentence: about two seconds of speech.
-PIECE_CHARS = 80
-#: Where a sentence can be cut without changing how it sounds: after a full stop
-#: (। . ? !) or a semicolon, and inside a long list, after a comma.
-_ENDS = re.compile(r"(?<=[।.?!;])\s+")
-_COMMAS = re.compile(r"(?<=,)\s+")
-
 _SENTENCES = ThreadPoolExecutor(max_workers=4, thread_name_prefix="said")
-_PIECES = ThreadPoolExecutor(max_workers=8, thread_name_prefix="said-piece")
 _LOCK = threading.Lock()
 #: Sentences being said right now, by file name: the screen's request for one
 #: that `warm` started waits for it instead of asking Sarvam again.
 _BUSY: dict[str, Future[Path]] = {}
 
 
-def pieces(text: str, most: int = PIECE_CHARS) -> list[str]:
-    """The sentence in pieces of up to `most` characters, cut only where the
-    speaker would pause anyway. A part with nowhere to cut stays whole."""
-    parts: list[str] = []
-    for p in _ENDS.split(text.strip()):
-        parts.extend(_COMMAS.split(p) if len(p) > most else [p])
-    out: list[str] = []
-    for p in (x.strip() for x in parts):
-        if not p:
-            continue
-        if out and len(out[-1]) + 1 + len(p) <= most:
-            out[-1] = f"{out[-1]} {p}"
-        else:
-            out.append(p)
-    return out
-
-
-def joined(wavs: list[bytes]) -> bytes:
-    """One WAV from several, in order. Each of Sarvam's already ends in a short
-    silence, the pause between two sentences."""
-    if len(wavs) == 1:
-        return wavs[0]
-    frames: list[bytes] = []
-    shape: tuple[int, int, int] | None = None
-    try:
-        for one in wavs:
-            with wave.open(io.BytesIO(one)) as r:
-                this = (r.getnchannels(), r.getsampwidth(), r.getframerate())
-                if shape is not None and this != shape:
-                    raise sarvam.SarvamError("Sarvam's pieces don't match")
-                shape = this
-                frames.append(r.readframes(r.getnframes()))
-    except wave.Error as e:
-        raise sarvam.SarvamError(f"Sarvam's audio was not a WAV: {e}") from e
-    assert shape is not None
-    out = io.BytesIO()
-    with wave.open(out, "wb") as w:
-        w.setnchannels(shape[0])
-        w.setsampwidth(shape[1])
-        w.setframerate(shape[2])
-        w.writeframes(b"".join(frames))
-    return out.getvalue()
-
-
 def _say_and_keep(text: str, voice: str, key: str) -> Path:
-    asked = [
-        _PIECES.submit(
-            sarvam.speak,
-            p,
-            key=key,
-            voice=voice,
-            timeout=sarvam.SENTENCE_TTS_TIMEOUT_S,
-        )
-        for p in pieces(text)
-    ]
-    audio = joined([f.result() for f in asked])
+    audio = sarvam.speak(
+        text, key=key, voice=voice, timeout=sarvam.SENTENCE_TTS_TIMEOUT_S
+    )
     LIVE.mkdir(parents=True, exist_ok=True)
     path = LIVE / _name(text, voice)
     path.write_bytes(audio)

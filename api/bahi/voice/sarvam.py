@@ -45,9 +45,9 @@ HEDGE_AFTER_S = 2.5
 TRANSLITERATE_TIMEOUT_S = 3.0
 #: An amount takes bulbul:v3 0.4 to 0.6 s; the countdown is 3 s.
 TTS_TIMEOUT_S = 3.0
-#: The munshi's sentences are longer: on 30 Sep, 61 characters took 2.2 s and a
-#: 212-character list of names 6.7 s. `said` says a long one in pieces, at once.
-SENTENCE_TTS_TIMEOUT_S = 10.0
+#: The munshi's sentences are longer: on 30 Sep, 61 characters took 1.3 to 2.2 s,
+#: and five names 3.2 s, or 6.7 s at worst. Said whole, never in pieces.
+SENTENCE_TTS_TIMEOUT_S = 15.0
 TTS_MODEL = "bulbul:v3"
 #: Picked by ear from twelve bulbul:v3 voices on 30 Sep: the clearest readback.
 VOICE = "shreya"
