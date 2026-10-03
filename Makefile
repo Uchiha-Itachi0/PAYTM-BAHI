@@ -4,7 +4,7 @@
 # them on a tool that changed its output overnight.
 
 .PHONY: help db db-migrate db-check rhythm decide expire voice voice-list \
-        voice-eval names-hi \
+        voice-eval names-hi munshi-eval memory-db memory-check \
         api web web-check check lint typecheck test
 
 help:
@@ -102,6 +102,16 @@ voice-eval:
 # Sarvam calls on the seeded book, rolled back. Costs credits; never in `check`.
 munshi-eval:
 	cd api && uv run python -m bahi.munshi.eval $(or $(TIMES),2) $(ONLY)
+
+# M3: memory's own role and databases on the local Postgres (needs
+# `brew install pgvector` first). Once; running it again changes nothing.
+memory-db:
+	cd api && uv run python -m data.memory_db
+
+# M3: memory end to end with real Sarvam, OpenAI and Cognee, on the check
+# databases only (bahi_check, bahi_memory_check). Spends a few credits.
+memory-check:
+	cd api && DATABASE_URL=postgresql:///bahi_check SARVAM_OFFLINE=0 uv run python -m bahi.memory.check
 
 # Only names missing from api/data/names_hi.json are fetched.
 names-hi:

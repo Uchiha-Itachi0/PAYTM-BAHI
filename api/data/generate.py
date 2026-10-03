@@ -188,6 +188,7 @@ class Builder:
                 body=body,
                 sent_at=when,
                 entry_id=entry,
+                read_for_memory_at=when,
             )
         )
 

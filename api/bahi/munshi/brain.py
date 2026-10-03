@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from bahi import clock
 from bahi.munshi import prompt, tools
 from bahi.service import ledger
 from bahi.service.errors import Conflict
@@ -154,7 +155,12 @@ def _answer(
 ) -> Outcome:
     shop = ledger.shop(con, shop_id)
     desk = tools.Desk.open(con, shop_id, conversation_id, now)
-    system = {"role": "system", "content": prompt.system(shop.name, desk.people)}
+    system = {
+        "role": "system",
+        "content": prompt.system(
+            shop.name, desk.people, now.astimezone(clock.IST).date()
+        ),
+    }
     out = Outcome(conversation_id)
     before = store.latest_draft(con, conversation_id)
     waiting_before = before.id if before and before.status == "shown" else None

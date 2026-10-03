@@ -42,3 +42,4 @@ export type Reminder = S["ReminderOut"];
 export type Events = S["EventsOut"];
 export type ShopEvent = S["EventOut"];
 export type CustomerDetail = S["CustomerDetailOut"];
+export type Remembered = S["MemoryOut"];

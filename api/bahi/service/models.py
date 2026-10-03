@@ -549,6 +549,30 @@ class CustomerDetailOut(BaseModel):
     day: int | None
     #: Newest first: everything open, then the latest paid.
     entries: list[ThreadEntryOut]
+    #: What BAHI remembers about him, newest first.
+    memories: list[MemoryOut] = Field(default_factory=list)
+
+
+class MemoryOut(BaseModel):
+    """Something BAHI remembers about a customer, and where it came from."""
+
+    id: str
+    kind: Literal["note", "promise", "nickname"]
+    body: str
+    said_by: Literal["shop", "customer"]
+    #: The last day BAHI stays quiet for it, if it asks to wait.
+    until: date | None
+    remembered_at: datetime
+    #: The chat message a promise was read from.
+    message_id: str | None
+
+
+class MemoryIn(BaseModel):
+    """A note the shopkeeper types on the customer's page."""
+
+    body: str = Field(min_length=1, max_length=300)
+    #: Stay quiet for him until this day (no reminder on or before it).
+    until: date | None = None
 
 
 class NameOnlyIn(BaseModel):
@@ -567,7 +591,17 @@ TonightWhy = Literal[
     "too_new",
     "no_phone",
     "reminded",
+    "promised",
+    "asked_to_wait",
 ]
+
+
+class WaitOut(BaseModel):
+    """What was said that holds him: his promise, or the shopkeeper's note."""
+
+    until: date
+    said_by: Literal["shop", "customer"]
+    body: str
 
 
 class ReminderOut(BaseModel):
@@ -591,6 +625,8 @@ class PlanOut(BaseModel):
     why: TonightWhy
     reminded_on: date | None
     reminder: ReminderOut | None
+    #: Set when what was said is why he is held.
+    wait: WaitOut | None = None
 
 
 class TonightOut(BaseModel):

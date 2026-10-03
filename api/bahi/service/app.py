@@ -7,8 +7,12 @@ buy throughput we cannot use at the cost of a class of missing-await bugs.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from bahi.memory import worker
 from bahi.service import errors
 from bahi.service.routes import (
     chat,
@@ -21,10 +25,18 @@ from bahi.service.routes import (
     voice,
 )
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    worker.start()  # memory's background work (M3), when voice is online
+    yield
+
+
 app = FastAPI(
     title="BAHI",
     version="0.1.0",
     description="The udhaar book both sides can see. All data is synthetic.",
+    lifespan=lifespan,
 )
 errors.install(app)
 app.include_router(system.router)

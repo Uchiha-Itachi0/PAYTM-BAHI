@@ -19,7 +19,8 @@ import { clockTime, shortDate } from "@/lib/when";
  * past the longest gap they have ever had. The munshi writes the words, in the
  * customer's language; the shopkeeper can stop any of them. Everyone else is
  * held, and the reason is shown, because "4 of 38" is the point: a tool that
- * messages everyone is the thing BAHI replaces.
+ * messages everyone is the thing BAHI replaces. What was said holds someone too:
+ * their promise in chat, or the shopkeeper's note, until the day it names.
  */
 
 const B = ({ children }: { children: React.ReactNode }): React.ReactElement => (
@@ -63,6 +64,21 @@ function Why({ p }: { p: Plan }): React.ReactElement {
         <>
           Reminded {p.reminded_on ? shortDate(p.reminded_on) : "recently"}. One reminder a gap,
           never a stream.
+        </>
+      );
+    // Past the gap, but something was said: BAHI waits for it (M3, memory).
+    case "promised":
+      return (
+        <>
+          {p.display_name} said in chat: <B>&ldquo;{p.wait?.body}&rdquo;</B>. Nothing is sent
+          until after <B>{p.wait ? shortDate(p.wait.until) : "that day"}</B>.
+        </>
+      );
+    case "asked_to_wait":
+      return (
+        <>
+          Your note: <B>&ldquo;{p.wait?.body}&rdquo;</B>. Nothing is sent until after{" "}
+          <B>{p.wait ? shortDate(p.wait.until) : "that day"}</B>.
         </>
       );
   }

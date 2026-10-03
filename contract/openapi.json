@@ -506,6 +506,114 @@
         }
       }
     },
+    "/shops/{shop_id}/customers/{customer_id}/memories": {
+      "post": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Remember Note",
+        "description": "M3. A note the shopkeeper types about him (\"pays through his son\"), and a\nday to stay quiet until, if it asks to wait.",
+        "operationId": "remember_note_shops__shop_id__customers__customer_id__memories_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/memories/{memory_id}": {
+      "delete": {
+        "tags": [
+          "shopkeeper"
+        ],
+        "summary": "Forget",
+        "description": "M3. Forget it: gone from his page and from Tonight at once, and from\nCognee's search right after.",
+        "operationId": "forget_shops__shop_id__memories__memory_id__delete",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          },
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Memory Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/shops/{shop_id}/customers/{customer_id}/invite": {
       "post": {
         "tags": [
@@ -3279,6 +3387,13 @@
             },
             "type": "array",
             "title": "Entries"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryOut"
+            },
+            "type": "array",
+            "title": "Memories"
           }
         },
         "type": "object",
@@ -4189,6 +4304,103 @@
         "title": "LinkIn",
         "description": "His mobile number or UPI ID, for someone kept by name. Never stored."
       },
+      "MemoryIn": {
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Body"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "MemoryIn",
+        "description": "A note the shopkeeper types on the customer's page."
+      },
+      "MemoryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "promise",
+              "nickname"
+            ],
+            "title": "Kind"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "said_by": {
+            "type": "string",
+            "enum": [
+              "shop",
+              "customer"
+            ],
+            "title": "Said By"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          },
+          "remembered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Remembered At"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "body",
+          "said_by",
+          "until",
+          "remembered_at",
+          "message_id"
+        ],
+        "title": "MemoryOut",
+        "description": "Something BAHI remembers about a customer, and where it came from."
+      },
       "MessageOut": {
         "properties": {
           "id": {
@@ -4707,7 +4919,9 @@
               "disputed",
               "too_new",
               "no_phone",
-              "reminded"
+              "reminded",
+              "promised",
+              "asked_to_wait"
             ],
             "title": "Why"
           },
@@ -4727,6 +4941,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ReminderOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wait": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WaitOut"
               },
               {
                 "type": "null"
@@ -5389,6 +5613,35 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WaitOut": {
+        "properties": {
+          "until": {
+            "type": "string",
+            "format": "date",
+            "title": "Until"
+          },
+          "said_by": {
+            "type": "string",
+            "enum": [
+              "shop",
+              "customer"
+            ],
+            "title": "Said By"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "until",
+          "said_by",
+          "body"
+        ],
+        "title": "WaitOut",
+        "description": "What was said that holds him: his promise, or the shopkeeper's note."
       },
       "WaitingOut": {
         "properties": {

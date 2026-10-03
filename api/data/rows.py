@@ -87,6 +87,8 @@ class MessageRow:
     body: str
     sent_at: datetime
     entry_id: UUID | None = None
+    #: The seed's chat is history: memory never rereads it for promises.
+    read_for_memory_at: datetime | None = None
 
 
 def insert(cur: psycopg.Cursor[Any], table: str, rows: Sequence[Any]) -> int:
