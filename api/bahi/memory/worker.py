@@ -135,13 +135,21 @@ def run_once() -> int:
     return done
 
 
+#: After a round fails outright (the database not migrated, Postgres down).
+FAILED_ROUND_WAIT_S = 60.0
+
+
 def _loop() -> None:
     while True:
         try:
             done = run_once()
         except Exception:
-            log.exception("memory worker round failed")
-            done = 0
+            log.exception(
+                "memory worker round failed; next in %.0f s (make db-migrate?)",
+                FAILED_ROUND_WAIT_S,
+            )
+            time.sleep(FAILED_ROUND_WAIT_S)
+            continue
         time.sleep(0.2 if done else POLL_S)
 
 
