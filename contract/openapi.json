@@ -1201,6 +1201,10 @@
             "format": "date-time",
             "title": "Scanned At"
           },
+          "waited_s": {
+            "type": "integer",
+            "title": "Waited S"
+          },
           "first_time": {
             "type": "boolean",
             "title": "First Time"
@@ -1213,6 +1217,7 @@
           "display_name",
           "tag",
           "scanned_at",
+          "waited_s",
           "first_time"
         ],
         "title": "WaitingOut"

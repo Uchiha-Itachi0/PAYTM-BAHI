@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import getpass
 import os
 from pathlib import Path
 from typing import Any
@@ -22,11 +21,11 @@ def url() -> str:
     On macOS the Homebrew Postgres role is your own username with no password, so
     the default works without anyone writing a .env first. One fewer step between a
     clean clone and a populated database, which matters on the day.
+
+    The default names no user. libpq then uses the account the process really runs
+    as, rather than the $USER variable, which a launcher can set to anything.
     """
-    explicit = os.environ.get("DATABASE_URL")
-    if explicit:
-        return explicit
-    return f"postgresql://{getpass.getuser()}@localhost:5432/bahi"
+    return os.environ.get("DATABASE_URL") or "postgresql://localhost:5432/bahi"
 
 
 def connect(*, autocommit: bool = False) -> Conn:

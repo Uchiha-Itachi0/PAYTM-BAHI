@@ -76,6 +76,9 @@ class WaitingOut(BaseModel):
     display_name: str
     tag: str | None
     scanned_at: datetime
+    #: Seconds since he scanned, by the server's clock. The browser's clock may
+    #: disagree with the product's (the demo pins the date), so it never does this sum.
+    waited_s: int
     first_time: bool
 
 

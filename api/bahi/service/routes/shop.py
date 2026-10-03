@@ -40,7 +40,8 @@ def get_book(shop_id: str, request: Request, con: Con) -> Response:
 def get_counter(shop_id: str, request: Request, con: Con) -> Response:
     """A2. Everyone who scanned the udhaar QR in the last three minutes."""
     ledger.shop(con, shop_id)
-    waiting = scans.waiting(con, shop_id, clock.now())
+    now = clock.now()
+    waiting = scans.waiting(con, shop_id, now)
     body = CounterOut(
         shop_id=shop_id,
         waiting=[
@@ -50,6 +51,7 @@ def get_counter(shop_id: str, request: Request, con: Con) -> Response:
                 display_name=w.display_name,
                 tag=w.tag,
                 scanned_at=w.scanned_at,
+                waited_s=int((now - w.scanned_at).total_seconds()),
                 first_time=w.first_time,
             )
             for w in waiting

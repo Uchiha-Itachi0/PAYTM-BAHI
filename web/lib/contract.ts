@@ -1,56 +1,18 @@
 /**
- * The shape of contract/shop.json: the shopkeeper's book.
+ * Checks a shop book before the UI draws it.
  *
- * Written by hand for now, because the read API does not exist yet. When it
- * lands (BIT-8 B8) these types are generated from its OpenAPI spec and this file
- * shrinks to the parser below.
- *
- * `parseShop` checks the file instead of trusting it. A status the UI does not
- * know, or money that is not whole paise, fails loudly at load rather than
- * rendering something nobody designed.
+ * The types are generated from the API (lib/api/types.ts). This checks the values
+ * the types cannot: a status the UI has no words for, or money that is not whole
+ * paise, fails loudly here rather than rendering something nobody designed.
  */
 
-import { CHIPS, type Chip } from "./chip";
+import type { ShopBook } from "./api/types";
+import { CHIPS } from "./chip";
 
-export type Joined = "linked" | "invited" | "name_only";
-
-export interface Rhythm {
-  n: number;
-  median_gap: number | null;
-  max_gap: number | null;
-  last_paid: string | null;
-}
-
-export interface BookLine {
-  customer_id: string;
-  display_name: string;
-  tag: string | null;
-  joined: Joined;
-  balance_paise: number;
-  day: number;
-  chip: Chip;
-  rhythm: Rhythm;
-}
-
-export interface Book {
-  customer_count: number;
-  invited_count: number;
-  owing_count: number;
-  outstanding_paise: number;
-  lines: BookLine[];
-}
-
-export interface Shop {
-  synthetic: boolean;
-  today: string;
-  shop: { id: string; name: string; locality: string };
-  book: Book;
-}
-
-const JOINED: readonly Joined[] = ["linked", "invited", "name_only"];
+const JOINED = ["linked", "invited", "name_only"] as const;
 
 function fail(what: string): never {
-  throw new Error(`contract/shop.json: ${what}`);
+  throw new Error(`shop book: ${what}`);
 }
 
 function count(v: unknown, what: string): number {
@@ -60,8 +22,8 @@ function count(v: unknown, what: string): number {
   return v;
 }
 
-export function parseShop(raw: unknown): Shop {
-  const data = raw as Shop;
+export function parseShop(raw: unknown): ShopBook {
+  const data = raw as ShopBook;
   if (!data?.book || !Array.isArray(data.book.lines)) fail("no book");
   if (data.synthetic !== true) fail("demo data must be marked synthetic");
 
