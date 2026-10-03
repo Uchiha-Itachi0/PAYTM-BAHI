@@ -13,6 +13,8 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 
+import { newId } from "@/lib/id";
+
 export interface Person {
   id: string;
   name: string;
@@ -62,7 +64,7 @@ export function usePerson(): Person | null | undefined {
 }
 
 export function newPerson(name: string): Person {
-  const p = { id: crypto.randomUUID(), name: name.trim() };
+  const p = { id: newId(), name: name.trim() };
   write(JSON.stringify(p));
   return p;
 }
