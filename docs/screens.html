@@ -234,6 +234,18 @@ h2{font-size:clamp(22px,2.8vw,29px);font-weight:800;letter-spacing:-.025em;margi
 .dots i{width:8px;height:8px;border-radius:50%;background:var(--pt-cyan);display:block}
 .dots i:nth-child(2){opacity:.6}.dots i:nth-child(3){opacity:.3}
 .textlink{text-align:center;font-size:14px;font-weight:800;color:#0077a8;padding:6px 0;letter-spacing:-.01em}
+.sending{position:relative;overflow:hidden;background:var(--pt-navy);color:#fff;border-radius:24px;
+  padding:13px 18px;display:flex;justify-content:space-between;align-items:center;font-size:15px;letter-spacing:-.015em}
+.sending b{font-weight:800;position:relative}
+.sending span:last-child{font-weight:700;opacity:.8;position:relative;font-variant-numeric:tabular-nums}
+.sending .bar{position:absolute;left:0;top:0;bottom:0;width:38%;background:rgba(255,255,255,.14)}
+.sounds{width:100%;border-collapse:collapse;background:var(--sheet);border:1px solid var(--rule);border-radius:14px;overflow:hidden;font-size:13.5px}
+.sounds th{text-align:left;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);padding:12px 16px;border-bottom:1px solid var(--rule)}
+.sounds td{padding:11px 16px;border-bottom:1px solid var(--rule);color:var(--muted);vertical-align:top}
+.sounds tr:last-child td{border-bottom:0}
+.sounds td:first-child{color:var(--ink);font-weight:700}
+.tablewrap{overflow-x:auto}
 .src{font-style:normal;font-weight:600;font-size:11px;color:var(--pt-sub);margin-left:5px}
 
 .tick{width:56px;height:56px;border-radius:50%;background:#e2f6ea;color:#00a550;display:grid;
@@ -419,21 +431,21 @@ footer b{color:var(--ink);font-weight:700}
           </div>
           <div class="mic" style="padding:15px 15px 14px">
             <div class="wave" style="height:26px;margin-bottom:8px"><i style="height:8px"></i><i style="height:18px"></i><i style="height:26px"></i><i style="height:14px"></i><i style="height:22px"></i><i style="height:10px"></i><i style="height:17px"></i></div>
-            <div class="said">"Do sau"</div>
-            <div class="hint">Say the amount, or a name first: "Kavita, teen sau"</div>
+            <div class="said">"Sharma, do sau"</div>
+            <div class="hint">Soundbox repeats: "do sau"</div>
           </div>
           <div class="pcard tight">
-            <div class="kv"><span>For</span><span>Sharma<em class="src">picked</em></span></div>
+            <div class="kv"><span>For</span><span>Sharma<em class="src">from voice</em></span></div>
             <div class="kv"><span>Amount</span><span>₹200<em class="src">from voice</em></span></div>
           </div>
-          <button class="btn navy">Send to Sharma</button>
-          <div class="btnrow"><button class="btn out">Say it again</button><button class="btn out">Type it</button></div>
+          <div class="sending"><span class="bar"></span><b>Sending to Sharma</b><span>3s</span></div>
+          <div class="btnrow"><button class="btn out">Cancel</button><button class="btn out">Type it</button></div>
         </div>
       </div>
       <div class="cap">
         <h4>A2 · Who's at the counter, then how much</h4>
-        <p>Everyone who scanned in the last three minutes is listed, oldest first, and the first is already picked. Tap someone else, or say the name first: it only has to match the two people standing there, not sixty in the book. Pick the wrong one and his phone asks him to confirm, so he says no.</p>
-        <p class="note">A scan records nothing and expires in 3 minutes. The Soundbox chimes; it never speaks a name.</p>
+        <p>Everyone who scanned in the last three minutes is listed. With one person waiting, "do sau" is enough. With several, he says the name first, matched only against the people standing there. If he gives no name, the Soundbox asks "kiske liye?"; it never guesses by queue order.</p>
+        <p class="note">The Soundbox repeats the amount so he can check it by ear, then sends after 3 seconds unless he says "galat". It never says a name.</p>
       </div>
     </div>
 
@@ -795,6 +807,23 @@ footer b{color:var(--ink);font-weight:700}
     <div class="step"><div class="t">0:14 → 0:24</div><h4>They confirm, right there</h4><p>"Yes, I owe ₹200" is on the phone still in their hand. Both ledgers update inside one 2-second tick.</p><div class="dev">Both · B1 + A1</div></div>
     <div class="step"><div class="t">0:24 → 0:40</div><h4>Tomorrow's list</h4><p>"Four of thirty-eight. Sharma is on day 4 and he pays on day 9, so we leave him alone."</p><div class="dev">Laptop · A3</div></div>
   </div>
+</section>
+
+<!-- ══ F · SOUNDBOX ═════════════════════════════════════════════════ -->
+<section>
+  <div class="shead"><span class="snum">F</span><h2>What the Soundbox says</h2></div>
+  <p class="sub">The Soundbox holds no data. It plays one of these events and records the shopkeeper's voice; the server decides everything. It never says a customer's name. It repeats the amount, because a wrong amount in the customer's favour is the one mistake the customer won't catch.</p>
+  <div class="tablewrap"><table class="sounds">
+    <tr><th>What happened</th><th>Sound</th><th>Words</th></tr>
+    <tr><td>Someone scanned the udhaar QR</td><td>Chime</td><td>—</td></tr>
+    <tr><td>Amount heard, and it's clear who</td><td>—</td><td>The amount repeated: "do sau"</td></tr>
+    <tr><td>Only an amount, several people waiting</td><td>Question tone</td><td>"Kiske liye?"</td></tr>
+    <tr><td>The name matches nobody, or two people</td><td>Question tone</td><td>"Naam phir se boliye"</td></tr>
+    <tr><td>He says "galat" within 3 seconds</td><td>Cancel tone</td><td>—</td></tr>
+    <tr><td>The customer confirmed</td><td>Done tone</td><td>"Pakka"</td></tr>
+    <tr><td>The customer said "That's not right"</td><td>Low tone</td><td>"Phone dekhiye"</td></tr>
+    <tr><td>A scan expired unused</td><td>Silence</td><td>—</td></tr>
+  </table></div>
 </section>
 
 <footer><b>A build sketch, not final visual design.</b> Spacing, radii, weights and the colour roles here are the ones to copy. Illustrated icons, empty states and error states are still to do. All figures are synthetic demo data for one seeded shop.</footer>
