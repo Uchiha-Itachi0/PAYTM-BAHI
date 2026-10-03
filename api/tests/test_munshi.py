@@ -1162,3 +1162,19 @@ def test_the_reply_is_said_in_its_own_language() -> None:
     assert language_of("சர்மா, இருநூறு ரூபாய், சரியா?") == "ta-IN"
     assert language_of("Sharma, two hundred rupees udhaar, okay?") == "en-IN"
     assert language_of("₹200") == "hi-IN"
+
+
+def test_a_whole_name_finds_that_person_not_everyone_with_the_first_name() -> None:
+    book = [
+        Person("a1", "Anubhav", "Room 311, B wing", "अनुभव", "रूम 311, बी विंग"),
+        Person("a2", "Anubhav Jain", "Medical shop", "अनुभव जैन", "मेडिकल शॉप"),
+        Person("a3", "Anubhav Shukla", "Room 1006, B wing", "अनुभव शुक्ला", None),
+    ]
+
+    def refs(name: str, description: str | None = None) -> list[str]:
+        return [f.person.ref for f in find(book, name, description).found]
+
+    assert refs("अनुभव शुक्ला") == ["a3"]
+    # Even with the new address he is moving him to, which another Anubhav has.
+    assert refs("अनुभव शुक्ला", "Room 311, C wing") == ["a3"]
+    assert refs("अनुभव") == ["a1", "a2", "a3"], "the first name alone: all three"
