@@ -8,15 +8,20 @@ import { formatPaise } from "@/lib/money";
  *
  * A strong match for an ordinary amount goes in three seconds unless he says or
  * taps no. A card with reasons (a name that only sounded close, a large amount,
- * one far above what this customer usually takes) waits for a clear हाँ.
+ * one far above what this customer usually takes, someone new to the book)
+ * waits for a clear हाँ.
+ *
+ * Someone not in the book yet is on the card as "New": his yes adds them by name
+ * only, then writes their first udhaar if there is one.
  */
 
-const KIND = { udhaar: "उधार", payment: "जमा" } as const;
+const KIND = { udhaar: "उधार", payment: "जमा", customer: "नया ग्राहक" } as const;
 
 const REASON: Record<MunshiCard["reasons"][number], string> = {
   weak_match: "The name only sounded close",
   large: "A large amount",
   unusual: "Much more than they usually take",
+  new_customer: "Not in your book yet: added by name only",
 };
 
 export function EntryCard({
@@ -44,13 +49,20 @@ export function EntryCard({
         <div className="min-w-0">
           <p className="truncate text-[16px] font-extrabold tracking-[-0.02em]">
             {card.display_name}
+            {card.new ? (
+              <span className="ml-2 rounded-md bg-cyan px-1.5 py-0.5 align-middle text-[10.5px] font-extrabold">
+                New
+              </span>
+            ) : null}
           </p>
           {card.tag ? <p className="text-[12px] font-semibold opacity-80">{card.tag}</p> : null}
         </div>
         <div className="text-right">
-          <p className="text-[26px] font-extrabold leading-none tracking-[-0.035em] tabular-nums">
-            {formatPaise(card.amount_paise)}
-          </p>
+          {card.amount_paise !== null ? (
+            <p className="text-[26px] font-extrabold leading-none tracking-[-0.035em] tabular-nums">
+              {formatPaise(card.amount_paise)}
+            </p>
+          ) : null}
           <p className="mt-1 text-[12px] font-extrabold opacity-80">{KIND[card.kind]}</p>
         </div>
       </div>
@@ -102,9 +114,13 @@ export function EntryCard({
 
       {saved ? (
         <p className="mt-2.5 text-[13px] font-extrabold">
-          {card.on_bahi
-            ? `Written · sent to ${card.display_name}'s phone to confirm`
-            : `Written · ${card.display_name} isn't on BAHI, so nothing was sent`}
+          {card.kind === "customer"
+            ? `Added to your book · ${card.display_name}, by name only`
+            : card.on_bahi
+              ? `Written · sent to ${card.display_name}'s phone to confirm`
+              : card.new
+                ? `Added by name and written · nothing is sent to someone with no phone`
+                : `Written · ${card.display_name} isn't on BAHI, so nothing was sent`}
         </p>
       ) : null}
       {gone ? <p className="mt-2 text-[12.5px] font-bold">Taken away. Nothing was written.</p> : null}

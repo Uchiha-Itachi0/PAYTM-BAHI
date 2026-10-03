@@ -69,7 +69,8 @@ export function newPerson(name: string): Person {
   return p;
 }
 
-export function usePersonAs(p: Person): void {
+/** This phone is now this person's: the demo's "whose phone is this?". */
+export function becomePerson(p: Person): void {
   write(JSON.stringify(p));
 }
 

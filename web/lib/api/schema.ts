@@ -91,7 +91,11 @@ export interface paths {
          */
         get: operations["list_customers_shops__shop_id__customers_get"];
         put?: never;
-        post?: never;
+        /**
+         * Add By Name
+         * @description A4. No phone: kept by name only, like the notebook.
+         */
+        post: operations["add_by_name_shops__shop_id__customers_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -112,6 +116,48 @@ export interface paths {
          * @description Record udhaar: for a scan at the counter, or a customer from the book.
          */
         post: operations["record_entry_shops__shop_id__entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find Account
+         * @description A4. The Paytm account behind a mobile number or UPI ID, and whether he is
+         *     already in this book. The number is only used to look, never kept.
+         */
+        get: operations["find_account_shops__shop_id__accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/customers/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite
+         * @description A4. Send invite: he accepts on his own phone, and nothing is recorded
+         *     against him until he does.
+         */
+        post: operations["invite_shops__shop_id__customers_invite_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -501,10 +547,426 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Inbox
+         * @description C1. Every thread, the latest first, with what is unread.
+         */
+        get: operations["get_inbox_shops__shop_id__inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/inbox/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read All
+         * @description Mark all read.
+         */
+        post: operations["read_all_shops__shop_id__inbox_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/customers/{customer_id}/thread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shop Thread
+         * @description C3. His thread, as the shop sees it.
+         */
+        get: operations["get_shop_thread_shops__shop_id__customers__customer_id__thread_get"];
+        put?: never;
+        /**
+         * Shop Says
+         * @description The shopkeeper writes to him. Words only: a message carries no amount.
+         */
+        post: operations["shop_says_shops__shop_id__customers__customer_id__thread_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/customers/{customer_id}/thread/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Shop Thread */
+        post: operations["read_shop_thread_shops__shop_id__customers__customer_id__thread_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/customers/{customer_id}/thread/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest
+         * @description Replies the munshi would send, in his language. Only suggestions: the
+         *     shopkeeper taps one to send it. None when voice is off.
+         */
+        post: operations["suggest_shops__shop_id__customers__customer_id__thread_suggest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/entries/{entry_id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct
+         * @description C2. The right amount for an entry he says is wrong: a new entry, which he
+         *     confirms on his own phone. The disputed one is kept, and counts for nothing.
+         */
+        post: operations["correct_shops__shop_id__entries__entry_id__correct_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Events
+         * @description V7. What happened since `after`: for the Soundbox's tones and the screen's
+         *     news. The first call (no `after`) only says what time it is.
+         */
+        get: operations["get_events_shops__shop_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{person_id}/shops/{shop_id}/thread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get My Thread
+         * @description C2. His thread with one shop.
+         */
+        get: operations["get_my_thread_people__person_id__shops__shop_id__thread_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{person_id}/shops/{shop_id}/thread/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read My Thread */
+        post: operations["read_my_thread_people__person_id__shops__shop_id__thread_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/thread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Customer Says
+         * @description He writes to the shop.
+         */
+        post: operations["customer_says_shops__shop_id__thread_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{person_id}/udhaar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Udhaar
+         * @description B2. What he owes across every shop, each entry, and invitations waiting.
+         */
+        get: operations["my_udhaar_people__person_id__udhaar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay
+         * @description B3. He paid this shop everything he owes it, by UPI. Paytm moves the
+         *     money; the book records which entries it paid, and the shop is told.
+         */
+        post: operations["pay_shops__shop_id__pay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/invite/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept
+         * @description He said yes to the shop's invite, on his own phone.
+         */
+        post: operations["accept_shops__shop_id__invite_accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/invite/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline */
+        post: operations["decline_shops__shop_id__invite_decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/demo/phones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Phones
+         * @description Whose phone the customer side can be, for the demo. Synthetic people.
+         */
+        get: operations["demo_phones_demo_phones_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/tonight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tonight
+         * @description A3. Tomorrow's list, as the book stands now. Writes nothing.
+         */
+        get: operations["get_tonight_shops__shop_id__tonight_get"];
+        put?: never;
+        /**
+         * Run Tonight
+         * @description The 11 pm run: works out the list and has the munshi write each reminder
+         *     not yet written. Running it again changes nothing already written.
+         */
+        post: operations["run_tonight_shops__shop_id__tonight_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/tonight/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Due
+         * @description Sends the reminders whose hour has come. n8n calls this (V8a).
+         */
+        post: operations["send_due_shops__shop_id__tonight_send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/tonight/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Now
+         * @description The demo's fast-forward: every planned reminder goes now.
+         */
+        post: operations["send_now_shops__shop_id__tonight_send_now_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/reminders/{reminder_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop
+         * @description The shopkeeper said no to this one.
+         */
+        post: operations["stop_shops__shop_id__reminders__reminder_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/reminders/{reminder_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume
+         * @description He changed his mind: it goes after all.
+         */
+        post: operations["resume_shops__shop_id__reminders__reminder_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AccountOut
+         * @description The Paytm account behind a number or UPI ID. The number is not kept.
+         */
+        AccountOut: {
+            /** Person Id */
+            person_id: string;
+            /** Name */
+            name: string;
+            /** Here */
+            here: ("linked" | "invited" | "name_only") | null;
+        };
         /**
          * AnswerIn
          * @description His answer to "किसके लिए?", typed.
@@ -600,29 +1062,28 @@ export interface components {
              * Format: uuid
              */
             draft_id: string;
-            /**
-             * Customer Id
-             * Format: uuid
-             */
-            customer_id: string;
+            /** Customer Id */
+            customer_id: string | null;
             /** Display Name */
             display_name: string;
             /** Tag */
             tag: string | null;
             /** Amount Paise */
-            amount_paise: number;
+            amount_paise: number | null;
             /**
              * Kind
              * @enum {string}
              */
-            kind: "udhaar" | "payment";
+            kind: "udhaar" | "payment" | "customer";
+            /** New */
+            new: boolean;
             /**
              * Status
              * @enum {string}
              */
             status: "shown" | "saved" | "replaced" | "cancelled";
             /** Reasons */
-            reasons: ("weak_match" | "large" | "unusual")[];
+            reasons: ("weak_match" | "large" | "unusual" | "new_customer")[];
             /** Spoken Text */
             spoken_text: string | null;
             /** Entry Id */
@@ -654,6 +1115,11 @@ export interface components {
             /** Shows */
             shows: string;
         };
+        /** CorrectIn */
+        CorrectIn: {
+            /** Amount Paise */
+            amount_paise: number;
+        };
         /**
          * CounterOut
          * @description Everyone at the counter, oldest scan first.
@@ -677,6 +1143,23 @@ export interface components {
              * @enum {string}
              */
             joined: "linked" | "invited" | "name_only";
+        };
+        /** CustomerSayIn */
+        CustomerSayIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Text */
+            text: string;
+        };
+        /** DemoPhoneOut */
+        DemoPhoneOut: {
+            /** Person Id */
+            person_id: string;
+            /** Name */
+            name: string;
         };
         /** DisputeIn */
         DisputeIn: {
@@ -724,6 +1207,39 @@ export interface components {
             acknowledged_at: string | null;
             /** Button */
             button: string;
+        };
+        /**
+         * EventOut
+         * @description Something the shop should hear about. The Soundbox plays a tone, or says
+         *     an amount; it never says a name. The screen shows who.
+         */
+        EventOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "scanned" | "confirmed" | "disputed" | "paid" | "message";
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Customer Id */
+            customer_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Amount Paise */
+            amount_paise: number | null;
+        };
+        /** EventsOut */
+        EventsOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /** Events */
+            events: components["schemas"]["EventOut"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -789,6 +1305,74 @@ export interface components {
             /** Who */
             who: components["schemas"]["PickedOut"] | components["schemas"]["AskOut"];
         };
+        /** InboxOut */
+        InboxOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Rows */
+            rows: components["schemas"]["InboxRowOut"][];
+            /** Unread */
+            unread: number;
+        };
+        /** InboxRowOut */
+        InboxRowOut: {
+            /** Customer Id */
+            customer_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Tag */
+            tag: string | null;
+            /**
+             * Joined
+             * @enum {string}
+             */
+            joined: "linked" | "invited" | "name_only";
+            /**
+             * Author
+             * @enum {string}
+             */
+            author: "shop" | "customer" | "bahi";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "entry" | "reminder";
+            /** Body */
+            body: string;
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            entry: components["schemas"]["ThreadEntryOut"] | null;
+            /** Unread */
+            unread: number;
+            /** Needs Reply */
+            needs_reply: boolean;
+            /** Reminder At */
+            reminder_at: string | null;
+        };
+        /** InviteIn */
+        InviteIn: {
+            /** Query */
+            query: string;
+            /** Tag */
+            tag?: string | null;
+        };
+        /** InviteOut */
+        InviteOut: {
+            shop: components["schemas"]["ShopOut"];
+            /** Display Name */
+            display_name: string;
+            /**
+             * Invited At
+             * Format: date-time
+             */
+            invited_at: string;
+        };
         /**
          * JoinIn
          * @description He scanned the udhaar QR. A first-timer tells us the name to use.
@@ -836,6 +1420,31 @@ export interface components {
             chip: "on_rhythm" | "changed" | "not_confirmed" | "new";
             rhythm: components["schemas"]["RhythmOut"];
         };
+        /** MessageOut */
+        MessageOut: {
+            /** Id */
+            id: string;
+            /**
+             * Author
+             * @enum {string}
+             */
+            author: "shop" | "customer" | "bahi";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "entry" | "reminder";
+            /** Body */
+            body: string;
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            entry: components["schemas"]["ThreadEntryOut"] | null;
+            /** Card */
+            card: boolean;
+        };
         /**
          * MunshiIn
          * @description His words, typed. No conversation_id: a new conversation.
@@ -870,6 +1479,67 @@ export interface components {
             /** Finished */
             finished: boolean;
         };
+        /** MyShopOut */
+        MyShopOut: {
+            shop: components["schemas"]["ShopOut"];
+            /** Customer Id */
+            customer_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Balance Paise */
+            balance_paise: number;
+            /** Day */
+            day: number | null;
+            /** Entries */
+            entries: components["schemas"]["ThreadEntryOut"][];
+            /** Unread */
+            unread: number;
+        };
+        /** MyUdhaarOut */
+        MyUdhaarOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Person Id */
+            person_id: string;
+            /** Total Paise */
+            total_paise: number;
+            /** Shops */
+            shops: components["schemas"]["MyShopOut"][];
+            /** Invites */
+            invites: components["schemas"]["InviteOut"][];
+        };
+        /** NameOnlyIn */
+        NameOnlyIn: {
+            /** Display Name */
+            display_name: string;
+            /** Tag */
+            tag?: string | null;
+        };
+        /** PaidOut */
+        PaidOut: {
+            shop: components["schemas"]["ShopOut"];
+            /** Amount Paise */
+            amount_paise: number;
+            /**
+             * Paid At
+             * Format: date-time
+             */
+            paid_at: string;
+            /**
+             * Method
+             * @constant
+             */
+            method: "upi";
+            /** Settled In */
+            settled_in: number;
+            /** Entry Ids */
+            entry_ids: string[];
+            /** Elsewhere */
+            elsewhere: components["schemas"]["MyShopOut"][];
+        };
         /** PersonIn */
         PersonIn: {
             /**
@@ -903,6 +1573,35 @@ export interface components {
             how: "only_one" | "at_counter" | "in_book";
             person: components["schemas"]["PersonOut"];
         };
+        /** PlanOut */
+        PlanOut: {
+            /** Customer Id */
+            customer_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Tag */
+            tag: string | null;
+            /**
+             * Joined
+             * @enum {string}
+             */
+            joined: "linked" | "invited" | "name_only";
+            /** Balance Paise */
+            balance_paise: number;
+            /** Day */
+            day: number;
+            rhythm: components["schemas"]["RhythmOut"];
+            /** Send */
+            send: boolean;
+            /**
+             * Why
+             * @enum {string}
+             */
+            why: "past_longest_gap" | "inside_gap" | "not_confirmed" | "disputed" | "too_new" | "no_phone" | "reminded";
+            /** Reminded On */
+            reminded_on: string | null;
+            reminder: components["schemas"]["ReminderOut"] | null;
+        };
         /**
          * ReadbackOut
          * @description The amount said back. Never a name: the Soundbox says only the amount.
@@ -929,6 +1628,36 @@ export interface components {
             /** Spoken Text */
             spoken_text?: string | null;
         };
+        /** ReminderOut */
+        ReminderOut: {
+            /** Id */
+            id: string;
+            /**
+             * Send At
+             * Format: date-time
+             */
+            send_at: string;
+            /** Body */
+            body: string;
+            /**
+             * Written
+             * @enum {string}
+             */
+            written: "munshi" | "words";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "planned" | "stopped" | "sent";
+        };
+        /**
+         * RepliesOut
+         * @description Replies the munshi suggests. Only offered: nothing is sent until he taps.
+         */
+        RepliesOut: {
+            /** Replies */
+            replies: string[];
+        };
         /** RhythmOut */
         RhythmOut: {
             /** N */
@@ -940,6 +1669,11 @@ export interface components {
             /** Last Paid */
             last_paid: string | null;
         };
+        /** SayIn */
+        SayIn: {
+            /** Text */
+            text: string;
+        };
         /** ScanOut */
         ScanOut: {
             /** Scan Id */
@@ -950,6 +1684,11 @@ export interface components {
              */
             state: "waiting" | "recorded" | "left" | "expired";
             entry: components["schemas"]["EntryOut"] | null;
+        };
+        /** SentOut */
+        SentOut: {
+            /** Sent */
+            sent: number;
         };
         /**
          * ShopBookOut
@@ -983,6 +1722,103 @@ export interface components {
             name: string;
             /** Locality */
             locality: string;
+        };
+        /**
+         * ThreadEntryOut
+         * @description An entry, as its card in a thread shows it: now, not when it was posted.
+         */
+        ThreadEntryOut: {
+            /** Id */
+            id: string;
+            /** Amount Paise */
+            amount_paise: number;
+            /** Paid Paise */
+            paid_paise: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "recorded" | "confirmed" | "disputed" | "corrected" | "settled";
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Note */
+            note: string | null;
+            /** Corrects Entry Id */
+            corrects_entry_id: string | null;
+            /** Corrects Amount Paise */
+            corrects_amount_paise: number | null;
+            /** Disputed At */
+            disputed_at: string | null;
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+            /** Last Paid At */
+            last_paid_at: string | null;
+            /** Last Method */
+            last_method: ("upi" | "cash") | null;
+            /** Expired */
+            expired: boolean;
+            /** Button */
+            button: string;
+        };
+        /**
+         * ThreadOut
+         * @description One shop and one customer, from either side.
+         */
+        ThreadOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Thread Id */
+            thread_id: string | null;
+            /** Customer Id */
+            customer_id: string;
+            shop: components["schemas"]["ShopOut"];
+            /** Display Name */
+            display_name: string;
+            /** Tag */
+            tag: string | null;
+            /**
+             * Joined
+             * @enum {string}
+             */
+            joined: "linked" | "invited" | "name_only";
+            /** Balance Paise */
+            balance_paise: number;
+            /** Day */
+            day: number | null;
+            /** Messages */
+            messages: components["schemas"]["MessageOut"][];
+            /** Reminder At */
+            reminder_at: string | null;
+        };
+        /** TonightOut */
+        TonightOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /**
+             * For Day
+             * Format: date
+             */
+            for_day: string;
+            /**
+             * Worked Out At
+             * Format: date-time
+             */
+            worked_out_at: string;
+            /** Owing Count */
+            owing_count: number;
+            /** Sending Count */
+            sending_count: number;
+            /** Plans */
+            plans: components["schemas"]["PlanOut"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -1159,6 +1995,41 @@ export interface operations {
             };
         };
     };
+    add_by_name_shops__shop_id__customers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NameOnlyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     record_entry_shops__shop_id__entries_post: {
         parameters: {
             query?: never;
@@ -1181,6 +2052,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    find_account_shops__shop_id__accounts_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_shops__shop_id__customers_invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerOut"];
                 };
             };
             /** @description Validation Error */
@@ -1792,6 +2731,702 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_inbox_shops__shop_id__inbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_all_shops__shop_id__inbox_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shop_thread_shops__shop_id__customers__customer_id__thread_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_says_shops__shop_id__customers__customer_id__thread_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SayIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_shop_thread_shops__shop_id__customers__customer_id__thread_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_shops__shop_id__customers__customer_id__thread_suggest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepliesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_shops__shop_id__entries__entry_id__correct_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_events_shops__shop_id__events_get: {
+        parameters: {
+            query?: {
+                after?: string | null;
+            };
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_thread_people__person_id__shops__shop_id__thread_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_my_thread_people__person_id__shops__shop_id__thread_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    customer_says_shops__shop_id__thread_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerSayIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_udhaar_people__person_id__udhaar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyUdhaarOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pay_shops__shop_id__pay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaidOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_shops__shop_id__invite_accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_shops__shop_id__invite_decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_phones_demo_phones_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoPhoneOut"][];
+                };
+            };
+        };
+    };
+    get_tonight_shops__shop_id__tonight_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TonightOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_tonight_shops__shop_id__tonight_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TonightOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_due_shops__shop_id__tonight_send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_now_shops__shop_id__tonight_send_now_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_shops__shop_id__reminders__reminder_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_shops__shop_id__reminders__reminder_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderOut"];
+                };
             };
             /** @description Validation Error */
             422: {
