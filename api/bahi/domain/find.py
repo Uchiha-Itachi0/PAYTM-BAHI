@@ -9,9 +9,10 @@ well each one fits. It never picks: the munshi picks, or asks.
   way `who` does. 85 or more is the same name; 70 to 84 only sounds a little like
   it, and the munshi must say the name back.
 - A description is compared word by word with his tag, in both scripts: a word
-  fits if it is the same word, or (four letters or more) sounds the same. "B
-  wing" fits every B wing customer fully and every A wing one only half, so only
-  the B wing ones come back.
+  fits if it is the same word, or (four letters or more) sounds the same. Each
+  word counts for what it tells apart in this book: "wing", on everyone with a
+  wing, counts for little; "B" or "19" for a lot. So "B wing" fits the B wing
+  customers fully, and "V wing" (a misheard B) fits nobody, not every wing.
 - Name and description together: evidence adds up. A full description beats a
   faint name, so "दूध वाले भैया" said as a name with "Milk van" finds Yadav, not
   whoever "भैया" happens to sound like.
@@ -21,6 +22,7 @@ Only the best-fitting group comes back, with a note when one half found nobody.
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -69,20 +71,34 @@ def _words(text: str | None) -> list[str]:
     return [w for w in re.split(r"[\s,.;:()/]+", (text or "").lower()) if w]
 
 
-def _fits(description: str, p: Person) -> float:
-    said = _words(description)
+def _has(w: str, p: Person) -> bool:
+    """His tag has the word: the same word, or one that sounds the same."""
+    tag = set(_words(p.tag)) | set(_words(p.tag_hi))
+    if w in tag:
+        return True
+    k = key(w)
+    return len(k) >= SOUNDS_FROM and any(
+        ratio(k, key(t)) >= STRONG for t in tag if len(key(t)) >= SOUNDS_FROM
+    )
+
+
+def _weights(said: list[str], book: Sequence[Person]) -> dict[str, float]:
+    """How much each word tells people apart in this book (inverse document
+    frequency): a word on nobody's tag counts most, one on everyone's almost
+    nothing."""
+    n = len(book)
+    return {
+        w: math.log((n + 1) / (sum(1 for p in book if _has(w, p)) + 0.5)) for w in said
+    }
+
+
+def _fits(said: list[str], weights: dict[str, float], p: Person) -> float:
     if not said:
         return 0.0
-    tag = set(_words(p.tag)) | set(_words(p.tag_hi))
-    tag_keys = {key(t) for t in tag if len(key(t)) >= SOUNDS_FROM}
-
-    def fits(w: str) -> bool:
-        if w in tag:
-            return True
-        k = key(w)
-        return len(k) >= SOUNDS_FROM and any(ratio(k, t) >= STRONG for t in tag_keys)
-
-    return sum(1 for w in said if fits(w)) / len(said)
+    total = sum(weights[w] for w in said)
+    if total <= 0:  # only words everyone has: each counts the same
+        return sum(1 for w in said if _has(w, p)) / len(said)
+    return sum(weights[w] for w in said if _has(w, p)) / total
 
 
 def _named(name: str, p: Person) -> float:
@@ -98,8 +114,10 @@ def find(book: Sequence[Person], name: str | None, description: str | None) -> S
         return Search((), "give a name or a description")
 
     named = {p.ref: s for p in book if name and (s := _named(name, p)) >= FAINT}
+    words = _words(description)
+    weights = _weights(words, book)
     fitting = {
-        p.ref: f for p in book if description and (f := _fits(description, p)) >= HALF
+        p.ref: f for p in book if words and (f := _fits(words, weights, p)) >= HALF
     }
     if fitting:
         best = max(fitting.values())

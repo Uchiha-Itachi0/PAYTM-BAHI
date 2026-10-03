@@ -744,6 +744,14 @@ def test_a_description_finds_everyone_it_fits_and_only_them() -> None:
     assert refs(None, "Room 19, B wing") == ["sharma"]
 
 
+def test_a_place_nobody_lives_in_finds_nobody_not_everyone_with_a_wing() -> None:
+    # "वी-विंग", a misheard B wing: "wing" alone tells nobody apart.
+    assert refs(None, "V wing") == []
+    assert refs("V", "V wing") == []
+    assert refs(None, "B wing") == ["sharma", "asha"]
+    assert refs(None, "Room 4, A wing") == ["rekha"]
+
+
 def test_a_place_given_as_a_name_is_read_as_a_place() -> None:
     assert refs("बी विंग", None) == ["sharma", "asha"]
     assert refs("C wing", None) == ["pawar"]

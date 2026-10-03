@@ -457,8 +457,10 @@ class Desk:
             out["next"] = "Two fit: name both with what tells them apart, and ask which."
         elif not found:
             out["next"] = (
-                "Nobody fits. Say so plainly and ask who he means. If he says they "
-                "are new, offer to add them with propose_new_customer."
+                "Nobody fits. Say so plainly and ask who he means. Speech can "
+                "mishear a letter or a number (वी for बी): if a description in the "
+                "book sounds like his words, ask whether he meant that one. If he "
+                "says they are new, offer to add them with propose_new_customer."
             )
         elif left:
             out["next"] = (
