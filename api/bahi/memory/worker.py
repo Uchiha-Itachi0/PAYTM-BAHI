@@ -4,7 +4,8 @@
    promises to pay by (kept with his own words) and one line worth remembering
    (a complaint, a hardship, a request), each with the message it came from.
 2. Work out each customer's payment pattern again (pure arithmetic, once a
-   minute) and keep it as a sentence where it changed.
+   minute) and keep it as a sentence where it changed, for Cognee. With Cognee
+   off (COGNEE=off, the deployed server) only step 1 runs.
 3. Give each new memory and changed pattern to Cognee, as sentences that say who
    and when, so a question can find them by meaning later.
 4. Take each forgotten memory, and each pattern's old copy, out of Cognee.
@@ -170,12 +171,14 @@ def run_once() -> int:
     with db.connect() as con:
         done += read_chat(con, clock.now())
         con.commit()
+        memory = cognee_client.get()
+        if memory is None:  # the sentences are only for Cognee
+            return done
         if time.monotonic() - _profiled_at >= PROFILE_EVERY_S:
             write_profiles(con, clock.now())
             con.commit()
             _profiled_at = time.monotonic()
-        memory = cognee_client.get()
-        if memory is None or time.monotonic() < _quiet_until:
+        if time.monotonic() < _quiet_until:
             return done
         try:
             done += store(con, memory, clock.now())

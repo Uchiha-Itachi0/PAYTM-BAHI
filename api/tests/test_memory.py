@@ -293,6 +293,49 @@ def test_too_little_history_makes_no_guess() -> None:
     assert (p.expect_from, p.now) == (None, "unknown")
 
 
+def test_with_cognee_off_it_never_loads_and_only_the_chat_is_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The deployed server: COGNEE=off, and Cognee not installed. Promises in chat
+    # are still read (Tonight waits on them); nothing is written for Cognee.
+    from contextlib import nullcontext
+
+    from bahi.memory import cognee_client, settings
+    from bahi.store import db as store_db
+
+    for k in ("MEMORY_DATABASE_URL", "OPENAI_API_KEY", "SARVAM_API_KEY"):
+        monkeypatch.setenv(k, "not-real")
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setattr(settings, "installed", lambda: True)
+    assert settings.enabled()  # everything it needs, on the laptop
+    monkeypatch.setattr(settings, "installed", lambda: False)
+    assert not settings.enabled()
+    monkeypatch.setattr(settings, "installed", lambda: True)
+    monkeypatch.setenv("COGNEE", "off")
+    assert not settings.enabled() and cognee_client.get() is None
+
+    class Con:
+        def commit(self) -> None:
+            return None
+
+    calls: list[str] = []
+
+    def read_chat(con: Any, now: datetime) -> int:
+        calls.append("read the chat")
+        return 0
+
+    def write_profiles(con: Any, now: datetime) -> int:
+        calls.append("wrote patterns for Cognee")
+        return 0
+
+    monkeypatch.setattr(store_db, "connect", lambda: nullcontext(Con()))
+    monkeypatch.setattr(worker, "read_chat", read_chat)
+    monkeypatch.setattr(worker, "write_profiles", write_profiles)
+    monkeypatch.setattr(worker, "_profiled_at", -worker.PROFILE_EVERY_S)
+    worker.run_once()
+    assert calls == ["read the chat"]
+
+
 def test_patterns_are_written_when_the_book_changes_and_go_to_cognee(
     tx: db.Conn,
 ) -> None:

@@ -362,7 +362,6 @@ name = "bahi-api"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "cognee", extra = ["postgres"] },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "psycopg", extra = ["binary"] },
@@ -372,6 +371,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+cognee = [
+    { name = "cognee", extra = ["postgres"] },
+]
 dev = [
     { name = "mypy" },
     { name = "pytest" },
@@ -380,7 +382,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cognee", extras = ["postgres"], specifier = "==1.6.2" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
@@ -390,6 +391,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+cognee = [{ name = "cognee", extras = ["postgres"], specifier = "==1.6.2" }]
 dev = [
     { name = "mypy", specifier = ">=1.13" },
     { name = "pytest", specifier = ">=8.3" },

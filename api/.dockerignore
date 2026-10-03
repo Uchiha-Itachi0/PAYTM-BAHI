@@ -1,0 +1,14 @@
+# Never in the image: keys, the laptop's packages, caches, Cognee's files.
+.env
+.env.*
+!.env.example
+.venv/
+.cognee/
+**/__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+tests/
+bahi/audio/raw/
+Dockerfile
+.dockerignore

@@ -15,6 +15,7 @@ Every setting is passed here, before Cognee is first imported.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
@@ -39,11 +40,23 @@ def url() -> str | None:
     return urlunparse(urlparse(base)._replace(path=f"/{other}"))
 
 
+def installed() -> bool:
+    """Whether Cognee is installed at all: the laptop's default; the deployed
+    server leaves it out. Looked for, never imported."""
+    return importlib.util.find_spec("cognee") is not None
+
+
 def enabled() -> bool:
-    """Memory is on when it has its database and both keys, and voice is online.
-    Off, BAHI still keeps what was said and Tonight still waits on it; only the
-    search by meaning is missing."""
-    if os.environ.get("MEMORY", "on").lower() in ("off", "0", "false"):
+    """Cognee is on when COGNEE isn't off, it is installed, it has its database
+    and both keys, and voice is online. On the laptop it is on; the deployed
+    server sets COGNEE=off and doesn't install it.
+
+    Off, Cognee is never loaded and nothing is sent to it. BAHI still keeps what
+    was said, Tonight still waits on it, and a question across customers reads
+    the book's own list instead."""
+    if os.environ.get("COGNEE", "on").lower() in ("off", "0", "false"):
+        return False
+    if not installed():
         return False
     return bool(
         url()

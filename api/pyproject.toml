@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "BAHI - the two-sided udhaar ledger"
 requires-python = ">=3.13"
 dependencies = [
-    "cognee[postgres]==1.6.2",
     "fastapi>=0.115",
     "httpx>=0.27",
     "psycopg[binary]>=3.2",
@@ -19,6 +18,14 @@ dev = [
     "mypy>=1.13",
     "pytest>=8.3",
 ]
+# Memory's search by meaning (M3), on the laptop. About 1.1 GB installed; the
+# deployed server leaves it out (--no-default-groups) and runs with COGNEE=off.
+cognee = [
+    "cognee[postgres]==1.6.2",
+]
+
+[tool.uv]
+default-groups = ["dev", "cognee"]
 
 [tool.ruff]
 line-length = 90
