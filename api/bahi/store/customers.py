@@ -21,6 +21,8 @@ class CustomerRef:
     linked: bool
     #: The name in Devanagari, from Sarvam's transliterate. None if voice was off.
     name_hi: str | None
+    #: The tag in Devanagari, likewise.
+    tag_hi: str | None
 
     @property
     def joined(self) -> Joined:
@@ -31,7 +33,7 @@ class CustomerRef:
 
 SELECT = """
 SELECT id::text AS id, shop_id::text AS shop_id, person_id::text AS person_id,
-       display_name, tag, linked_at IS NOT NULL AS linked, name_hi
+       display_name, tag, linked_at IS NOT NULL AS linked, name_hi, tag_hi
 FROM customers
 """
 

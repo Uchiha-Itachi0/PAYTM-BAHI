@@ -47,7 +47,7 @@ export function BookScreen(): React.ReactElement {
           <Card>
             <TileGrid
               tiles={[
-                { label: "Add udhaar", icon: <Mic />, href: "/m/add" },
+                { label: "Add udhaar", icon: <Mic />, href: "/m/add?listen=1" },
                 { label: "Udhaar QR", icon: <Scan />, href: "/m/qr" },
               ]}
             />
@@ -71,7 +71,7 @@ export function BookScreen(): React.ReactElement {
           <Dots />
         </Card>
       )}
-      <StickyPill icon={<Mic />} href="/m/add">
+      <StickyPill icon={<Mic />} href="/m/add?listen=1">
         Add udhaar
       </StickyPill>
     </MerchantShell>

@@ -14,10 +14,10 @@ import { Countdown } from "@/components/voice/Countdown";
 import { HeardCard } from "@/components/voice/HeardCard";
 import { VoicePanel } from "@/components/voice/VoicePanel";
 import { api, ApiError, usePoll } from "@/lib/api/client";
-import type { Counter, Customer, Entry, Heard, HeardPerson } from "@/lib/api/types";
+import type { Answer, Counter, Customer, Entry, Heard, HeardPerson } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
-import { KISKE_LIYE, PROBLEM_LINE, sayAloud } from "@/lib/voice";
+import { ask, PROBLEM_LINE, sayAmount, type Question } from "@/lib/voice";
 
 /**
  * A2 · Who is at the counter, then how much.
@@ -35,6 +35,15 @@ import { KISKE_LIYE, PROBLEM_LINE, sayAloud } from "@/lib/voice";
  * and the person are filled in and he taps Send, because that reader was wrong
  * five times as often in the test. Typed: the keypad and Send, as before. All of
  * it ends in the same POST /entries.
+ *
+ * A conversation, not a form: when the screen needs more, it asks aloud and
+ * listens once its question has finished. "किसके लिए?" when the amount is
+ * clear and the person isn't (his answer is looked for among those offered);
+ * "कितने रुपये?" when the person is clear and the amount isn't, and "उधार या जमा?"
+ * when it can't tell which (his answer is read together with what he said
+ * first); "फिर से बोलिए।" when it couldn't make out the amount. Silence after a
+ * question is asked again. Three tries in a row, then it stops listening and
+ * leaves the buttons, so a noisy shop never keeps the mic open.
  */
 
 type Pick =
@@ -43,6 +52,9 @@ type Pick =
 
 /** A spoken amount waiting to go, or waiting to be told who it is for. */
 type Spoken = { paise: number; transcript: string; readback: string | null };
+
+/** How many times in a row the screen asks and listens again by itself. */
+const MAX_TRIES = 3;
 
 function ago(seconds: number): string {
   return seconds < 60 ? `${seconds}s ago` : `${Math.floor(seconds / 60)}m ago`;
@@ -68,6 +80,35 @@ export function AddScreen(): React.ReactElement {
   const [prefilled, setPrefilled] = useState<Spoken | null>(null);
   const [pending, setPending] = useState<{ who: Pick; spoken: Spoken } | null>(null);
   const [asking, setAsking] = useState<{ spoken: Spoken; heard: Heard } | null>(null);
+  /** Asked "कितने रुपये?": what he said first, read with his answer as one sentence. */
+  const [before, setBefore] = useState<string | null>(null);
+  const [tries, setTries] = useState(0);
+  const [listenSignal, setListenSignal] = useState(0);
+  /** The question waiting for an answer, to ask again if he says nothing. */
+  const [question, setQuestion] = useState<Question | null>(null);
+
+  /** Asks aloud and, once it has finished saying it, opens the mic. */
+  function askThenListen(q: Question): void {
+    setQuestion(q);
+    void ask(q).then(() => setTimeout(() => setListenSignal((n) => n + 1), 200));
+  }
+
+  /** He said nothing after a question: ask it again, up to the limit. */
+  function onSilence(): void {
+    if (question && tries < MAX_TRIES) {
+      setTries(tries + 1);
+      askThenListen(question);
+      return;
+    }
+    setQuestion(null);
+    setTries(0);
+    setNews({
+      tone: "warn",
+      text: asking
+        ? "Didn't hear a name. Tap who it is for, or tap the mic."
+        : "Didn't hear anything. Tap the mic and say the amount.",
+    });
+  }
 
   // A picked scan that has expired or walked away is no longer a choice.
   const picked =
@@ -122,19 +163,44 @@ export function AddScreen(): React.ReactElement {
 
   // ── what was said ──
 
-  const onHeard = useCallback((h: Heard) => {
+  function onHeard(h: Heard): void {
     setHeard(h);
     setNews(null);
     setPending(null);
     setAsking(null);
     setPrefilled(null);
+    setBefore(null);
+    setQuestion(null);
+    const again = tries < MAX_TRIES;
+    setTries(again ? tries + 1 : 0);
+
     if (h.amount_paise === null) {
-      if (h.who.kind === "picked") setPicked(pickOf(h.who.person));
+      const person = h.who.kind === "picked" ? pickOf(h.who.person) : null;
+      if (person) setPicked(person);
+      if (person && h.problem === "no_amount" && again) {
+        setBefore(h.transcript);
+        setNews({ tone: "warn", text: `For ${person.name}. How much?` });
+        askThenListen("how_much");
+        return;
+      }
       const why = h.problem ? PROBLEM_LINE[h.problem] : "No amount in that.";
-      setNews({ tone: "warn", text: `${why} Nothing was sent. Say it again, or type it.` });
+      setNews({
+        tone: "warn",
+        text: again
+          ? `${why} Nothing was sent. Say it again.`
+          : `${why} Nothing was sent. Tap the mic to say it again, or type it.`,
+      });
+      if (again) askThenListen("again");
+      return;
+    }
+    if (h.intent === "unclear" && again) {
+      setBefore(h.transcript);
+      setNews({ tone: "warn", text: `Heard ${formatPaise(h.amount_paise)}. Udhaar, or money paid back?` });
+      askThenListen("kind");
       return;
     }
     if (h.intent !== "udhaar") {
+      setTries(0);
       const from = h.who.kind === "picked" ? ` from ${h.who.person.display_name}` : "";
       setNews({
         tone: "warn",
@@ -150,42 +216,75 @@ export function AddScreen(): React.ReactElement {
       transcript: h.transcript,
       readback: h.readback?.devanagari ?? null,
     };
-    if (h.who.kind === "picked" && h.reader === "rules") {
-      const to = pickOf(h.who.person);
+    const to = h.who.kind === "picked" ? pickOf(h.who.person) : null;
+
+    if (to && h.reader === "rules") {
+      setTries(0);
       setPicked(to);
       setRupees(String(spoken.paise / 100));
       setPrefilled(spoken);
-      if (spoken.readback) sayAloud(spoken.readback);
+      if (spoken.readback) void sayAmount(spoken.paise, spoken.readback);
       setNews({
         tone: "warn",
         text: `${h.fallback === "no_answer" ? "Sarvam-105B didn't answer" : "Voice is offline"}, so our parser read this. Check ${formatPaise(spoken.paise)} for ${to.name}, then tap Send.`,
       });
-    } else if (h.who.kind === "picked") {
-      setPending({ who: pickOf(h.who.person), spoken });
-      if (spoken.readback) sayAloud(spoken.readback);
+    } else if (to) {
+      setTries(0);
+      setPending({ who: to, spoken });
+      if (spoken.readback) void sayAmount(spoken.paise, spoken.readback);
     } else {
       setAsking({ spoken, heard: h });
-      sayAloud(KISKE_LIYE);
-      if (h.who.why === "not_found" || h.who.why === "not_said") {
+      if (h.who.kind === "ask" && (h.who.why === "not_found" || h.who.why === "not_said")) {
         setNews({
           tone: "warn",
           text:
             h.who.why === "not_found"
-              ? `“${h.name}” is not in your book. Tap who it is for, or find them below.`
-              : "The name Sarvam read isn't in the words. Tap who it is for, or find them below.",
+              ? `“${h.name}” is not in your book. Say who it is for, tap them, or find them below.`
+              : "The name Sarvam read isn't in the words. Say who it is for, or tap them.",
         });
       }
+      if (again) askThenListen("who");
+      else void ask("who");
     }
-  }, []);
+  }
+
+  /** His answer to "किसके लिए?". */
+  function onAnswer(a: Answer): void {
+    if (!asking) return;
+    if (a.who.kind === "picked") {
+      const to = pickOf(a.who.person);
+      setAsking(null);
+      setTries(0);
+      setQuestion(null);
+      setNews(null);
+      setPending({ who: to, spoken: asking.spoken });
+      if (asking.spoken.readback) void sayAmount(asking.spoken.paise, asking.spoken.readback);
+      return;
+    }
+    const narrowed = a.who.among.length > 0;
+    if (narrowed) setAsking({ ...asking, heard: { ...asking.heard, who: a.who, name: a.transcript } });
+    const again = tries < MAX_TRIES;
+    setTries(again ? tries + 1 : 0);
+    setNews({
+      tone: "warn",
+      text: narrowed
+        ? `“${a.transcript}” fits ${a.who.among.length}. Which one?`
+        : `“${a.transcript}” isn't one of them. ${again ? "Say who it is for, or tap them." : "Tap who it is for."}`,
+    });
+    if (again) askThenListen("who");
+  }
 
   const onProblem = useCallback((text: string) => setNews({ tone: "warn", text }), []);
 
   /** A tap on someone: the answer to "kiske liye?", or the pick for the keypad. */
   function choose(p: Pick): void {
+    setTries(0);
+    setBefore(null);
+    setQuestion(null);
     if (asking) {
       setPending({ who: p, spoken: asking.spoken });
       setAsking(null);
-      if (asking.spoken.readback) sayAloud(asking.spoken.readback);
+      if (asking.spoken.readback) void sayAmount(asking.spoken.paise, asking.spoken.readback);
     } else {
       setPicked(p);
     }
@@ -233,7 +332,7 @@ export function AddScreen(): React.ReactElement {
         >
           <p className="mb-2 text-[12px] font-semibold text-cyan-text">
             {askingWho.why === "several"
-              ? `“${asking?.heard.name}” fits ${askingWho.among.length} people. Tap the one in front of you.`
+              ? `“${asking?.heard.name}” fits ${askingWho.among.length} people. Say or tap which one: the surname or the room is enough.`
               : "Only a close sound, so nobody was picked. Is it one of these?"}
           </p>
           {askingWho.among.map((p) => (
@@ -256,7 +355,7 @@ export function AddScreen(): React.ReactElement {
       <Card title={askingWho?.why === "who" ? "Kiske liye?" : "At the counter"} tight>
         {asking ? (
           <p className="mb-2 text-[12px] font-semibold text-cyan-text">
-            Heard {formatPaise(asking.spoken.paise)}. Tap who it is for
+            Heard {formatPaise(asking.spoken.paise)}. Say or tap who it is for
             {askingWho?.why === "who" ? "." : ", or find them below."}
           </p>
         ) : null}
@@ -282,7 +381,21 @@ export function AddScreen(): React.ReactElement {
         ) : null}
       </Card>
 
-      <VoicePanel onHeard={onHeard} onProblem={onProblem} />
+      <VoicePanel
+        onHeard={onHeard}
+        onAnswer={onAnswer}
+        onProblem={onProblem}
+        onSilence={onSilence}
+        answering={
+          askingWho
+            ? askingWho.why === "several" || askingWho.why === "maybe"
+              ? askingWho.among.map((p) => p.customer_id)
+              : []
+            : null
+        }
+        before={before}
+        listenSignal={listenSignal}
+      />
 
       {heard ? <HeardCard heard={heard} /> : null}
 

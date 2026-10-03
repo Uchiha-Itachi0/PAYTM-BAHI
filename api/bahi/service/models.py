@@ -154,6 +154,9 @@ class HeardIn(BaseModel):
     """What the shopkeeper said, typed or tapped instead of spoken."""
 
     text: str = Field(min_length=1, max_length=200)
+    #: What he said before, when this answers "कितने रुपये?" or "उधार या जमा?":
+    #: "Sharma ko", then "do sau", is read as one sentence.
+    before: str | None = Field(default=None, max_length=400)
 
 
 class PersonOut(BaseModel):
@@ -231,6 +234,23 @@ class HeardOut(BaseModel):
     )
     checks: list[CheckOut]
     readback: ReadbackOut | None
+    who: PickedOut | AskOut = Field(discriminator="kind")
+
+
+class AnswerIn(BaseModel):
+    """His answer to "किसके लिए?", typed."""
+
+    text: str = Field(min_length=1, max_length=200)
+    #: Who the screen offered. Empty: anyone at the counter or in the book.
+    among: list[UUID] = Field(default_factory=list, max_length=60)
+
+
+class AnswerOut(BaseModel):
+    """Who the answer names, or the question again. The amount is the one already
+    heard; nothing is recorded yet."""
+
+    transcript: str
+    source: HeardSource
     who: PickedOut | AskOut = Field(discriminator="kind")
 
 

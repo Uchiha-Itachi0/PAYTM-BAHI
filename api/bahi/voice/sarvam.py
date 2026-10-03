@@ -7,17 +7,23 @@
   it to read the words; `bahi.domain.check` then checks everything it says.
 - `transliterate`: a customer's name in Devanagari, once, when he joins, so a
   transcript in either script can be matched to him.
+- `speak`: the amount said back, in Sarvam's own voice (bulbul:v3), instead of
+  the browser's robotic one.
 
 APIs: https://docs.sarvam.ai/api-reference-docs/speech-to-text/transcribe
       https://docs.sarvam.ai/api-reference-docs/chat/chat-completions
       https://docs.sarvam.ai/api-reference-docs/text/transliterate
+      https://docs.sarvam.ai/api-reference-docs/text-to-speech/convert
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import os
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from typing import Any
 
 import httpx
@@ -25,6 +31,7 @@ import httpx
 URL = "https://api.sarvam.ai/speech-to-text"
 CHAT_URL = "https://api.sarvam.ai/v1/chat/completions"
 TRANSLITERATE_URL = "https://api.sarvam.ai/transliterate"
+TTS_URL = "https://api.sarvam.ai/text-to-speech"
 LANGUAGE = "hi-IN"
 MAX_KEYTERMS, MAX_KEYTERM_LEN = 50, 64
 TIMEOUT_S = 15.0
@@ -32,7 +39,16 @@ TIMEOUT_S = 15.0
 #: reading on 25 Sep took over 6. Past this, our parser reads, and the screen
 #: asks the shopkeeper to tap Send rather than sending by itself.
 CHAT_TIMEOUT_S = 8.0
+#: On 30 Sep, two readings in eight took 25 s and the rest 1 s. A reading that
+#: hasn't answered by now is asked for again, and the first answer wins.
+HEDGE_AFTER_S = 2.5
 TRANSLITERATE_TIMEOUT_S = 3.0
+#: An amount takes bulbul:v3 0.4 to 0.6 s; the countdown is 3 s.
+TTS_TIMEOUT_S = 3.0
+TTS_MODEL = "bulbul:v3"
+#: Picked by ear from twelve bulbul:v3 voices on 30 Sep: the clearest readback.
+VOICE = "shreya"
+TTS_SAMPLE_RATE = 24000
 
 
 class SarvamError(Exception):
@@ -43,6 +59,40 @@ def media_type(content_type: str) -> str:
     """ "audio/webm;codecs=opus" -> "audio/webm". Chrome's recorder adds the codec,
     and Sarvam refuses any type with a parameter on it, though it takes the audio."""
     return content_type.split(";", 1)[0].strip().lower() or "application/octet-stream"
+
+
+_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="sarvam")
+
+
+def hedged[T](
+    call: Callable[[], T], *, timeout: float, after: float = HEDGE_AFTER_S
+) -> T:
+    """The call's answer, asked a second time if the first is slow.
+
+    Sarvam answers in about a second, or now and then in twenty-five. Waiting out
+    the slow one would leave the shopkeeper standing there; asking again after
+    `after` seconds and taking whichever answers first costs one extra request,
+    only when it's needed ("hedged requests", The Tail at Scale, 2013). A refusal
+    that comes back quickly is not asked again.
+    """
+    deadline = time.monotonic() + timeout
+    first = _POOL.submit(call)
+    done, _ = wait([first], timeout=min(after, timeout))
+    if done:
+        return first.result()
+    pending: set[Future[T]] = {first, _POOL.submit(call)}
+    failure: SarvamError | None = None
+    while pending:
+        left = max(0.0, deadline - time.monotonic())
+        done, pending = wait(pending, timeout=left, return_when=FIRST_COMPLETED)
+        if not done:
+            break
+        for f in done:
+            try:
+                return f.result()
+            except SarvamError as e:
+                failure = e
+    raise failure or SarvamError(f"could not reach Sarvam: no answer in {timeout:.0f} s")
 
 
 def model() -> str:
@@ -111,7 +161,10 @@ def chat_json(
             "json_schema": {"name": name, "schema": schema, "strict": True},
         },
     }
-    reply = _post_json(CHAT_URL, body, key=key, timeout=CHAT_TIMEOUT_S)
+    reply = hedged(
+        lambda: _post_json(CHAT_URL, body, key=key, timeout=CHAT_TIMEOUT_S),
+        timeout=CHAT_TIMEOUT_S,
+    )
     try:
         answer = json.loads(reply["choices"][0]["message"]["content"])
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as e:
@@ -133,3 +186,28 @@ def transliterate(text: str, *, key: str) -> str:
     if not isinstance(out, str) or not out:
         raise SarvamError("Sarvam sent no transliteration")
     return out
+
+
+def speaker() -> str:
+    """Which of bulbul:v3's voices says it back. `SARVAM_TTS_SPEAKER` in api/.env."""
+    return os.environ.get("SARVAM_TTS_SPEAKER", VOICE).strip().lower() or VOICE
+
+
+def speak(text: str, *, key: str, voice: str) -> bytes:
+    """The words, spoken by Sarvam's bulbul:v3, as a WAV file."""
+    body = {
+        "text": text,
+        "language_code": LANGUAGE,
+        "speaker": voice,
+        "model": TTS_MODEL,
+        "speech_sample_rate": TTS_SAMPLE_RATE,
+        "output_audio_codec": "wav",
+    }
+    reply = _post_json(TTS_URL, body, key=key, timeout=TTS_TIMEOUT_S)
+    audios = reply.get("audios") if isinstance(reply, dict) else None
+    if not isinstance(audios, list) or not audios or not isinstance(audios[0], str):
+        raise SarvamError("Sarvam sent no audio")
+    try:
+        return base64.b64decode(audios[0], validate=True)
+    except ValueError as e:
+        raise SarvamError("Sarvam's audio was not base64") from e

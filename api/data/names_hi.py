@@ -1,4 +1,4 @@
-"""Every seeded name in Devanagari, as Sarvam's transliterate writes it.
+"""Every seeded name and tag in Devanagari, as Sarvam's transliterate writes it.
 
 The seed must rebuild identically with the wifi off, so the forms are fetched
 once and committed in names_hi.json. `make names-hi` fetches any that are
@@ -52,7 +52,8 @@ def main() -> int:
     key = api_key()
     if key is None:
         sys.exit("needs SARVAM_API_KEY in api/.env")
-    names = sorted({c.display_name for c in plan().customers})
+    rows = plan().customers
+    names = sorted({c.display_name for c in rows} | {c.tag for c in rows if c.tag})
     known = fetched()
     for name in names:
         if name not in known:

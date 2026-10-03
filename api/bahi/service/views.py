@@ -8,8 +8,9 @@ from bahi.domain.money import rupees
 from bahi.domain.speak import say
 from bahi.domain.who import Ask, Person, Picked
 from bahi.domain.wording import button
-from bahi.service.ledger import Hearing
+from bahi.service.ledger import Answer, Hearing
 from bahi.service.models import (
+    AnswerOut,
     AskOut,
     BookOut,
     CheckOut,
@@ -106,18 +107,24 @@ def _says(c: Check, checked: Checked) -> str:
     return f"“{name}” fits nobody in your book"
 
 
+def _person(p: Person, scans: dict[str, str]) -> PersonOut:
+    return PersonOut(
+        customer_id=p.ref, display_name=p.name, tag=p.tag, scan_id=scans.get(p.ref)
+    )
+
+
+def _who(who: Picked | Ask, scans: dict[str, str]) -> PickedOut | AskOut:
+    if isinstance(who, Picked):
+        return PickedOut(how=who.how, person=_person(who.person, scans))
+    return AskOut(why=who.why, among=[_person(p, scans) for p in who.among])
+
+
+def answer_out(a: Answer, transcript: str, source: HeardSource) -> AnswerOut:
+    return AnswerOut(transcript=transcript, source=source, who=_who(a.who, a.scans))
+
+
 def heard_out(hearing: Hearing, transcript: str, source: HeardSource) -> HeardOut:
     c = hearing.checked
-
-    def person(p: Person) -> PersonOut:
-        return PersonOut(
-            customer_id=p.ref,
-            display_name=p.name,
-            tag=p.tag,
-            scan_id=hearing.scans.get(p.ref),
-        )
-
-    who = c.who
     readback = None
     if c.amount_paise is not None:
         try:
@@ -137,9 +144,5 @@ def heard_out(hearing: Hearing, transcript: str, source: HeardSource) -> HeardOu
         problem=c.problem,
         checks=[CheckOut(kind=k.kind, ok=k.ok, says=_says(k, c)) for k in c.checks],
         readback=readback,
-        who=(
-            PickedOut(how=who.how, person=person(who.person))
-            if isinstance(who, Picked)
-            else AskOut(why=who.why, among=[person(p) for p in who.among])
-        ),
+        who=_who(c.who, hearing.scans),
     )

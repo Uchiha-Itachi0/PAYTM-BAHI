@@ -577,7 +577,7 @@
           "voice"
         ],
         "summary": "Heard Voice",
-        "description": "A recording from the shop's mic. 503 when voice is offline and it isn't a\nrecording we have heard before; the screen then asks him to type it.",
+        "description": "A recording from the shop's mic. 503 when voice is offline and it isn't a\nrecording we have heard before; the screen then asks him to type it.\n`before`: what he said before, when this answers \"कितने रुपये?\".",
         "operationId": "heard_voice_shops__shop_id__voice_post",
         "parameters": [
           {
@@ -607,6 +607,112 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HeardOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/answer": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Answer Text",
+        "description": "His answer to \"किसके लिए?\", typed: who, among `among` (empty: the book).",
+        "operationId": "answer_text_shops__shop_id__answer_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{shop_id}/answer/voice": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Answer Voice",
+        "description": "His answer to \"किसके लिए?\", spoken. `among`: the customer ids offered,\ncomma separated; empty for anyone in the book.",
+        "operationId": "answer_voice_shops__shop_id__answer_voice_post",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shop Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_answer_voice_shops__shop_id__answer_voice_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerOut"
                 }
               }
             }
@@ -684,10 +790,151 @@
           }
         }
       }
+    },
+    "/voice/say/{paise}.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Say Amount",
+        "description": "The amount said back in Sarvam's voice. An amount only: this route cannot\nsay a name. 503 when voice is offline and it was never spoken; the screen then\nuses the browser's own voice.",
+        "operationId": "say_amount_voice_say__paise__wav_get",
+        "parameters": [
+          {
+            "name": "paise",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Paise"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voice/ask/{question}.wav": {
+      "get": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Say Ask",
+        "description": "\"किसके लिए?\" (who), \"कितने रुपये?\" (how_much), \"उधार या जमा?\" (kind) or\n\"फिर से बोलिए।\" (again), in Sarvam's voice.",
+        "operationId": "say_ask_voice_ask__question__wav_get",
+        "parameters": [
+          {
+            "name": "question",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Question"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AnswerIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "among": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Among"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnswerIn",
+        "description": "His answer to \"किसके लिए?\", typed."
+      },
+      "AnswerOut": {
+        "properties": {
+          "transcript": {
+            "type": "string",
+            "title": "Transcript"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "typed",
+              "sarvam",
+              "sarvam_cached",
+              "clip_script"
+            ],
+            "title": "Source"
+          },
+          "who": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PickedOut"
+              },
+              {
+                "$ref": "#/components/schemas/AskOut"
+              }
+            ],
+            "title": "Who",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "ask": "#/components/schemas/AskOut",
+                "picked": "#/components/schemas/PickedOut"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "transcript",
+          "source",
+          "who"
+        ],
+        "title": "AnswerOut",
+        "description": "Who the answer names, or the question again. The amount is the one already\nheard; nothing is recorded yet."
+      },
       "AskOut": {
         "properties": {
           "kind": {
@@ -723,12 +970,37 @@
         ],
         "title": "AskOut"
       },
+      "Body_answer_voice_shops__shop_id__answer_voice_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio"
+          },
+          "among": {
+            "type": "string",
+            "title": "Among",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio"
+        ],
+        "title": "Body_answer_voice_shops__shop_id__answer_voice_post"
+      },
       "Body_heard_voice_shops__shop_id__voice_post": {
         "properties": {
           "audio": {
             "type": "string",
             "contentMediaType": "application/octet-stream",
             "title": "Audio"
+          },
+          "before": {
+            "type": "string",
+            "maxLength": 400,
+            "title": "Before",
+            "default": ""
           }
         },
         "type": "object",
@@ -1068,6 +1340,18 @@
             "maxLength": 200,
             "minLength": 1,
             "title": "Text"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 400
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
           }
         },
         "type": "object",

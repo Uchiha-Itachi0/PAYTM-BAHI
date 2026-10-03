@@ -16,7 +16,7 @@ from uuid import UUID
 from bahi import voice
 from bahi.domain.check import Checked
 from bahi.domain.lifecycle import move
-from bahi.domain.who import Person
+from bahi.domain.who import Ask, Person, Picked, who
 from bahi.domain.wording import acknowledgment
 from bahi.service.errors import Conflict, Forbidden, NotFound
 from bahi.store import customers, entries, scans, shops
@@ -109,7 +109,7 @@ def counter_and_book(
     until they say yes. A Person's ref is the customer id; his scan is looked up.
     """
     book = [
-        Person(c.id, c.display_name, c.tag, c.name_hi)
+        Person(c.id, c.display_name, c.tag, c.name_hi, c.tag_hi)
         for c in customers.of_shop(con, shop_id)
         if c.joined != "invited"
     ]
@@ -132,6 +132,35 @@ def hear(con: Conn, shop_id: str, transcript: str, now: datetime) -> Hearing:
     at_counter, book, waiting_scans = counter_and_book(con, shop_id, now)
     checked, fallback = voice.understand(transcript, at_counter, book)
     return Hearing(checked, fallback, waiting_scans)
+
+
+@dataclass(frozen=True, slots=True)
+class Answer:
+    who: Picked | Ask
+    scans: dict[str, str]
+
+
+def answer(
+    con: Conn, shop_id: str, transcript: str, among: list[str], now: datetime
+) -> Answer:
+    """His answer to "किसके लिए?": who the words name, and nothing else.
+
+    `among` is who the screen offered ("Kaunse Anubhav?"): the answer is looked
+    for only there, so "Shukla" or "204 wala" picks one of them. Empty, it is the
+    counter and the book. The whole answer is the words that name him, and the
+    same rules decide as for a sentence: by sound, a room number narrows it, a
+    weak match is only offered. The amount is not read again.
+    """
+    shop(con, shop_id)
+    at_counter, book, waiting_scans = counter_and_book(con, shop_id, now)
+    known = book  # which words tell customers apart is a question for the whole book
+    if among:
+        wanted = set(among)
+        book = [p for p in book if p.ref in wanted]
+        at_counter = [p for p in at_counter if p.ref in wanted]
+    if not transcript.strip():
+        return Answer(Ask("not_found", ()), waiting_scans)
+    return Answer(who(transcript, at_counter, book, known=known), waiting_scans)
 
 
 # ── the customer ─────────────────────────────────────────────────────────────

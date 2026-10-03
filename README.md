@@ -113,11 +113,18 @@ customer isn't at the counter. Sarvam reads it, and our code checks every rupee:
 - `domain/check` holds that reading to the words: the amount words must be in the
   transcript, and `parse` must read them as the same number (the number recorded
   is ours, not the model's).
-- `domain/who` decides the person from the words that name him, by sound, in roman
-  and Devanagari. A surname or a room number ("204 wale") picks one of four
-  Anubhavs; "Anubhav" alone asks "Kaunse Anubhav?"; a weak match is only offered.
-- `speak` says the amount back; the entry goes after three seconds unless
+- `domain/who` decides the person from the words that name or describe him, by
+  sound, in roman and Devanagari. A surname, a room number ("204 wale") or how the
+  shop describes him ("medical wale", "चाय टपरी वाले") picks one; "Anubhav" alone
+  asks "Kaunse Anubhav?"; a weak match is only offered. Which description words
+  tell customers apart comes from the book: a word more than three customers share
+  ("Room", "wing") is never used. No word list is written in the code.
+- `speak` puts the amount into words, and Sarvam's `bulbul:v3` says them back
+  ("दो सौ बीस रुपये", never a name); the entry goes after three seconds unless
   cancelled, and the customer confirms on his own phone.
+
+Tapping Add udhaar opens the mic straight away, and it stops by itself a second
+after he stops speaking.
 
 Offline, or when Sarvam-105B doesn't answer, `parse` reads the words instead and
 the same checks decide who. Nothing is sent by itself then: the amount and the
@@ -136,6 +143,10 @@ test book with 20 customers named Anubhav. With Sarvam-105B and these checks,
 73.4% of entries were right from the words alone, 16.9% took one tap, 7.6% had to
 be said again, and 2.1% would have gone to a phone wrong. Our parser alone, on the
 same transcripts, was wrong 11.1% of the time.
+
+Replayed through today's checker, which also reads the tag, 75.0% are right from
+the words alone and 15.3% take one tap; nothing is graded worse than on the day,
+and the test fails if anything ever is.
 
 ## Data
 
