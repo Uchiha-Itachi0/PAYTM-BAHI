@@ -14,8 +14,10 @@ from datetime import datetime
 from uuid import UUID
 
 from bahi import voice
+from bahi.domain.book import OPEN
 from bahi.domain.check import Checked
 from bahi.domain.lifecycle import move
+from bahi.domain.limitation import expired
 from bahi.domain.who import Ask, Person, Picked, who
 from bahi.domain.wording import acknowledgment
 from bahi.service.errors import Conflict, Forbidden, NotFound
@@ -161,6 +163,40 @@ def answer(
     if not transcript.strip():
         return Answer(Ask("not_found", ()), waiting_scans)
     return Answer(who(transcript, at_counter, book, known=known), waiting_scans)
+
+
+def pay_cash(con: Conn, customer_id: str, amount_paise: int, now: datetime) -> list[str]:
+    """Cash he handed over at the counter, split across his open entries oldest
+    first. An expired entry is skipped, so a payment never quietly revives a dead
+    debt; an entry paid in full is settled. Refused if it is more than he owes.
+    Returns the entries it paid, in order."""
+    today = now.date()
+    open_entries = [
+        e
+        for e in entries.of_customer(con, customer_id)
+        # a disputed entry isn't agreed yet, so cash does not go to it
+        if e.status in OPEN - {"disputed"}
+        and e.amount_paise > e.paid_paise
+        and not expired(
+            e.recorded_at.date(),
+            e.acknowledged_at.date() if e.acknowledged_at else None,
+            today,
+        )
+    ]
+    owed = sum(e.amount_paise - e.paid_paise for e in open_entries)
+    if amount_paise > owed:
+        raise Conflict(f"that is more than the ₹{owed // 100} he owes")
+    left, paid = amount_paise, []
+    for e in open_entries:
+        if left == 0:
+            break
+        take = min(left, e.amount_paise - e.paid_paise)
+        entries.pay(con, e.id, take, "cash", now)
+        if take == e.amount_paise - e.paid_paise:
+            entries.set_status(con, e.id, move(e.status, "settle"))
+        left -= take
+        paid.append(e.id)
+    return paid
 
 
 # ── the customer ─────────────────────────────────────────────────────────────

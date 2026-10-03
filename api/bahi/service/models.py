@@ -258,3 +258,50 @@ class ClipOut(BaseModel):
     slug: str
     label: str
     shows: str
+
+
+# ── the munshi ───────────────────────────────────────────────────────────────
+
+
+class MunshiIn(BaseModel):
+    """His words, typed. No conversation_id: a new conversation."""
+
+    conversation_id: UUID | None = None
+    text: str = Field(min_length=1, max_length=400)
+
+
+class CardOut(BaseModel):
+    """The entry the munshi proposed, as the card shows it. The amount is the one
+    stored on the draft, never the munshi's sentence."""
+
+    draft_id: UUID
+    customer_id: UUID
+    display_name: str
+    tag: str | None
+    amount_paise: int
+    kind: Literal["udhaar", "payment"]
+    #: shown: waiting for his yes. saved: written. cancelled: he said no.
+    status: Literal["shown", "saved", "replaced", "cancelled"]
+    #: Why it waits for a clear yes; empty means the three-second countdown.
+    reasons: list[Literal["weak_match", "large", "unusual"]]
+    #: What he said, shown under the amount.
+    spoken_text: str | None
+    entry_id: UUID | None
+    #: The customer has BAHI on his phone, so a saved entry reaches it.
+    on_bahi: bool
+
+
+class MunshiOut(BaseModel):
+    conversation_id: UUID
+    #: What the mic heard, or what he typed. None for a tap.
+    heard: str | None
+    source: Literal["typed", "sarvam", "sarvam_cached", "clip_script", "tap"]
+    #: The munshi's reply, to show and to say.
+    reply: str | None
+    #: The reply in Sarvam's voice.
+    say_url: str | None
+    #: What the munshi did this turn: "Looked for B wing: 8 found".
+    done: list[str]
+    card: CardOut | None
+    #: A card was saved or taken away this turn: the conversation can rest.
+    finished: bool
