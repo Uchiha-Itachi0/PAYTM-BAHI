@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Munshi } from "@/components/munshi/Munshi";
 import { MerchantShell } from "@/components/shell/Shell";
+import { Scan } from "@/components/icons";
+import { Amount } from "@/components/ui/Amount";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
-import { Figure } from "@/components/ui/Figure";
 import { Keypad, press } from "@/components/ui/Keypad";
 import { Notice } from "@/components/ui/Notice";
 import { Pill } from "@/components/ui/Pill";
@@ -14,7 +15,7 @@ import { Row } from "@/components/ui/Row";
 import { api, ApiError, usePoll } from "@/lib/api/client";
 import type { Counter, Customer, Entry } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
-import { formatPaise } from "@/lib/money";
+import { formatPaise, inWords } from "@/lib/money";
 
 /**
  * A2 · Add udhaar: talk to the munshi, or enter it by hand.
@@ -129,21 +130,34 @@ export function AddScreen(): React.ReactElement {
             />
           ))
         ) : (
-          <p className="text-[12.5px] font-medium leading-normal text-sub">
-            When a customer scans your udhaar QR, they appear here for three minutes.
-          </p>
+          <div className="flex items-center gap-3">
+            <span className="grid size-[38px] flex-none place-items-center rounded-full bg-sky-low text-navy-ink [&_svg]:size-[18px]">
+              <Scan />
+            </span>
+            <p className="text-[12.5px] font-medium leading-normal text-sub">
+              When a customer scans your udhaar QR, they appear here for three minutes.
+            </p>
+          </div>
         )}
       </Card>
 
       <Card title="Or enter it by hand" tight>
-        <Figure label={who ? `For ${who.name}` : "Pick who it is for"} value={formatPaise(paise)} />
-        <div className="mt-3">
-          <Keypad onKey={(k) => setRupees((r) => press(r, k))} />
+        <div className="pb-3 pt-1 text-center">
+          <p className="text-[12.5px] font-semibold text-sub">
+            {who ? `Udhaar for ${who.name}` : "Pick who it is for"}
+          </p>
+          <Amount paise={paise} className={`mt-1.5 text-[44px] ${paise ? "" : "text-line"}`} />
+          <p className="mt-1.5 min-h-4 text-[12px] font-medium text-sub">{inWords(paise)}</p>
         </div>
+        <Keypad onKey={(k) => setRupees((r) => press(r, k))} />
       </Card>
 
       <Pill onClick={() => who && void record(who, paise)} disabled={!who || paise <= 0 || busy}>
-        {who ? `Send to ${who.name}` : "Send"}
+        {who && paise > 0
+          ? `Send ${formatPaise(paise)} to ${who.name}`
+          : who
+            ? `Send to ${who.name}`
+            : "Send"}
       </Pill>
 
       <Card title="Not at the counter?" tight>

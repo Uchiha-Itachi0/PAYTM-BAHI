@@ -16,6 +16,12 @@
  * MediaRecorder gives WebM/Opus in Chrome and MP4 in Safari; Sarvam takes both.
  * The mic only works on https or localhost, which is where the shopkeeper's
  * screen runs.
+ *
+ * One tap, not two: the book's Add udhaar calls `warmMic` inside its tap, which
+ * is when a browser lets a page open the mic, and the munshi's screen records
+ * from that same stream when it opens. Only the newest `start` records: React
+ * mounts a screen twice in development, and two mics opened at once used to
+ * leave one listening forever, closing every later recording.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -36,6 +42,27 @@ const BLIND_MS = 6000;
 const OVER_NOISE = 3.5;
 const MIN_LEVEL = 0.012;
 
+/** The mic opened by the tap that brought him to the munshi, not yet used. */
+let warmed: Promise<MediaStream | null> | null = null;
+/** Unused this long (he went back instead), the mic is given back. */
+const WARM_MS = 8000;
+
+function release(stream: MediaStream | null): void {
+  stream?.getTracks().forEach((t) => t.stop());
+}
+
+/** Opens the mic now, inside his tap, for the screen that opens next. */
+export function warmMic(): void {
+  if (warmed || typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
+  const mine = navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+  warmed = mine;
+  setTimeout(() => {
+    if (warmed !== mine) return;
+    warmed = null;
+    void mine.then(release);
+  }, WARM_MS);
+}
+
 export function useRecorder(
   onDone: (audio: Blob) => void,
   onNothing: () => void,
@@ -52,6 +79,9 @@ export function useRecorder(
   const recorder = useRef<MediaRecorder | null>(null);
   const cleanup = useRef<(() => void) | null>(null);
   const discard = useRef(false);
+  /** Each start and each cancel moves this on; a start that is no longer the
+   *  latest when its mic arrives gives the mic back and records nothing. */
+  const attempt = useRef(0);
 
   const stop = useCallback(() => {
     cleanup.current?.();
@@ -60,6 +90,7 @@ export function useRecorder(
   }, []);
 
   const cancel = useCallback(() => {
+    attempt.current += 1;
     discard.current = true;
     stop();
   }, [stop]);
@@ -73,13 +104,24 @@ export function useRecorder(
       setState("unsupported");
       return;
     }
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setState("blocked");
+    const mine = ++attempt.current;
+    const pending = warmed;
+    const fromTap = pending ? await pending : null;
+    let stream = fromTap;
+    if (!stream) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch {
+        if (mine === attempt.current) setState("blocked");
+        return;
+      }
+    }
+    if (mine !== attempt.current) {
+      // A later start takes over; it records from the warmed mic, if this was it.
+      if (stream !== fromTap) release(stream);
       return;
     }
+    if (pending && warmed === pending) warmed = null;
 
     const rec = new MediaRecorder(stream);
     const chunks: Blob[] = [];
@@ -98,7 +140,9 @@ export function useRecorder(
     rec.start();
     setState("recording");
 
-    const listener = await listen(stream, () => stop());
+    const listener = await listen(stream, () => {
+      if (recorder.current === rec) stop();
+    });
     if (listener) {
       spoke = false;
       listener.onSpeech = () => {

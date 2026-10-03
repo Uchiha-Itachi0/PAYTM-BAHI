@@ -139,6 +139,28 @@ def pay(con: Conn, entry_id: str, amount_paise: int, method: str, now: datetime)
     )
 
 
+@dataclass(frozen=True, slots=True)
+class Repayment:
+    entry_id: str
+    amount_paise: int
+    method: str
+    paid_at: datetime
+
+
+def repayments_of(con: Conn, customer_id: str) -> list[Repayment]:
+    """Every payment against his entries at this shop, oldest first."""
+    with con.cursor(row_factory=class_row(Repayment)) as cur:
+        return cur.execute(
+            """
+            SELECT r.entry_id::text AS entry_id, r.amount_paise, r.method, r.paid_at
+            FROM repayments r JOIN entries e ON e.id = r.entry_id
+            WHERE e.customer_id = %s
+            ORDER BY r.paid_at
+            """,
+            (customer_id,),
+        ).fetchall()
+
+
 def by_ids(con: Conn, entry_ids: list[str]) -> dict[str, EntryRef]:
     if not entry_ids:
         return {}

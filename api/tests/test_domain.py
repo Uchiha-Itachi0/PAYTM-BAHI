@@ -193,3 +193,37 @@ def test_nothing_leaves_settled_or_corrected() -> None:
     from bahi.domain.lifecycle import MOVES
 
     assert not [k for k in MOVES if k[0] in ("settled", "corrected")]
+
+
+def test_the_thread_reads_like_a_passbook() -> None:
+    """Ganesh owed ₹80; ₹200 was written, he said not his, it was corrected to
+    ₹100 and he said yes: ₹180. He paid ₹80 by UPI (₹100), then ₹100 in cash."""
+    from datetime import UTC, datetime
+
+    from bahi.domain.passbook import Line, Moment, Payment, agreed_at, moment
+
+    def t(h: int) -> datetime:
+        return datetime(2026, 10, 3, h, tzinfo=UTC)
+
+    lines = [
+        Line("old", 8000, t(1), None),
+        Line("wrong", 20000, None, t(4)),  # disputed, never agreed, then corrected
+        Line("right", 10000, t(5), None),
+    ]
+    paid = [Payment("old", 8000, t(6)), Payment("right", 10000, t(7))]
+    assert moment(lines, paid, t(5)) == Moment(8000, 18000)
+    assert moment(lines, paid, t(6)) == Moment(18000, 10000)
+    assert moment(lines, paid, t(7)) == Moment(10000, 0)
+    # What waits for his yes is never in it; paying it is agreeing to it.
+    assert (
+        agreed_at(
+            acknowledged_at=None, recorded_at=t(1), name_only=False, first_paid_at=None
+        )
+        is None
+    )
+    assert agreed_at(
+        acknowledged_at=None, recorded_at=t(1), name_only=False, first_paid_at=t(3)
+    ) == t(3)
+    assert agreed_at(
+        acknowledged_at=None, recorded_at=t(1), name_only=True, first_paid_at=None
+    ) == t(1)

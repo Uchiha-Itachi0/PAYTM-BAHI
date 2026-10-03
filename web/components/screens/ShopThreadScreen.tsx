@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "@/components/chat/Composer";
+import { Owes } from "@/components/chat/Owes";
 import { ThreadView } from "@/components/chat/Thread";
 import { MerchantShell } from "@/components/shell/Shell";
 import { Dots, Notice } from "@/components/ui/Notice";
@@ -89,6 +90,15 @@ export function ShopThreadScreen({ customerId }: { customerId: string }): React.
         title: t?.display_name ?? "…",
         sub,
         back: "/m/messages",
+        avatar: t?.display_name,
+        below: t ? (
+          <Owes
+            label={`${t.display_name} owes you`}
+            owed={t.balance_paise}
+            waiting={t.waiting_paise ?? 0}
+            disputed={t.disputed_paise ?? 0}
+          />
+        ) : undefined,
         action: (
           <Link
             href={`/m/customers/${customerId}`}

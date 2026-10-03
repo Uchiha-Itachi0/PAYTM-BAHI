@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPaise } from "./money";
+import { formatPaise, inWords } from "./money";
 
 describe("formatPaise", () => {
   // The same cases as the backend's rupees(), so both sides print money alike.
@@ -19,5 +19,17 @@ describe("formatPaise", () => {
 
   it("refuses anything that is not whole paise", () => {
     expect(() => formatPaise(199.5)).toThrow(/whole paise/);
+  });
+});
+
+describe("inWords", () => {
+  it.each([
+    [0, ""],
+    [10000, "Rupees One Hundred Only"],
+    [25050, "Rupees Two Hundred Fifty Only"],
+    [2700000, "Rupees Twenty Seven Thousand Only"],
+    [12345600, "Rupees One Lakh Twenty Three Thousand Four Hundred Fifty Six Only"],
+  ])("%i paise is %s", (paise, words) => {
+    expect(inWords(paise)).toBe(words);
   });
 });

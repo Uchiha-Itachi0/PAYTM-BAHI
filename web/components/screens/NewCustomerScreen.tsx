@@ -12,7 +12,7 @@ import { Pill } from "@/components/ui/Pill";
 import { Avatar } from "@/components/ui/Row";
 import { api, ApiError } from "@/lib/api/client";
 import type { Account, Customer } from "@/lib/api/types";
-import { SHOP_ID } from "@/lib/config";
+import { NAME_CHARS, SHOP_ID, TAG_CHARS } from "@/lib/config";
 
 /**
  * A4 · Add a customer: for someone who can't scan.
@@ -154,6 +154,7 @@ export function NewCustomerScreen(): React.ReactElement {
                       label="What you call them"
                       value={name}
                       onChange={setName}
+                maxLength={NAME_CHARS}
                       placeholder="Shreya"
                     />
                   ) : null}
@@ -161,6 +162,7 @@ export function NewCustomerScreen(): React.ReactElement {
                     label="Where they live or work (optional)"
                     value={tag}
                     onChange={setTag}
+                maxLength={TAG_CHARS}
                     placeholder="Room 12, C wing"
                   />
                   <Pill
@@ -193,11 +195,13 @@ export function NewCustomerScreen(): React.ReactElement {
         <>
           <Card title="Keep them by name" tight>
             <div className="flex flex-col gap-3">
-              <Field label="Name" value={name} onChange={setName} placeholder="Ganpat" autoFocus />
+              <Field label="Name" value={name} onChange={setName}
+                maxLength={NAME_CHARS} placeholder="Ganpat" autoFocus />
               <Field
                 label="Where they live or work"
                 value={tag}
                 onChange={setTag}
+                maxLength={TAG_CHARS}
                 placeholder="Chawl 7"
               />
               {same.length ? (

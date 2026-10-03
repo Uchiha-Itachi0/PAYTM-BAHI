@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Bell, Person, Search } from "@/components/icons";
+import { Avatar } from "@/components/ui/Row";
 
 import { Soundbox } from "./Soundbox";
 
@@ -8,7 +9,9 @@ import { Soundbox } from "./Soundbox";
  * The two app shells. BAHI is not a new app: these are screens inside Paytm for
  * Business (the shopkeeper) and the Paytm app (the customer), so each shell is
  * that app's own frame: the sky ground, its top bar, and a scrolling column of
- * cards. A screen deeper in gets Paytm's back-style header instead of the top bar.
+ * cards. A screen deeper in gets Paytm's back-style header instead of the top bar;
+ * it stays at the top while the screen scrolls, so the way back is always there,
+ * with anything the screen pins under it (`below`: a thread's balance).
  *
  * Both carry a "Demo data" label. Every figure on every screen is synthetic, and
  * we would rather say so than be asked.
@@ -20,11 +23,27 @@ interface Heading {
   back: string;
   /** Something on the right of the header, like Paytm's "New chat". */
   action?: React.ReactNode;
+  /** A chat: the other side's avatar beside the name, as Paytm's chats show it. */
+  avatar?: string;
+  /** Pinned under the header, with it: what stands now in a thread. */
+  below?: React.ReactNode;
 }
 
-function Frame({ children }: { children: React.ReactNode }): React.ReactElement {
+/** `fixed`: the screen is exactly the phone's height, and only a `fill` card
+ * inside it scrolls. Otherwise the whole column scrolls. */
+function Frame({
+  fixed = false,
+  children,
+}: {
+  fixed?: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
   return (
-    <div className="paytm-ground mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
+    <div
+      className={`paytm-ground relative mx-auto flex w-full max-w-[430px] flex-col ${
+        fixed ? "h-dvh overflow-hidden" : "min-h-dvh"
+      }`}
+    >
       {children}
     </div>
   );
@@ -69,23 +88,29 @@ function TopBar({
   );
 }
 
-function BackHeader({ title, sub, back, action }: Heading): React.ReactElement {
+function BackHeader({ title, sub, back, action, avatar, below }: Heading): React.ReactElement {
   return (
-    <header className="flex items-center gap-3 px-3.5 pb-3.5 pt-3">
+    <div className="sticky top-0 z-20 bg-sky-top pb-2.5">
+      <header className="flex items-center gap-3 px-3.5 pb-1 pt-3">
       <Link href={back} aria-label="Back" className="flex-none text-[20px] leading-none">
         ←
       </Link>
+      {avatar ? <Avatar name={avatar} /> : null}
       <div className="min-w-0 flex-1">
         <h1 className="text-[19px] font-extrabold tracking-[-0.025em]">{title}</h1>
         {sub ? <p className="mt-px truncate text-[12px] font-medium text-sub">{sub}</p> : null}
       </div>
       {action ?? <DemoLabel />}
-    </header>
+      </header>
+      {below ? <div className="px-2.5 pt-2">{below}</div> : null}
+    </div>
   );
 }
 
 function Column({ children }: { children: React.ReactNode }): React.ReactElement {
-  return <main className="flex flex-1 flex-col gap-[11px] px-2.5 pb-3">{children}</main>;
+  return (
+    <main className="flex min-h-0 flex-1 flex-col gap-[11px] px-2.5 pb-3">{children}</main>
+  );
 }
 
 function initials(name: string): string {
@@ -101,14 +126,16 @@ function initials(name: string): string {
 export function MerchantShell({
   shopName,
   heading,
+  fixed = false,
   children,
 }: {
   shopName?: string;
   heading?: Heading;
+  fixed?: boolean;
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <Frame>
+    <Frame fixed={fixed}>
       <Soundbox />
       {heading ? (
         <BackHeader {...heading} />

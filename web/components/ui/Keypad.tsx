@@ -14,7 +14,7 @@ export function Keypad({ onKey }: { onKey: (k: Key) => void }): React.ReactEleme
           type="button"
           onClick={() => onKey(k)}
           aria-label={k === "⌫" ? "Delete" : k}
-          className="h-12 rounded-tile bg-tile text-[19px] font-bold tabular-nums active:bg-hair"
+          className="h-[52px] rounded-tile border border-hair bg-card text-[22px] font-semibold tabular-nums active:bg-tile"
         >
           {k}
         </button>

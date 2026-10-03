@@ -48,12 +48,19 @@ def amount_words(paise: int) -> str:
 
 
 def received(paid_paise: int, left_paise: int) -> str:
-    """What the Soundbox says when money arrives: the sum, and what is still open
-    after it. Amounts only, never a name. ValueError beyond what is said aloud."""
-    got = f"{amount_words(paid_paise)} मिले"
+    """What the Soundbox says when money arrives: what was owed, how much of it
+    came, and what is still open. Amounts only, never a name: the counter is
+    public. ValueError beyond what is said aloud.
+
+    "दो सौ रुपये का उधार था, उसमें से सौ रुपये मिले, सौ रुपये बाकी।"
+    """
+    owed = amount_words(paid_paise + left_paise)
     if left_paise == 0:
-        return f"{got}, हिसाब पूरा।"
-    return f"{got}, {amount_words(left_paise)} बाकी।"
+        return f"{owed} का उधार था, पूरे {amount_words(paid_paise)} मिले, हिसाब पूरा।"
+    return (
+        f"{owed} का उधार था, उसमें से {amount_words(paid_paise)} मिले, "
+        f"{amount_words(left_paise)} बाकी।"
+    )
 
 
 def _name(text: str, voice: str, language: str = sarvam.LANGUAGE) -> str:

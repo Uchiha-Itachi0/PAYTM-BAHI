@@ -122,9 +122,10 @@ def say_amount(paise: int) -> FileResponse:
 
 @router.get("/voice/received/{paid}/{left}.wav", response_class=FileResponse)
 def say_received(paid: int, left: int) -> FileResponse:
-    """The Soundbox when money arrives: "सौ रुपये मिले, सौ रुपये बाकी।" Amounts
-    only: this route cannot say a name. 503 when voice is offline and it was never
-    spoken; the Soundbox then plays its tone."""
+    """The Soundbox when money arrives: "दो सौ रुपये का उधार था, उसमें से सौ
+    रुपये मिले, सौ रुपये बाकी।" Amounts only: this route cannot say a name. 503
+    when voice is offline and it was never spoken; the Soundbox then plays its
+    tone."""
     try:
         words = said.received(paid, left)
     except ValueError as e:

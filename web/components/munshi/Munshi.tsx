@@ -28,8 +28,12 @@ import { hush, sayLine } from "@/lib/voice";
 
 type Line = { key: string; who: "you" | "munshi"; text: string; done?: string[] };
 
-const LINE: Record<"idle" | "recording" | "thinking" | "speaking", [string, string]> = {
+const LINE: Record<
+  "idle" | "recording" | "thinking" | "speaking" | "blocked",
+  [string, string]
+> = {
   idle: ["Tap and talk to your munshi", "Or type below, in any words"],
+  blocked: ["Allow the microphone", "The browser said no to the mic. Allow it, then tap"],
   recording: ["Listening…", "Stops by itself when you stop speaking"],
   thinking: ["Munshi is looking…", "Finding them in your book"],
   speaking: ["Munshi is speaking…", "The mic opens when it's done"],
@@ -204,7 +208,15 @@ export function Munshi({
   }
 
   const recording = mic.state === "recording";
-  const state = busy ? "thinking" : speaking ? "speaking" : recording ? "recording" : "idle";
+  const state = busy
+    ? "thinking"
+    : speaking
+      ? "speaking"
+      : recording
+        ? "recording"
+        : mic.state === "blocked"
+          ? "blocked"
+          : "idle";
   const [line, fine] = LINE[state];
 
   return (
@@ -215,13 +227,13 @@ export function Munshi({
             l.who === "you" ? (
               <p
                 key={l.key}
-                className="max-w-[85%] self-end rounded-card rounded-br-[5px] bg-navy px-3 py-2 text-[14px] font-semibold text-white"
+                className="max-w-[85%] self-end rounded-card rounded-br-[5px] bg-av-blue px-3.5 py-2.5 text-[14px] font-semibold text-ink"
               >
                 {l.text}
               </p>
             ) : (
               <div key={l.key} className="max-w-[88%] self-start">
-                <p className="rounded-card rounded-bl-[5px] bg-tile px-3 py-2 text-[14.5px] font-semibold">
+                <p className="rounded-card rounded-bl-[5px] border border-hair bg-card px-3.5 py-2.5 text-[14.5px] font-semibold">
                   {l.text}
                 </p>
                 {l.done?.length ? (
@@ -289,12 +301,12 @@ export function Munshi({
           onChange={(e) => setText(e.target.value)}
           placeholder="or type: B wing wale Sharma ji ko do sau"
           aria-label="Type to the munshi"
-          className="min-w-0 flex-1 rounded-[11px] border-[1.5px] border-line bg-white px-3 py-2 text-[14px] font-bold outline-none placeholder:font-medium placeholder:text-sub focus:border-cyan"
+          className="min-w-0 flex-1 rounded-pill border-[1.5px] border-line bg-white px-4 py-2.5 text-[14px] font-bold outline-none placeholder:font-medium placeholder:text-sub focus:border-cyan"
         />
         <button
           type="submit"
           disabled={!text.trim() || busy}
-          className="rounded-[11px] bg-navy px-3.5 text-[13px] font-extrabold text-white disabled:opacity-40"
+          className="rounded-pill bg-navy px-4 text-[13px] font-extrabold text-white disabled:opacity-40"
         >
           Send
         </button>

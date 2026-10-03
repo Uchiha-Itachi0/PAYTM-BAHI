@@ -147,3 +147,12 @@ def test_numbers_that_sound_alike_do_not_meet() -> None:
 
 def test_devanagari_words_are_not_split_at_their_vowel_signs() -> None:
     assert tokens("शर्मा को ₹२००, ok") == ["शर्मा", "को", "200", "ok"]
+
+
+def test_money_arriving_says_what_was_owed_what_came_and_what_is_left() -> None:
+    from bahi.voice.said import received
+
+    assert received(10000, 10000) == (
+        "दो सौ रुपये का उधार था, उसमें से सौ रुपये मिले, सौ रुपये बाकी।"
+    )
+    assert received(20000, 0) == "दो सौ रुपये का उधार था, पूरे दो सौ रुपये मिले, हिसाब पूरा।"

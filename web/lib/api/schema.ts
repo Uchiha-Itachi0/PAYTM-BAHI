@@ -537,9 +537,10 @@ export interface paths {
         };
         /**
          * Say Received
-         * @description The Soundbox when money arrives: "सौ रुपये मिले, सौ रुपये बाकी।" Amounts
-         *     only: this route cannot say a name. 503 when voice is offline and it was never
-         *     spoken; the Soundbox then plays its tone.
+         * @description The Soundbox when money arrives: "दो सौ रुपये का उधार था, उसमें से सौ
+         *     रुपये मिले, सौ रुपये बाकी।" Amounts only: this route cannot say a name. 503
+         *     when voice is offline and it was never spoken; the Soundbox then plays its
+         *     tone.
          */
         get: operations["say_received_voice_received__paid___left__wav_get"];
         put?: never;
@@ -1841,6 +1842,8 @@ export interface components {
             entry: components["schemas"]["ThreadEntryOut"] | null;
             /** Card */
             card: boolean;
+            payment?: components["schemas"]["PaymentOut"] | null;
+            passbook?: components["schemas"]["PassbookOut"] | null;
         };
         /**
          * MunshiIn
@@ -1948,6 +1951,17 @@ export interface components {
             elsewhere: components["schemas"]["MyShopOut"][];
         };
         /**
+         * PassbookOut
+         * @description What he had agreed he owes just before this moment, and just after: the
+         *     thread read as a passbook (domain/passbook.py).
+         */
+        PassbookOut: {
+            /** Before Paise */
+            before_paise: number;
+            /** After Paise */
+            after_paise: number;
+        };
+        /**
          * PatternOut
          * @description How he pays, from his own book (domain/pattern.py).
          */
@@ -2006,6 +2020,19 @@ export interface components {
             person_id: string;
             /** Amount Paise */
             amount_paise?: number | null;
+        };
+        /**
+         * PaymentOut
+         * @description A payment, as its own card in the thread.
+         */
+        PaymentOut: {
+            /** Amount Paise */
+            amount_paise: number;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "upi" | "cash";
         };
         /**
          * PaytmAccountOut
