@@ -3,24 +3,55 @@
 /**
  * The laptop standing in for the Soundbox: it says the amount back, and asks
  * "kiske liye?". Never a name: the customer's name is shown, never spoken aloud.
+ * The API's two routes can only say an amount or that one question.
  *
- * The browser's own Hindi voice, so it works with the wifi off. The words come
- * from the API (`readback.devanagari`); nothing here turns a number into speech.
+ * In Sarvam's own voice (bulbul:v3), from the API. The demo's phrases are on
+ * disk there, so they play with the wifi off; anything Sarvam can't be asked
+ * for falls back to the browser's own Hindi voice. Nothing here turns a number
+ * into words: the API does.
  */
 
 import type { Heard } from "@/lib/api/types";
 
-export function sayAloud(text: string): void {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+export const KISKE_LIYE = "किसके लिए?";
+
+let playing: HTMLAudioElement | null = null;
+
+/** Stops whatever is being said, before the mic opens. */
+export function hush(): void {
+  if (typeof window === "undefined") return;
+  playing?.pause();
+  playing = null;
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+}
+
+function browserVoice(text: string): void {
+  if (!("speechSynthesis" in window)) return;
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "hi-IN";
   const hindi = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("hi"));
   if (hindi) u.voice = hindi;
-  window.speechSynthesis.cancel();
   window.speechSynthesis.speak(u);
 }
 
-export const KISKE_LIYE = "किसके लिए?";
+function play(url: string, words: string): void {
+  if (typeof window === "undefined") return;
+  hush();
+  const audio = new Audio(url);
+  playing = audio;
+  audio.play().catch(() => {
+    if (playing === audio) browserVoice(words);
+  });
+}
+
+/** "दो सौ बीस रुपये", in Sarvam's voice. `words` is the fallback's text. */
+export function sayAmount(paise: number, words: string): void {
+  play(`/api/voice/say/${paise}.wav`, words);
+}
+
+export function askWho(): void {
+  play("/api/voice/ask.wav", KISKE_LIYE);
+}
 
 /** Where the words came from, said plainly. A demo clip is never passed off as live. */
 export const SOURCE_LABEL: Record<Heard["source"], string> = {

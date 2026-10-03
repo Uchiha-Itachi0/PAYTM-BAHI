@@ -1,7 +1,8 @@
 """`make voice` and `make voice-list`.
 
     make voice        render any missing demo clip with macOS's Hindi voice, then
-                      have Sarvam transcribe every clip (needs SARVAM_API_KEY; runs
+                      have Sarvam transcribe every clip, and speak the readbacks
+                      the demo needs in Sarvam's voice (needs SARVAM_API_KEY; runs
                       whatever SARVAM_OFFLINE says, since calling Sarvam is the point)
     make voice-list   what the offline cache holds, and where each transcript came from
 
@@ -19,7 +20,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from bahi.voice import api_key, cache, sarvam
+from bahi.voice import api_key, cache, said, sarvam
 from bahi.voice.clips import CLIPS, CLIPS_DIR, Clip
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -69,6 +70,22 @@ def generate() -> None:
             print(f"script     {clip.slug:24} {clip.words}   {note}")
         else:
             print(f"cached     {clip.slug}")
+    if key:
+        speak_readbacks()
+
+
+#: What the demo says back: its clips' amounts, and the one question.
+DEMO_READBACKS = (20000, 22000, 25000, 30000, 35000, 10000, 12000)
+
+
+def speak_readbacks() -> None:
+    """Sarvam's voice for the demo's readbacks, committed so they play offline."""
+    for text in (said.ASK, *(said.amount_words(p) for p in DEMO_READBACKS)):
+        if said.cached(text) is None:
+            path = said.speech(text, keep_in=said.SAID)
+            print(f"spoken     {sarvam.speaker():8} {text}   {path.name}")
+        else:
+            print(f"kept       {sarvam.speaker():8} {text}")
 
 
 def listing() -> None:

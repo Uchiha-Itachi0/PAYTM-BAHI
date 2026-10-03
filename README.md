@@ -116,8 +116,12 @@ customer isn't at the counter. Sarvam reads it, and our code checks every rupee:
 - `domain/who` decides the person from the words that name him, by sound, in roman
   and Devanagari. A surname or a room number ("204 wale") picks one of four
   Anubhavs; "Anubhav" alone asks "Kaunse Anubhav?"; a weak match is only offered.
-- `speak` says the amount back; the entry goes after three seconds unless
+- `speak` puts the amount into words, and Sarvam's `bulbul:v3` says them back
+  ("दो सौ बीस रुपये", never a name); the entry goes after three seconds unless
   cancelled, and the customer confirms on his own phone.
+
+Tapping Add udhaar opens the mic straight away, and it stops by itself a second
+after he stops speaking.
 
 Offline, or when Sarvam-105B doesn't answer, `parse` reads the words instead and
 the same checks decide who. Nothing is sent by itself then: the amount and the

@@ -7,14 +7,18 @@
   it to read the words; `bahi.domain.check` then checks everything it says.
 - `transliterate`: a customer's name in Devanagari, once, when he joins, so a
   transcript in either script can be matched to him.
+- `speak`: the amount said back, in Sarvam's own voice (bulbul:v3), instead of
+  the browser's robotic one.
 
 APIs: https://docs.sarvam.ai/api-reference-docs/speech-to-text/transcribe
       https://docs.sarvam.ai/api-reference-docs/chat/chat-completions
       https://docs.sarvam.ai/api-reference-docs/text/transliterate
+      https://docs.sarvam.ai/api-reference-docs/text-to-speech/convert
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from collections.abc import Sequence
@@ -25,6 +29,7 @@ import httpx
 URL = "https://api.sarvam.ai/speech-to-text"
 CHAT_URL = "https://api.sarvam.ai/v1/chat/completions"
 TRANSLITERATE_URL = "https://api.sarvam.ai/transliterate"
+TTS_URL = "https://api.sarvam.ai/text-to-speech"
 LANGUAGE = "hi-IN"
 MAX_KEYTERMS, MAX_KEYTERM_LEN = 50, 64
 TIMEOUT_S = 15.0
@@ -33,6 +38,10 @@ TIMEOUT_S = 15.0
 #: asks the shopkeeper to tap Send rather than sending by itself.
 CHAT_TIMEOUT_S = 8.0
 TRANSLITERATE_TIMEOUT_S = 3.0
+#: An amount takes bulbul:v3 0.4 to 0.6 s; the countdown is 3 s.
+TTS_TIMEOUT_S = 3.0
+TTS_MODEL = "bulbul:v3"
+TTS_SAMPLE_RATE = 24000
 
 
 class SarvamError(Exception):
@@ -133,3 +142,28 @@ def transliterate(text: str, *, key: str) -> str:
     if not isinstance(out, str) or not out:
         raise SarvamError("Sarvam sent no transliteration")
     return out
+
+
+def speaker() -> str:
+    """Which of bulbul:v3's voices says it back. `SARVAM_TTS_SPEAKER` in api/.env."""
+    return os.environ.get("SARVAM_TTS_SPEAKER", "shubh").strip().lower() or "shubh"
+
+
+def speak(text: str, *, key: str, voice: str) -> bytes:
+    """The words, spoken by Sarvam's bulbul:v3, as a WAV file."""
+    body = {
+        "text": text,
+        "language_code": LANGUAGE,
+        "speaker": voice,
+        "model": TTS_MODEL,
+        "speech_sample_rate": TTS_SAMPLE_RATE,
+        "output_audio_codec": "wav",
+    }
+    reply = _post_json(TTS_URL, body, key=key, timeout=TTS_TIMEOUT_S)
+    audios = reply.get("audios") if isinstance(reply, dict) else None
+    if not isinstance(audios, list) or not audios or not isinstance(audios[0], str):
+        raise SarvamError("Sarvam sent no audio")
+    try:
+        return base64.b64decode(audios[0], validate=True)
+    except ValueError as e:
+        raise SarvamError("Sarvam's audio was not base64") from e

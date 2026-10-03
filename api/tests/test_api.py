@@ -11,6 +11,7 @@ import json
 import uuid
 from collections.abc import Iterator
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -20,7 +21,7 @@ from fastapi.testclient import TestClient
 from bahi import clock
 from bahi.service import app
 from bahi.service.deps import connection
-from bahi.voice import sarvam
+from bahi.voice import said, sarvam
 from data import contract, db
 from data.world import HOME, uid
 
@@ -343,6 +344,56 @@ def test_when_sarvam_refuses_the_screen_gets_a_plain_sentence(
         r.json()["detail"]
         == "Sarvam couldn't hear that just now. Say it again, or type it."
     )
+
+
+# ── the readback, in Sarvam's voice ─────────────────────────────────────────
+
+
+@pytest.fixture
+def shubh(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The voice the committed readbacks were spoken in."""
+    monkeypatch.delenv("SARVAM_TTS_SPEAKER", raising=False)
+
+
+@pytest.mark.usefixtures("shubh")
+def test_the_demos_readbacks_play_with_the_wifi_off(api: TestClient) -> None:
+    for path in ("/voice/say/22000.wav", "/voice/say/25000.wav", "/voice/ask.wav"):
+        r = api.get(path)
+        assert r.status_code == 200, path
+        assert r.headers["content-type"] == "audio/wav" and r.content[:4] == b"RIFF"
+
+
+@pytest.mark.usefixtures("shubh")
+def test_an_amount_never_spoken_waits_for_sarvam_when_offline(api: TestClient) -> None:
+    r = api.get("/voice/say/123400.wav")
+    assert r.status_code == 503
+
+
+@pytest.mark.parametrize("paise", [0, 1250, -500])
+def test_only_whole_rupees_are_said_back(api: TestClient, paise: int) -> None:
+    assert api.get(f"/voice/say/{paise}.wav").status_code == 404
+
+
+def test_an_amount_is_spoken_by_sarvam_once_then_kept(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SARVAM_OFFLINE", "0")
+    monkeypatch.setenv("SARVAM_API_KEY", "not-a-real-key")
+    monkeypatch.setenv("SARVAM_TTS_SPEAKER", "priya")
+    monkeypatch.setattr(said, "LIVE", tmp_path)
+    asked: list[tuple[str, str]] = []
+
+    def fake_speak(text: str, *, key: str, voice: str) -> bytes:
+        asked.append((text, voice))
+        return b"RIFF fake wav"
+
+    monkeypatch.setattr(sarvam, "speak", fake_speak)
+    first = api.get("/voice/say/123400.wav")
+    again = api.get("/voice/say/123400.wav")
+    assert first.status_code == again.status_code == 200
+    assert first.content == again.content == b"RIFF fake wav"
+    assert asked == [(said.amount_words(123400), "priya")]
+    assert said.amount_words(123400).endswith("रुपये")
 
 
 def test_the_demo_clips_are_listed(api: TestClient) -> None:

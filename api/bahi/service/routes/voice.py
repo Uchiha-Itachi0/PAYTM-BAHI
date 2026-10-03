@@ -15,6 +15,7 @@ from bahi import clock, voice
 from bahi.service import ledger, views
 from bahi.service.deps import Con
 from bahi.service.models import ClipOut, HeardIn, HeardOut
+from bahi.voice import said
 from bahi.voice.clips import BY_SLUG, CLIPS
 
 router = APIRouter(tags=["voice"])
@@ -61,3 +62,21 @@ def get_clip(slug: str) -> FileResponse:
     if clip is None or not clip.path.exists():
         raise HTTPException(404, f"no clip {slug}")
     return FileResponse(clip.path, media_type="audio/wav")
+
+
+@router.get("/voice/say/{paise}.wav", response_class=FileResponse)
+def say_amount(paise: int) -> FileResponse:
+    """The amount said back in Sarvam's voice. An amount only: this route cannot
+    say a name. 503 when voice is offline and it was never spoken; the screen then
+    uses the browser's own voice."""
+    try:
+        words = said.amount_words(paise)
+    except ValueError as e:
+        raise HTTPException(404, f"{paise} paise is not said aloud") from e
+    return FileResponse(said.speech(words), media_type="audio/wav")
+
+
+@router.get("/voice/ask.wav", response_class=FileResponse)
+def say_ask() -> FileResponse:
+    """ "किसके लिए?", in Sarvam's voice."""
+    return FileResponse(said.speech(said.ASK), media_type="audio/wav")

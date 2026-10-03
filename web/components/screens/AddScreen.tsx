@@ -17,7 +17,7 @@ import { api, ApiError, usePoll } from "@/lib/api/client";
 import type { Counter, Customer, Entry, Heard, HeardPerson } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { formatPaise } from "@/lib/money";
-import { KISKE_LIYE, PROBLEM_LINE, sayAloud } from "@/lib/voice";
+import { askWho, PROBLEM_LINE, sayAmount } from "@/lib/voice";
 
 /**
  * A2 · Who is at the counter, then how much.
@@ -155,17 +155,17 @@ export function AddScreen(): React.ReactElement {
       setPicked(to);
       setRupees(String(spoken.paise / 100));
       setPrefilled(spoken);
-      if (spoken.readback) sayAloud(spoken.readback);
+      if (spoken.readback) sayAmount(spoken.paise, spoken.readback);
       setNews({
         tone: "warn",
         text: `${h.fallback === "no_answer" ? "Sarvam-105B didn't answer" : "Voice is offline"}, so our parser read this. Check ${formatPaise(spoken.paise)} for ${to.name}, then tap Send.`,
       });
     } else if (h.who.kind === "picked") {
       setPending({ who: pickOf(h.who.person), spoken });
-      if (spoken.readback) sayAloud(spoken.readback);
+      if (spoken.readback) sayAmount(spoken.paise, spoken.readback);
     } else {
       setAsking({ spoken, heard: h });
-      sayAloud(KISKE_LIYE);
+      askWho();
       if (h.who.why === "not_found" || h.who.why === "not_said") {
         setNews({
           tone: "warn",
@@ -185,7 +185,7 @@ export function AddScreen(): React.ReactElement {
     if (asking) {
       setPending({ who: p, spoken: asking.spoken });
       setAsking(null);
-      if (asking.spoken.readback) sayAloud(asking.spoken.readback);
+      if (asking.spoken.readback) sayAmount(asking.spoken.paise, asking.spoken.readback);
     } else {
       setPicked(p);
     }

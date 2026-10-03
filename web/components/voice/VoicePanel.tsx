@@ -8,6 +8,7 @@ import { api, ApiError, apiForm } from "@/lib/api/client";
 import type { Clip, Heard } from "@/lib/api/types";
 import { SHOP_ID } from "@/lib/config";
 import { useRecorder, type MicState } from "@/lib/useRecorder";
+import { hush } from "@/lib/voice";
 
 /**
  * Three ways to say it, all ending in the same reading and checks on the server:
@@ -16,11 +17,14 @@ import { useRecorder, type MicState } from "@/lib/useRecorder";
  * - typing the words, sent to /heard;
  * - a demo clip: played aloud in the room, then sent to /voice like a recording.
  *   Sarvam's transcript of it is on disk, so this works with the wifi off.
+ *
+ * Arriving from the book's Add udhaar (`?listen=1`), the mic is already open:
+ * the tap that brought him here was the tap on the mic.
  */
 
 const MIC_LINE: Record<MicState | "hearing", [string, string]> = {
   idle: ["Tap, then say the amount", "Say the name too if several are waiting"],
-  recording: ["Listening… tap to stop", "Stops by itself after six seconds"],
+  recording: ["Listening… say the amount", "Stops by itself when you stop speaking"],
   hearing: ["Hearing…", "Sarvam reads it, our code checks it"],
   blocked: ["The mic is blocked", "Allow it in the browser, or type below"],
   unsupported: ["This browser can't record", "Type below instead"],
@@ -66,7 +70,25 @@ export function VoicePanel({
         void hearAudio(audio, audio.type.includes("mp4") ? "speech.mp4" : "speech.webm"),
       [hearAudio],
     ),
+    useCallback(
+      () => onProblem("Didn't hear anything. Tap the mic and say the amount."),
+      [onProblem],
+    ),
   );
+  const { start: startMic } = mic;
+
+  const listen = useCallback(() => {
+    hush();
+    void startMic();
+  }, [startMic]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("listen") !== "1") return;
+    url.searchParams.delete("listen");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search);
+    listen();
+  }, [listen]);
 
   async function hearText(): Promise<void> {
     const words = text.trim();
@@ -109,7 +131,7 @@ export function VoicePanel({
         <button
           type="button"
           aria-label={recording ? "Stop" : "Speak"}
-          onClick={() => (recording ? mic.stop() : void mic.start())}
+          onClick={() => (recording ? mic.stop() : listen())}
           disabled={hearing}
           className={`grid size-14 shrink-0 place-items-center rounded-full text-white shadow-pill disabled:opacity-40 [&_svg]:size-6 ${recording ? "animate-pulse bg-cyan" : "bg-navy"}`}
         >
