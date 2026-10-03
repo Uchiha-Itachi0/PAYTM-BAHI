@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "@/components/chat/Composer";
@@ -73,7 +74,21 @@ export function ShopThreadScreen({ customerId }: { customerId: string }): React.
   const offered = replies && replies.after === theirs ? replies.list : [];
 
   return (
-    <MerchantShell heading={{ title: t?.display_name ?? "…", sub, back: "/m/messages" }}>
+    <MerchantShell
+      heading={{
+        title: t?.display_name ?? "…",
+        sub,
+        back: "/m/messages",
+        action: (
+          <Link
+            href={`/m/customers/${customerId}`}
+            className="text-[13px] font-extrabold text-cyan-text"
+          >
+            Details
+          </Link>
+        ),
+      }}
+    >
       {t?.reminder_at ? (
         <Notice tone="warn">
           A reminder goes to {t.display_name} tomorrow at {clockTime(t.reminder_at)}. You can
@@ -123,7 +138,7 @@ export function ShopThreadScreen({ customerId }: { customerId: string }): React.
           disabled={t.joined !== "linked"}
           why={
             t.joined === "name_only"
-              ? `${t.display_name} is kept by name only. Nothing you write reaches them.`
+              ? `${t.display_name} is kept by name only. Add their phone in Details to reach them.`
               : `${t.display_name} hasn't accepted your invite yet.`
           }
           onSend={send}

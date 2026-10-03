@@ -68,10 +68,14 @@ export function NewCustomerScreen(): React.ReactElement {
   async function invite(a: Account): Promise<void> {
     setBusy(true);
     try {
-      await api(`/shops/${SHOP_ID}/customers/invite`, { query: q.trim(), tag: tag.trim() || null });
+      await api(`/shops/${SHOP_ID}/customers/invite`, {
+        query: q.trim(),
+        tag: tag.trim() || null,
+        display_name: a.named ? null : name.trim(),
+      });
       setNews({
         tone: "ok",
-        text: `Invite sent to ${a.name}. They accept it on their phone; nothing is recorded until they do.`,
+        text: `Invite sent to ${a.named ? a.name : name.trim()}. They accept it on their phone; nothing is recorded until they do.`,
       });
       setFound({ q: q.trim(), account: { ...a, here: "invited" } });
     } catch (e) {
@@ -145,13 +149,24 @@ export function NewCustomerScreen(): React.ReactElement {
               </div>
               {!shown.account.here ? (
                 <div className="mt-3.5 flex flex-col gap-3">
+                  {!shown.account.named ? (
+                    <Field
+                      label="What you call them"
+                      value={name}
+                      onChange={setName}
+                      placeholder="Shreya"
+                    />
+                  ) : null}
                   <Field
                     label="Where they live or work (optional)"
                     value={tag}
                     onChange={setTag}
                     placeholder="Room 12, C wing"
                   />
-                  <Pill onClick={() => void invite(shown.account!)} disabled={busy}>
+                  <Pill
+                    onClick={() => void invite(shown.account!)}
+                    disabled={busy || (!shown.account.named && !name.trim())}
+                  >
                     Send invite
                   </Pill>
                   <p className="text-center text-[12px] font-medium leading-normal text-sub">

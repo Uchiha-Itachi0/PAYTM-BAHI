@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Chat, Mic, Moon, Plus, Scan } from "@/components/icons";
+import { Chat, Mic, Moon, Person, Plus, Scan } from "@/components/icons";
 import { MerchantShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
 import { Figure } from "@/components/ui/Figure";
@@ -22,7 +22,8 @@ import { formatPaise } from "@/lib/money";
  * Polls the API every two seconds, so a confirmation made on a customer's phone
  * shows here within one tick. Every figure was computed by the backend; this
  * screen formats and places them. The list arrives alphabetical and stays that
- * way: never sorted by who owes most. Each row opens that customer's thread.
+ * way: never sorted by who owes most. Each row opens that customer's thread, or
+ * for someone not on BAHI, their page, where their phone can be added.
  */
 
 function subline(line: BookLine): string {
@@ -59,6 +60,8 @@ export function BookScreen(): React.ReactElement {
                   badge: inbox.data?.unread,
                 },
                 { label: "Tomorrow", icon: <Moon />, href: "/m/tonight" },
+                { label: "Customers", icon: <Person />, href: "/m/customers" },
+                { label: "Add customer", icon: <Plus />, href: "/m/customers/new" },
               ]}
             />
           </Card>
@@ -70,7 +73,11 @@ export function BookScreen(): React.ReactElement {
                 sub={subline(line)}
                 amountPaise={line.balance_paise}
                 chip={line.chip}
-                href={`/m/chat/${line.customer_id}`}
+                href={
+                  line.joined === "linked"
+                    ? `/m/chat/${line.customer_id}`
+                    : `/m/customers/${line.customer_id}`
+                }
               />
             ))}
             <Link

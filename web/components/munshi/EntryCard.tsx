@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { MunshiCard } from "@/lib/api/types";
 import { formatPaise } from "@/lib/money";
 
@@ -138,6 +140,14 @@ export function EntryCard({
                 ? `Added by name and written · nothing is sent to someone with no phone`
                 : `Written · ${card.display_name} isn't on BAHI, so nothing was sent`}
         </p>
+      ) : null}
+      {saved && card.new && card.customer_id ? (
+        <Link
+          href={`/m/customers/${card.customer_id}`}
+          className="mt-2 inline-block text-[12.5px] font-extrabold text-cyan underline underline-offset-2"
+        >
+          Add their phone, to send them entries →
+        </Link>
       ) : null}
       {gone ? <p className="mt-2 text-[12.5px] font-bold">Taken away. Nothing was written.</p> : null}
     </section>

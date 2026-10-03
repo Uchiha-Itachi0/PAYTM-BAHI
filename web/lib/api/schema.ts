@@ -164,6 +164,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shop_id}/customers/{customer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Customer
+         * @description One customer: whether he is on BAHI, what he owes, and his entries.
+         */
+        get: operations["get_customer_shops__shop_id__customers__customer_id__get"];
+        put?: never;
+        /**
+         * Edit Customer
+         * @description What the shop calls him, and where he lives or works.
+         */
+        post: operations["edit_customer_shops__shop_id__customers__customer_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/customers/{customer_id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite By Name
+         * @description Someone kept by name: his number or UPI ID, and an invite to his phone. His
+         *     book keeps working by name until he says yes; then his history is his.
+         */
+        post: operations["invite_by_name_shops__shop_id__customers__customer_id__invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shop_id}/customers/{customer_id}/invite/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Invite */
+        post: operations["cancel_invite_shops__shop_id__customers__customer_id__invite_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/join/{shop_id}": {
         parameters: {
             query?: never;
@@ -989,6 +1051,8 @@ export interface components {
             person_id: string;
             /** Name */
             name: string;
+            /** Named */
+            named: boolean;
             /** Here */
             here: ("linked" | "invited" | "name_only") | null;
         };
@@ -1157,6 +1221,34 @@ export interface components {
             /** Waiting */
             waiting: components["schemas"]["WaitingOut"][];
         };
+        /**
+         * CustomerDetailOut
+         * @description One customer, as the shop keeps him: what it calls him, whether he is on
+         *     BAHI, what he owes, and his entries.
+         */
+        CustomerDetailOut: {
+            /** Id */
+            id: string;
+            /** Display Name */
+            display_name: string;
+            /** Tag */
+            tag: string | null;
+            /**
+             * Joined
+             * @enum {string}
+             */
+            joined: "linked" | "invited" | "name_only";
+            /** Invite Pending */
+            invite_pending: boolean;
+            /** Invited At */
+            invited_at: string | null;
+            /** Balance Paise */
+            balance_paise: number;
+            /** Day */
+            day: number | null;
+            /** Entries */
+            entries: components["schemas"]["ThreadEntryOut"][];
+        };
         /** CustomerOut */
         CustomerOut: {
             /** Id */
@@ -1170,6 +1262,16 @@ export interface components {
              * @enum {string}
              */
             joined: "linked" | "invited" | "name_only";
+            /**
+             * Invite Pending
+             * @default false
+             */
+            invite_pending: boolean;
+            /**
+             * Balance Paise
+             * @default 0
+             */
+            balance_paise: number;
         };
         /** CustomerSayIn */
         CustomerSayIn: {
@@ -1401,6 +1503,8 @@ export interface components {
             query: string;
             /** Tag */
             tag?: string | null;
+            /** Display Name */
+            display_name?: string | null;
         };
         /** InviteOut */
         InviteOut: {
@@ -1412,6 +1516,8 @@ export interface components {
              * Format: date-time
              */
             invited_at: string;
+            /** Kept By Name */
+            kept_by_name: boolean;
         };
         /**
          * JoinIn
@@ -1459,6 +1565,14 @@ export interface components {
              */
             chip: "on_rhythm" | "changed" | "not_confirmed" | "new";
             rhythm: components["schemas"]["RhythmOut"];
+        };
+        /**
+         * LinkIn
+         * @description His mobile number or UPI ID, for someone kept by name. Never stored.
+         */
+        LinkIn: {
+            /** Query */
+            query: string;
         };
         /** MessageOut */
         MessageOut: {
@@ -2177,6 +2291,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_customer_shops__shop_id__customers__customer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_customer_shops__shop_id__customers__customer_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NameOnlyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_by_name_shops__shop_id__customers__customer_id__invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_invite_shops__shop_id__customers__customer_id__invite_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailOut"];
                 };
             };
             /** @description Validation Error */

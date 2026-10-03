@@ -110,8 +110,9 @@ export function MyUdhaarScreen(): React.ReactElement {
                 {i.shop.name} wants to keep your udhaar book with you
               </p>
               <p className="mt-1 text-[12.5px] font-medium leading-normal text-sub">
-                You&apos;d be in their book as {i.display_name}. Nothing can be recorded against
-                you unless you say yes, and you confirm every entry yourself.
+                {i.kept_by_name
+                  ? `They already keep udhaar under the name ${i.display_name}. Say yes to see each entry, and confirm or dispute it yourself.`
+                  : `You'd be in their book as ${i.display_name}. Nothing can be recorded against you unless you say yes, and you confirm every entry yourself.`}
               </p>
               <div className="mt-3 flex gap-2">
                 <div className="flex-1">

@@ -57,7 +57,13 @@ function TopBar({
         ) : null}
       </p>
       <DemoLabel />
-      <Search className="size-[22px] text-navy-ink" />
+      {business ? (
+        <Link href="/m/customers" aria-label="Find a customer">
+          <Search className="size-[22px] text-navy-ink" />
+        </Link>
+      ) : (
+        <Search className="size-[22px] text-navy-ink" />
+      )}
       {business ? <Bell className="size-[22px] text-navy-ink" /> : null}
     </header>
   );
