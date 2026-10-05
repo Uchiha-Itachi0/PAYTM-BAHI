@@ -1,8 +1,8 @@
 """
 BAHI — the final deck (after Round 1).
 
-Fifteen slides, in the order the team asked for: the title, what Paytm gets,
-the problem, the solution, cash by voice, nicknames and customers with no phone,
+Sixteen slides, in the order the team asked for: the title, what Paytm gets,
+the problem, the solution, cash by voice, nicknames and customers with no phone, the counter,
 where AI works, what the customer and the shopkeeper each get, how easy it is to
 ship and what it can earn, then impact and proof. Screens
 are captured from the working app (docs/final/*.png, demo data).
@@ -68,7 +68,7 @@ BOTTOM = I(6.72)       # where content must end, above the footer
 prs = Presentation()
 prs.slide_width, prs.slide_height = W, H
 BLANK = prs.slide_layouts[6]
-TOTAL = 15
+TOTAL = 16
 
 
 # ── primitives ─────────────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ para(tf, "a month, added to the Soundbox plan the merchant already pays.", 16,
 para(tf, "The customer pays nothing. There is no new device to ship and no new "
          "app to install.", 13, RGBColor(0xC9, 0xD8, 0xEE), before=14, line=1.4)
 para(tb(s, ML + I(0.35), BOTTOM - I(0.75), LW - I(0.7), I(0.6)),
-     "Our proposed price. The numbers behind it are on slide 13.", 10, PALE,
+     "Our proposed price. The numbers behind it are on slide 14.", 10, PALE,
      first=True, line=1.3)
 
 RX = ML + LW + I(0.3)
@@ -426,6 +426,24 @@ three_screens(
       "The customer pays from her chat by UPI, all of it or part. The shop is "
       "told what is left.")],
     "Screens captured from our working app. Names and amounts are demo data.",
+)
+
+
+three_screens(
+    "The solution / the counter",
+    "Scan the udhaar QR, and you’re at the counter, first in line.",
+    [("docs/final/c-counter.png", "She scans",
+      "The udhaar QR puts her on the shop’s counter list for three minutes. Her "
+      "phone tells her the shop can see her."),
+     ("docs/final/m-counter.png", "Top of his screen",
+      "People at the counter come first. With one there, she is already "
+      "picked: he says or types ₹200 and sends."),
+     ("docs/final/c-counter-yes.png", "Her yes, on the spot",
+      "Her phone asks “Yes, I owe ₹200” at once, before she leaves the "
+      "counter.")],
+    "When he says a name, people at the counter are checked first: “Ganesh ko "
+    "do sau” goes to the Ganesh standing there. With two or more there, nobody "
+    "is picked until he taps one.",
 )
 
 
