@@ -1,10 +1,10 @@
 """
 BAHI — the final deck (after Round 1).
 
-Twelve slides. Round 1's sections, in the organisers' order, now with screens
-captured from the working app (docs/final/*.png, demo data), the munshi, what
-is built and working, and the proof. The Round 1 slides that still hold are
-kept word for word.
+Fifteen slides, in the order the team asked for: the title, what Paytm gets,
+the problem, the solution, where AI works, what the customer and the shopkeeper
+each get, how easy it is to ship and what it can earn, then the rest. Screens
+are captured from the working app (docs/final/*.png, demo data).
 
 Three rules drive it.
 
@@ -67,7 +67,7 @@ BOTTOM = I(6.72)       # where content must end, above the footer
 prs = Presentation()
 prs.slide_width, prs.slide_height = W, H
 BLANK = prs.slide_layouts[6]
-TOTAL = 12
+TOTAL = 15
 
 
 # ── primitives ─────────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ pill(s, ML, I(0.85), "TOP 10  ·  PAYTM BUILD FOR INDIA AI HACKATHON, MUMBAI",
      CYAN, NAVY, I(5.3), I(0.36), size=11)
 tf = tb(s, ML, I(1.45), I(7.0), I(4.6))
 para(tf, "BAHI", 70, WHITE, bold=True, first=True, line=0.95)
-para(tf, "The udhaar book both sides can see.", 28, WHITE, bold=True,
+para(tf, "The khata both sides can see.", 28, WHITE, bold=True,
      before=10, line=1.1)
 para(tf, "The customer scans the shop’s udhaar QR, or asks for udhaar on her "
          "own phone. The shopkeeper tells his AI munshi the amount, and nothing "
@@ -258,10 +258,53 @@ para(tb(s, I(8.3), I(5.62), I(4.65), I(0.3)),
      10, PALE, first=True, align=CENTER)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2 · PROBLEM
+# 2 · WHAT PAYTM GETS
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
-eyebrow(s, "1 · Problem statement")
+eyebrow(s, "What Paytm gets")
+title(s, "More revenue from merchants and customers Paytm already has.")
+
+LW = I(4.1)
+card(s, ML, TOP, LW, BOTTOM - TOP, NAVY)
+tf = tb(s, ML + I(0.35), TOP + I(0.4), LW - I(0.7), I(4.2))
+para(tf, "₹9", 60, WHITE, bold=True, first=True, line=1.0)
+para(tf, "a month, added to the Soundbox plan the merchant already pays.", 16,
+     WHITE, bold=True, before=12, line=1.3)
+para(tf, "The customer pays nothing. There is no new device to ship and no new "
+         "app to install.", 13, RGBColor(0xC9, 0xD8, 0xEE), before=14, line=1.4)
+para(tb(s, ML + I(0.35), BOTTOM - I(0.75), LW - I(0.7), I(0.6)),
+     "Our proposed price. The numbers behind it are on slide 11.", 10, PALE,
+     first=True, line=1.3)
+
+RX = ML + LW + I(0.3)
+RW = CW - LW - I(0.3)
+gets = [
+    ("Customer acquisition is already done",
+     "1.57 Cr storefronts run a Paytm Soundbox, and their customers pay with "
+     "Paytm. BAHI is sold to people Paytm has already won."),
+    ("Paytm Business Khata, made two-sided",
+     "Business Khata already keeps the shop’s udhaar. BAHI adds the customer’s "
+     "own copy, the AI munshi and the Soundbox voice."),
+    ("Udhaar moves from cash to Paytm UPI",
+     "Every repayment is a tap in the customer’s chat with the shop, paid by "
+     "Paytm UPI."),
+]
+GH = int((BOTTOM - TOP - I(0.24)) / 3)
+for k, (head, body) in enumerate(gets):
+    y = TOP + k * (GH + I(0.12))
+    card(s, RX, y, RW, GH)
+    num(s, RX + I(0.3), y + (GH - I(0.42)) // 2, k + 1, I(0.42), size=14)
+    tf = tb(s, RX + I(0.95), y, RW - I(1.25), GH, anchor=MID)
+    para(tf, head, 16, NAVY, bold=True, first=True, line=1.15)
+    para(tf, body, 12.5, MUTED, before=5, line=1.35)
+footer(s, "Sources: Paytm Q1 FY27 earnings release (1.57 Cr Soundbox storefronts); "
+          "business.paytm.com/business-khata, checked 23 Sep 2026.")
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 3 · PROBLEM
+# ═══════════════════════════════════════════════════════════════════════════
+s = slide()
+eyebrow(s, "The problem")
 title(s, "The udhaar book has one author. The customer never sees it.")
 
 card(s, ML, TOP, CW, I(2.05))
@@ -303,10 +346,10 @@ footer(s, "Source: Khatabook on Google Play (5 Cr+ downloads) and khatabook.com,
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 3 · SOLUTION
+# 4 · SOLUTION
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
-eyebrow(s, "2 · Proposed solution")
+eyebrow(s, "The solution")
 title(s, "One entry, agreed by both sides, inside the Paytm they already use.")
 
 steps = [
@@ -332,10 +375,69 @@ footer(s, "Screens captured from our working app. Names and amounts are demo dat
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 4 · THE MUNSHI
+# 5 · WHERE AI WORKS
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
-eyebrow(s, "2 · Proposed solution / the munshi")
+eyebrow(s, "AI in BAHI")
+title(s, "Five jobs for AI: hear, understand, speak, remember, predict.")
+
+COLW = [I(1.75), I(2.45), I(4.75), I(3.14)]
+HEADS = ["The job", "Model", "What it does", "Where you see it"]
+ROWS = [
+    ("Hear", "Sarvam Saaras v4",
+     "Speech to text in whatever language is spoken, with the shop’s customer "
+     "names as hints.",
+     "Add udhaar by voice, the munshi"),
+    ("Understand", "Sarvam-105B",
+     "The munshi: works out what he meant and calls our tools to find a "
+     "customer, put an entry on a card or look something up.",
+     "Paytm Assistant, voice entries"),
+    ("Speak", "Sarvam Bulbul v3",
+     "Says amounts on the Soundbox and reads the munshi’s replies aloud.",
+     "Soundbox, Assistant"),
+    ("Remember", "Cognee + pgvector",
+     "Turns notes, promises and nicknames into a knowledge graph per shop, "
+     "and recalls them by meaning.",
+     "“Salary on the 7th”, “Pappu is Prakash”"),
+    ("Predict", "Pattern engine + Sarvam-105B",
+     "When each customer will likely pay, and who is drifting. The munshi "
+     "says it as a guess.",
+     "Customer card, Tomorrow, “इस हफ़्ते कौन देगा?”"),
+]
+y = TOP - I(0.05)
+x = ML
+for w, head in zip(COLW, HEADS):
+    para(tb(s, x, y, w, I(0.3)), head.upper(), 9.5, CYAN_TX, bold=True,
+         first=True, spc=1.0)
+    x += w
+y += I(0.32)
+rect(s, ML, y, CW, Pt(1.5), CYAN)
+y += I(0.06)
+RH = I(0.88)
+for r, cells in enumerate(ROWS):
+    card(s, ML - I(0.08), y + I(0.04), CW + I(0.16), RH - I(0.08), WHITE, 0.12)
+    x = ML
+    for c, (w, val) in enumerate(zip(COLW, cells)):
+        tf = tb(s, x + I(0.1), y, w - I(0.25), RH, anchor=MID)
+        if c == 0:
+            para(tf, val, 16, NAVY, bold=True, first=True)
+        elif c == 1:
+            para(tf, val, 12.5, NAVY, bold=True, first=True, line=1.2)
+        else:
+            para(tf, val, 12 if c == 2 else 11.5, INK if c == 2 else MUTED,
+                 first=True, line=1.3)
+        x += w
+    y += RH
+footer(s, "Prediction is arithmetic on the customer’s own ledger, so every figure "
+          "can be checked by hand; no model ever produces a number. Cognee runs in "
+          "our local build and is off in the hosted demo.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 6 · THE MUNSHI
+# ═══════════════════════════════════════════════════════════════════════════
+s = slide()
+eyebrow(s, "AI in BAHI / the munshi")
 title(s, "An AI munshi that does the work, and never writes without a yes.")
 
 PW = I(2.05)
@@ -371,51 +473,68 @@ footer(s, "Replies shown are from our live test with Sarvam. An ordinary card go
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 5 · BUILT AND WORKING
+# 7, 8 · WHAT EACH SIDE GETS
+# ═══════════════════════════════════════════════════════════════════════════
+def features(eyebrow_text, title_text, shots, head, lines, note):
+    s = slide()
+    eyebrow(s, eyebrow_text)
+    title(s, title_text)
+    PW = I(1.62)
+    gap = I(0.22)
+    for k, path in enumerate(shots):
+        phone(s, path, ML + I(0.05) + k * (PW + gap), TOP, PW)
+    para(tb(s, ML, TOP + I(3.32), 3 * PW + 2 * gap, I(0.3)), note, 10, MUTED,
+         first=True, align=CENTER)
+    RX = ML + 3 * PW + 2 * gap + I(0.45)
+    RW = CW - (RX - ML)
+    card(s, RX, TOP, RW, BOTTOM - TOP)
+    tf = tb(s, RX + I(0.35), TOP + I(0.3), RW - I(0.7), BOTTOM - TOP - I(0.5))
+    para(tf, head, 16, NAVY, bold=True, first=True, after=2)
+    for ln in lines:
+        rich(tf, [("—  ", CYAN_TX, True), (ln, INK, False)], 13, before=9,
+             line=1.3)
+    footer(s, "Screens captured from our working app. Names and amounts are "
+              "demo data.")
+
+
+features(
+    "For the customer",
+    "Her own copy of every udhaar, inside the Paytm app she already has.",
+    ["docs/final/c-ask.png", "docs/final/c-agreed.png", "docs/final/c-mybook.png"],
+    "What the customer can do",
+    ["Scan the shop’s udhaar QR. Nothing to download: it is Paytm.",
+     "Ask for udhaar herself: how much, and what for.",
+     "Say yes to each entry, or tap “Not mine” or “Wrong amount”.",
+     "A chat with each shop that reads like a passbook: the total before and "
+     "after every entry.",
+     "See what she owes across every shop, and pay by UPI, all or part.",
+     "Reminders come privately, in her language, with no due date and no "
+     "interest."],
+    "Ask  ·  Agreed  ·  My udhaar",
+)
+
+features(
+    "For the shopkeeper",
+    "He says it once. The munshi, the Soundbox and the code do the rest.",
+    ["docs/final/m-home.png", "docs/final/m-popup.png", "docs/final/m-tonight.png"],
+    "What the shopkeeper can do",
+    ["Say the amount to the munshi in any language, or tap the keypad.",
+     "A customer’s ask pops up on his screen: Yes, No or Change amount.",
+     "The Soundbox says the amount aloud, and never a name.",
+     "Correct an entry or take it back, in the open.",
+     "Ask anything: “कितना बाकी है?”, “इस हफ़्ते कौन देगा?”",
+     "BAHI remembers promises and notes, and holds a reminder for them.",
+     "Only people late by their own pattern get a reminder. He can rewrite, "
+     "move, stop or pause it."],
+    "Home  ·  A customer asks  ·  Tomorrow",
+)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 9 · TECH
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
-eyebrow(s, "2 · Proposed solution / built and working")
-title(s, "Everything here runs in our app today.")
-
-tiles = [
-    ("Two ways in", "The shop says the amount, or the customer asks on her "
-                    "phone. Both agree before it counts."),
-    ("Agreed totals", "What someone owes is what they said yes to. Waiting "
-                      "and questioned amounts are shown apart."),
-    ("Mistakes fixed in the open", "“Not mine” or “Wrong amount”; the shop "
-                                   "corrects or takes it back, the old entry "
-                                   "struck through."),
-    ("Passbook chat", "Each udhaar and payment card shows the total before "
-                      "and after: ₹80 → ₹180 → ₹100."),
-    ("Reminders with reasons", "Rewrite one, move its hour, stop it, or pause "
-                               "someone for a week, two or a month."),
-    ("Memory", "Notes, promises in chat and nicknames. A promise holds a "
-               "reminder; it never sends one."),
-    ("Soundbox", "Chimes, and says amounts aloud: “दो सौ रुपये का उधार था, उसमें "
-                 "से सौ मिले”. Never a name."),
-    ("Every shop, one view", "The customer sees what she owes across every "
-                             "shop, and pays by UPI, all or part."),
-    ("Any language", "Sarvam hears the language spoken; the munshi answers in "
-                     "it, in its own script."),
-]
-cw_ = cols(3, I(0.26))
-TH = I(1.56)
-for k, (head, body) in enumerate(tiles):
-    x, w = cw_[k % 3]
-    y = TOP + (k // 3) * (TH + I(0.12))
-    card(s, x, y, w, TH)
-    rect(s, x + I(0.25), y + I(0.22), I(0.4), Pt(3), CYAN)
-    tf = tb(s, x + I(0.25), y + I(0.34), w - I(0.5), TH - I(0.4))
-    para(tf, head, 14, NAVY, bold=True, first=True)
-    para(tf, body, 11.5, MUTED, before=4, line=1.25)
-footer(s)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 6 · TECH
-# ═══════════════════════════════════════════════════════════════════════════
-s = slide()
-eyebrow(s, "3 · Technology / tech stack")
+eyebrow(s, "Technology")
 title(s, "AI understands the words. Plain code decides every number.")
 
 
@@ -478,10 +597,10 @@ for name in stack:
 footer(s)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 5 · USP
+# 10 · USP
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
-eyebrow(s, "4 · Unique selling proposition")
+eyebrow(s, "Unique selling proposition")
 title(s, "Every udhaar app serves the shopkeeper. We add the customer.")
 
 COLW = [I(3.0), I(2.6), I(3.35), I(3.14)]
@@ -539,10 +658,74 @@ footer(s, "Sources: Google Play listings, okcredit.in, khatabook.com and "
           "business.paytm.com, checked 23 Sep 2026.")
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 6 · IMPACT
+# 11 · EASY TO SHIP, AND WHAT IT EARNS
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
-eyebrow(s, "5 · Impact & benefits")
+eyebrow(s, "Business model")
+title(s, "No new hardware, and ₹9 more a month from each merchant.")
+
+LW = I(5.0)
+card(s, ML, TOP, LW, BOTTOM - TOP)
+tf = tb(s, ML + I(0.35), TOP + I(0.3), LW - I(0.7), BOTTOM - TOP - I(0.5))
+para(tf, "Easy to build and sell", 16, NAVY, bold=True, first=True, after=2)
+for ln in [
+    "Software only. No new hardware: the Soundbox already says amounts aloud.",
+    "Built on what Paytm has: the Paytm app, its chats, UPI, the Soundbox and "
+    "Business Khata.",
+    "Sold as an add-on line on the merchant’s existing Soundbox bill, through "
+    "the Paytm for Business app and the field team.",
+    "A standalone ledger app lost ₹116 Cr in FY24 (Khatabook). BAHI needs no "
+    "app of its own and no new customers.",
+    "We built it working, end to end, during the hackathon.",
+]:
+    rich(tf, [("—  ", CYAN_TX, True), (ln, INK, False)], 12.5, before=9,
+         line=1.3)
+
+RX = ML + LW + I(0.3)
+RW = CW - LW - I(0.3)
+card(s, RX, TOP, RW, I(1.55), NAVY)
+tf = tb(s, RX + I(0.35), TOP, RW - I(0.7), I(1.55), anchor=MID)
+rich(tf, [("₹90  →  ₹99", WHITE, True)], 34, first=True, line=1.0)
+para(tf, "a month from the same merchant, with no hardware delivered. Paytm’s "
+         "Soundbox plan earned about ₹90 a device a month in Q4 FY24.", 12,
+     RGBColor(0xC9, 0xD8, 0xEE), before=8, line=1.35)
+
+ty = TOP + I(1.75)
+card(s, RX, ty, RW, BOTTOM - ty)
+tf = tb(s, RX + I(0.35), ty + I(0.22), RW - I(0.7), I(0.6))
+para(tf, "Our guesstimate: merchants who add BAHI", 14, NAVY, bold=True,
+     first=True)
+para(tf, "Out of 1.24 Cr merchants paying for a Paytm device, at ₹9 a month.",
+     11, MUTED, before=3)
+TC = [I(1.9), I(2.0), RW - I(0.7) - I(3.9)]
+rows = [("Take-up", "Merchants", "New revenue a year"),
+        ("5%", "6.2 lakh", "₹6.7 Cr"),
+        ("10%", "12.4 lakh", "₹13.4 Cr"),
+        ("25%", "31 lakh", "₹33.5 Cr")]
+yy = ty + I(1.0)
+for r, cells in enumerate(rows):
+    x = RX + I(0.35)
+    for c, (w, val) in enumerate(zip(TC, cells)):
+        para(tb(s, x, yy, w, I(0.4), anchor=MID), val.upper() if r == 0 else val,
+             9.5 if r == 0 else 15, CYAN_TX if r == 0 else (NAVY if c == 2 else INK),
+             bold=(r == 0 or c == 2), first=True, spc=1.0 if r == 0 else None)
+        x += w
+    yy += I(0.42) if r else I(0.36)
+    rect(s, RX + I(0.35), yy - Pt(1), RW - I(0.7), Pt(0.75) if r else Pt(1.5),
+         HAIR if r else CYAN)
+para(tb(s, RX + I(0.35), BOTTOM - I(0.48), RW - I(0.7), I(0.35)),
+     "Not counted: udhaar repayments moving from cash to Paytm UPI.", 10.5,
+     MUTED, first=True)
+footer(s, "Our estimate, not a forecast. ₹90/device/month: Paytm, Q4 FY24 "
+          "(Business Standard, May 2024). 1.24 Cr device subscribers: Paytm FY25 "
+          "Annual Report.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 12 · IMPACT
+# ═══════════════════════════════════════════════════════════════════════════
+s = slide()
+eyebrow(s, "Impact")
 title(s, "Fewer reminders, sent only to people who are actually late.")
 
 LW = I(3.75)
@@ -580,63 +763,7 @@ footer(s, "These are the outcomes we expect; a pilot would measure them. "
           "“4 of 38” is computed from our synthetic demo shop.")
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 7 · BUSINESS MODEL
-# ═══════════════════════════════════════════════════════════════════════════
-s = slide()
-eyebrow(s, "6 · Business model")
-title(s, "Free for both sides. Paytm gains through the Soundbox.")
-
-LW = I(7.45)
-card(s, ML, TOP, LW, I(2.3))
-fy, fh, fw = TOP + I(0.85), I(1.0), I(1.6)
-fx = [ML + I(0.3), ML + I(2.92), ML + I(5.55)]
-node(s, fx[0], fy, fw, fh, "Customer", "pays nothing extra", fill=SKY,
-     head_size=14, sub_size=11)
-node(s, fx[1], fy, fw, fh, "Shopkeeper", "pays nothing extra", fill=SKY,
-     head_size=14, sub_size=11)
-node(s, fx[2], fy, fw, fh, "Paytm", "UPI + Soundbox", fill=NAVY,
-     head_color=WHITE, sub_color=RGBColor(0xC9, 0xD8, 0xEE), head_size=14,
-     sub_size=11)
-for a, b, label in [(0, 1, "clears udhaar\nby UPI"),
-                    (1, 2, "keeps his\nSoundbox")]:
-    ay = fy + fh // 2
-    arrow(s, fx[a] + fw + I(0.08), ay, fx[b] - I(0.08), ay)
-    tf = tb(s, fx[a] + fw, fy - I(0.52), fx[b] - fx[a] - fw, I(0.5),
-            anchor=MSO_ANCHOR.BOTTOM)
-    for k, part in enumerate(label.split("\n")):
-        para(tf, part, 10.5, NAVY, bold=True, first=(k == 0), align=CENTER,
-             line=1.1)
-
-tf = tb(s, ML, I(4.40), LW, I(2.3))
-para(tf, "What Paytm gets", 15, NAVY, bold=True, first=True, after=2)
-for ln in ["Udhaar repayments move from cash to Paytm UPI.",
-           "A reason for merchants to keep their Soundbox subscription.",
-           "Later, with consent: a repayment history for people with no credit "
-           "file. We only record it — licensed partners would lend."]:
-    rich(tf, [("—  ", CYAN_TX, True), (ln, INK, False)], 13, before=9,
-         line=1.35)
-
-RX = ML + LW + I(0.3)
-RW = CW - LW - I(0.3)
-facts = [
-    ("1.57 Cr", "storefronts already run a Paytm Soundbox — the counter BAHI "
-                "lives on.",
-     "Paytm Q1 FY27 earnings release, Jul 2026"),
-    ("₹116 Cr", "Khatabook’s FY24 loss, on ₹102.7 Cr revenue. Charging for a "
-                "ledger has not worked, so we don’t.",
-     "YourStory, Nov 2024"),
-]
-for k, (big, body, src) in enumerate(facts):
-    y = TOP + k * I(2.55)
-    card(s, RX, y, RW, I(2.3))
-    tf = tb(s, RX + I(0.3), y + I(0.25), RW - I(0.6), I(1.9))
-    para(tf, big, 36, NAVY, bold=True, first=True, line=1.0)
-    para(tf, body, 13, INK, before=8, line=1.35)
-    para(tf, "Source: " + src, 9.5, FAINT, before=8)
-footer(s)
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 8 · FOUR RULES
+# 13 · FOUR RULES
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
 eyebrow(s, "Designed around Indian law")
@@ -679,7 +806,7 @@ footer(s, "Each rule is enforced in the database schema and the API, not only "
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 11 · PROOF
+# 14 · PROOF
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
 eyebrow(s, "Proof")
@@ -737,7 +864,7 @@ footer(s, "Voice test: synthetic recordings (10 Sarvam and 2 Mac voices) "
           "replayed through our checker; graded on the entry the book would hold.")
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 10 · SOURCES
+# 15 · SOURCES
 # ═══════════════════════════════════════════════════════════════════════════
 s = slide()
 eyebrow(s, "Sources")
@@ -764,6 +891,13 @@ market = [
      "YourStory, Nov 2024",
      "https://yourstory.com/2024/11/ms-dhoni-backed-khatabook-clocks-rs-1027-"
      "cr-revenue-cuts-losses-7-in-fy24"),
+    ("Paytm device subscription ≈ ₹90 a device a month (Q4 FY24)",
+     "Business Standard, 22 May 2024",
+     "https://www.business-standard.com/companies/news/paytm-pb-s-ripple-"
+     "effects-on-its-biz-loans-merchant-subscriptions-swayed-124052201353_1.html"),
+    ("1.24 Cr merchants paying for a Paytm device (Mar 2025)",
+     "Paytm Annual Report FY25",
+     "https://paytm.com/document/ir/agm/fy/-25/Paytm_Annual_Report_2025.pdf"),
 ]
 law = [
     ("Information Technology Act 2000, s.1(4) and First Schedule, entry 1 "
@@ -785,8 +919,8 @@ tf = tb(s, lx + I(0.3), TOP + I(0.25), lw - I(0.6), BOTTOM - TOP - I(0.4))
 para(tf, "MARKET AND PRODUCTS", 9.5, CYAN_TX, bold=True, first=True, spc=1.2,
      after=2)
 for fact, where, url in market:
-    para(tf, fact, 11.5, INK, bold=True, before=9, line=1.2)
-    para(tf, where, 10, MUTED, line=1.2, before=1, link=url)
+    para(tf, fact, 11, INK, bold=True, before=6, line=1.15)
+    para(tf, where, 9.5, MUTED, line=1.15, before=1, link=url)
 
 tf = tb(s, rx + I(0.3), TOP + I(0.25), rw - I(0.6), BOTTOM - TOP - I(0.4))
 para(tf, "LAW", 9.5, CYAN_TX, bold=True, first=True, spc=1.2, after=2)
