@@ -20,6 +20,14 @@ export const LINKS: { label: string; note: string; url: string }[] = [
     note: "Uchiha-Itachi0/PAYTM-BAHI",
     url: "https://github.com/Uchiha-Itachi0/PAYTM-BAHI",
   },
-  { label: "Demo video", note: "The whole flow, start to end", url: "" },
-  { label: "Pitch deck (PDF)", note: "The problem, the build and the numbers", url: "" },
+  {
+    label: "Demo video",
+    note: "The whole flow, start to end",
+    url: "https://drive.google.com/file/d/1UZOw8tcfHFTYClp9S92xpVZdtaBiOi_l/view?usp=drive_link",
+  },
+  {
+    label: "Pitch deck (PDF)",
+    note: "The problem, the build and the numbers",
+    url: "https://drive.google.com/file/d/1ylEn8Cx-0x96Xr9wXf0pHjXX57AK_As0/view?usp=sharing",
+  },
 ];
