@@ -231,6 +231,9 @@ def cols(n, gutter, x=ML, width=CW):
 s = slide(NAVY)
 rect(s, 0, 0, W, Pt(8), CYAN)
 
+# The result from the Mumbai panel, first thing a reader sees.
+pill(s, ML, I(0.85), "TOP 10  ·  PAYTM BUILD FOR INDIA AI HACKATHON, MUMBAI",
+     CYAN, NAVY, I(5.3), I(0.36), size=11)
 tf = tb(s, ML, I(1.45), I(7.0), I(4.6))
 para(tf, "BAHI", 70, WHITE, bold=True, first=True, line=0.95)
 para(tf, "The udhaar book both sides can see.", 28, WHITE, bold=True,
@@ -245,7 +248,8 @@ tf = tb(s, ML, I(5.75), I(7.3), I(0.8))
 para(tf, "Paytm Build for India AI Hackathon  ·  Mumbai, 3 October 2026",
      12, WHITE, first=True)
 para(tf, "Track 2: AI-Powered Financial Journeys", 12, WHITE, before=4)
-para(tf, "Team Hustlers", 12, PALE, before=10)
+para(tf, "Team Hustlers  ·  picked by the Paytm panel as a top 10 project", 12,
+     PALE, before=10)
 
 phone(s, "docs/final/m-popup.png", I(8.3), I(1.0), I(2.2))
 phone(s, "docs/final/c-chat.png", I(10.75), I(1.0), I(2.2))
