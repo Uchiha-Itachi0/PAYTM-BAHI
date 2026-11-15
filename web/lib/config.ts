@@ -28,6 +28,6 @@ export const LINKS: { label: string; note: string; url: string }[] = [
   {
     label: "Pitch deck (PDF)",
     note: "The problem, the build and the numbers",
-    url: "https://drive.google.com/file/d/1ylEn8Cx-0x96Xr9wXf0pHjXX57AK_As0/view?usp=sharing",
+    url: "https://drive.google.com/file/d/13j_cu-YC5CvN8M3C7NNeEt2vpE92k3mb/view?usp=sharing",
   },
 ];
