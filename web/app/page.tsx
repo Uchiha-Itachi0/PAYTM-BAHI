@@ -24,7 +24,7 @@ export default function Start(): React.ReactElement {
       {links.length ? (
         <Card title="About the project">
           <p className="mb-3 text-[12.5px] font-medium leading-normal text-sub">
-            Selected in the top 10 at the Paytm Build for India AI Hackathon, Mumbai.
+            Selected in the top 10 at the Paytm Build for India AI Hackathon.
             Built by Team Hustlers.
           </p>
           <ul className="flex flex-col">
