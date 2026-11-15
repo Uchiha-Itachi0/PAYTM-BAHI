@@ -44,6 +44,11 @@ choices are marked here so they are easy to find and change.
   `UpiPin`. The payment is a normal `repayments` row against the debtor's own
   entry, with `paid_by` set to the member who paid. Concurrent payments are
   serialised by a row lock, so a second payer can only pay what is left.
+- **Notes follow the entry.** A note that asks for something about an udhaar
+  (`help`, `shared`, `choose`, `kept`) is checked against the entry each time it
+  is read (`domain.circle.notice_stands`). Its amount is what is left now, and it
+  stops showing once the entry is paid, closed, or off that list, whoever paid
+  it and however (a member, the debtor at the shop, or cash in the book).
 - **Leaving.** `POST /circles/{c}/leave` takes all of the leaver's bills off the
   list straight away (`withdrawn_why = 'left'`) and closes the notes about them.
   The debt stays theirs. From then on only they can pay it, through the usual

@@ -306,6 +306,57 @@ def test_a_member_pays_and_rakesh_stays_the_debtor(api: TestClient, tx: db.Conn)
     assert api.get(f"/entries/{eid}").json()["status"] == "settled"
 
 
+def about(api: TestClient, person: str, eid: str) -> list[dict[str, Any]]:
+    return [n for n in mine(api, person)["notices"] if n["entry_id"] == eid]
+
+
+def test_a_paid_bill_stops_asking_the_family_to_pay_it(api: TestClient) -> None:
+    """Regression: after a member paid a bill in full, the others' "Pay it for
+    them?" note still showed, with the old amount, on every refresh."""
+    eid = agreed(api, 10000)
+    assert [n["kind"] for n in about(api, ROHAN, eid)] == ["help"]
+
+    # A part payment: the note stays, and asks for what is left, not the bill.
+    r = api.post(
+        f"/circles/{FAMILY}/entries/{eid}/pay",
+        json={"person_id": SUNITA, "amount_paise": 4000},
+    )
+    assert r.status_code == 200, r.text
+    help_ = about(api, ROHAN, eid)
+    assert [n["kind"] for n in help_] == ["help"]
+    assert "a bill of ₹60 at Ramesh Kirana Store" in help_[0]["body"]
+    shared = [n for n in about(api, RAKESH, eid) if n["kind"] == "shared"]
+    assert shared and "₹60" in shared[0]["body"]
+
+    # The rest: nobody is asked to pay it any more; Rakesh's "paid" notes stay.
+    r = api.post(f"/circles/{FAMILY}/entries/{eid}/pay", json={"person_id": SUNITA})
+    assert r.status_code == 200, r.text
+    for member in (SUNITA, ROHAN):
+        assert about(api, member, eid) == []
+    assert [n["kind"] for n in about(api, RAKESH, eid)] == ["paid", "paid"]
+
+
+def test_a_bill_he_pays_himself_at_the_shop_stops_the_asks(api: TestClient) -> None:
+    eid = agreed(api, 10000)
+    owed = owed_here(api)
+    r = api.post(f"/shops/{SHOP}/pay", json={"person_id": RAKESH, "amount_paise": owed})
+    assert r.status_code == 200, r.text
+    assert api.get(f"/entries/{eid}").json()["status"] == "settled"
+    for member in (RAKESH, SUNITA, ROHAN):
+        assert about(api, member, eid) == []
+
+
+def test_a_bill_taken_off_the_list_stops_the_asks(api: TestClient) -> None:
+    r = api.post(f"/people/{RAKESH}/circle-setting", json={"on_udhaar": "self"})
+    assert r.status_code == 200
+    eid = agreed(api, 10000)
+    r = api.post(f"/circles/{FAMILY}/share", json={"person_id": RAKESH, "entry_id": eid})
+    assert r.status_code == 200
+    r = api.post(f"/circles/{FAMILY}/entries/{eid}/take-back", json={"person_id": RAKESH})
+    assert r.status_code == 204
+    assert about(api, SUNITA, eid) == []
+
+
 def test_more_than_is_left_is_refused(api: TestClient) -> None:
     eid = agreed(api, 10000)
     r = api.post(

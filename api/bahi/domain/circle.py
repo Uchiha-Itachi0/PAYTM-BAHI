@@ -62,6 +62,29 @@ def route(chosen: str | None, circle_ids: Sequence[str]) -> Route:
     return Route("choose")
 
 
+#: Notes that ask for something to be done about an open udhaar. They hold only
+#: while it is open; the others ("added", "paid") record what happened.
+ABOUT_AN_OPEN_ENTRY = frozenset({"shared", "choose", "kept", "help"})
+
+
+def notice_stands(
+    kind: str, *, entry_open: bool, listed_in: str | None, circle_id: str | None
+) -> bool:
+    """Whether a waiting note still means anything, from the entry as it is now.
+
+    A note asking to pay, place, or take back an udhaar is over once that udhaar
+    is paid, closed, or no longer where the note says: whoever paid it, and by
+    whatever route (a member, the debtor at the shop, cash in the book).
+    """
+    if kind not in ABOUT_AN_OPEN_ENTRY:
+        return True
+    if not entry_open:
+        return False
+    if kind in ("shared", "help"):
+        return listed_in is not None and listed_in == circle_id
+    return listed_in is None
+
+
 def why_not_pay(
     *,
     payer_is_member: bool,

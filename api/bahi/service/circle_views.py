@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
-from bahi.domain.circle import DEFAULT_ON_UDHAAR, setting
+from bahi.domain import wording
+from bahi.domain.circle import DEFAULT_ON_UDHAAR, notice_stands, setting
 from bahi.service import circle, views
 from bahi.service.circle_models import (
     CircleEntryOut,
@@ -17,7 +19,7 @@ from bahi.service.circle_models import (
     NoticeOut,
 )
 from bahi.store import circles, entries, shops
-from bahi.store.circles import Circle, Share
+from bahi.store.circles import Circle, Notice, Share
 from bahi.store.db import Conn
 from bahi.store.entries import EntryRef
 
@@ -106,14 +108,66 @@ def _summary(con: Conn, c: Circle, today: date) -> CircleSummaryOut:
     )
 
 
+def _live_notices(
+    con: Conn, person_id: str, circles_by_id: dict[str, Circle], today: date
+) -> tuple[list[Notice], dict[str, EntryRef]]:
+    """Their waiting notes, checked against each entry as it is now.
+
+    A note about an udhaar is shown only while it still stands (see
+    `domain.circle.notice_stands`), and its amount is what is left to pay now, not
+    what was owed when the note was written.
+    """
+    notes = circles.notices(con, person_id)
+    about = entries.by_ids(con, [n.entry_id for n in notes if n.entry_id])
+    debtors = [e.person_id for e in about.values() if e.person_id]
+    who = circle.names(con, debtors)
+    live: list[Notice] = []
+    for n in notes:
+        e = about.get(n.entry_id) if n.entry_id else None
+        if e is None:
+            live.append(n)
+            continue
+        on = circles.on_a_list(con, e.id)
+        listed_in = on.circle_id if on else None
+        if not notice_stands(
+            n.kind,
+            entry_open=circle.is_open(e, today),
+            listed_in=listed_in,
+            circle_id=n.circle_id,
+        ):
+            continue
+        live.append(_with_body(n, _body_now(n, e, who, circles_by_id)))
+    return live, about
+
+
+def _body_now(
+    n: Notice, e: EntryRef, who: dict[str, str], circles_by_id: dict[str, Circle]
+) -> str:
+    """The note's words, with what is left on the entry now."""
+    left = e.amount_paise - e.paid_paise
+    c = circles_by_id.get(n.circle_id) if n.circle_id else None
+    if n.kind == "help" and c is not None and e.person_id:
+        return wording.circle_help(who[e.person_id], e.shop_name, left, c.name)
+    if n.kind == "shared" and c is not None:
+        return wording.circle_shared(e.shop_name, left, c.name)
+    if n.kind == "choose":
+        return wording.circle_choose(e.shop_name, left)
+    if n.kind == "kept":
+        return wording.circle_kept(e.shop_name, left)
+    return n.body
+
+
+def _with_body(n: Notice, body: str) -> Notice:
+    return n if body == n.body else replace(n, body=body)
+
+
 def mine(con: Conn, person_id: str, today: date) -> MyCirclesOut:
     """Their circles, their setting, their notes, and which of their entries are on
     a list."""
     chosen = circles.chosen(con, person_id)
     mine_ = circles.of_person(con, person_id)
-    notes = circles.notices(con, person_id)
-    about = entries.by_ids(con, [n.entry_id for n in notes if n.entry_id])
     by_id = {c.id: c for c in mine_}
+    notes, about = _live_notices(con, person_id, by_id, today)
     listed = circles.listed_for(con, person_id)
     named = {s.circle_id: circles.get(con, s.circle_id) for s in listed}
     return MyCirclesOut(
