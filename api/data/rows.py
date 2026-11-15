@@ -93,6 +93,32 @@ class MessageRow:
 
 
 @dataclass(frozen=True, slots=True)
+class CircleRow:
+    id: UUID
+    name: str
+    created_by: UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CircleMemberRow:
+    id: UUID
+    circle_id: UUID
+    person_id: UUID
+    added_by: UUID
+    joined_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CircleShareRow:
+    id: UUID
+    circle_id: UUID
+    entry_id: UUID
+    shared_by: UUID
+    shared_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class PaytmAccountRow:
     """Paytm's own record of a person (simulated; schema paytm, not BAHI's)."""
 

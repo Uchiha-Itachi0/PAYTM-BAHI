@@ -1269,6 +1269,207 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/people/{person_id}/circles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Circles
+         * @description C1. Their circles, what happens to their next udhaar, and their notes.
+         */
+        get: operations["my_circles_people__person_id__circles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{person_id}/circle-setting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set On Udhaar
+         * @description C1. When I take udhaar: send it to my circle, or keep it to myself.
+         */
+        post: operations["set_on_udhaar_people__person_id__circle_setting_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create
+         * @description C2. A new circle, with the people behind these mobile numbers.
+         */
+        post: operations["create_circles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Circle
+         * @description C3. The circle: who is in it, and its list. Only for a member.
+         */
+        get: operations["get_circle_circles__circle_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Member
+         * @description C3. Anyone in the circle adds one more person, by mobile number.
+         */
+        post: operations["add_member_circles__circle_id__members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave
+         * @description C3. They leave: their entries come off the list and stay theirs to pay.
+         */
+        post: operations["leave_circles__circle_id__leave_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share
+         * @description C4. "Add to circle": one of their own open entries, onto this list.
+         */
+        post: operations["share_circles__circle_id__share_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/entries/{entry_id}/take-back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take Back
+         * @description C4. The debtor takes their entry off the list.
+         */
+        post: operations["take_back_circles__circle_id__entries__entry_id__take_back_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{circle_id}/entries/{entry_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay
+         * @description C5. A member pays an entry on the list by UPI, all or part. The money goes
+         *     to the shop, against the debtor's entry; nobody owes the payer anything.
+         */
+        post: operations["pay_circles__circle_id__entries__entry_id__pay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circle-notices/{notice_id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Notice Done
+         * @description A note read and put aside.
+         */
+        post: operations["notice_done_circle_notices__notice_id__done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1485,6 +1686,136 @@ export interface components {
             ok: boolean;
             /** Says */
             says: string;
+        };
+        /**
+         * CircleEntryOut
+         * @description An entry on the list: the shop, the amount, the date. Never the item.
+         */
+        CircleEntryOut: {
+            /** Entry Id */
+            entry_id: string;
+            /** Debtor Name */
+            debtor_name: string;
+            /** Debtor Person Id */
+            debtor_person_id: string;
+            /** Mine */
+            mine: boolean;
+            shop: components["schemas"]["ShopOut"];
+            /** Amount Paise */
+            amount_paise: number;
+            /** Paid Paise */
+            paid_paise: number;
+            /** Left Paise */
+            left_paise: number;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /**
+             * Shared At
+             * Format: date-time
+             */
+            shared_at: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "paid" | "closed";
+            /** Payments */
+            payments: components["schemas"]["CirclePaymentOut"][];
+        };
+        /**
+         * CircleIn
+         * @description A new circle: its name, and the people in it by mobile number.
+         */
+        CircleIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Name */
+            name: string;
+            /** Phones */
+            phones: string[];
+        };
+        /** CircleOut */
+        CircleOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Members */
+            members: components["schemas"]["MemberOut"][];
+            /** Entries */
+            entries: components["schemas"]["CircleEntryOut"][];
+            /** Open Paise */
+            open_paise: number;
+        };
+        /** CirclePaidOut */
+        CirclePaidOut: {
+            /** Circle Id */
+            circle_id: string;
+            /** Entry Id */
+            entry_id: string;
+            shop: components["schemas"]["ShopOut"];
+            /** Debtor Name */
+            debtor_name: string;
+            /** Amount Paise */
+            amount_paise: number;
+            /** Left Paise */
+            left_paise: number;
+            /**
+             * Paid At
+             * Format: date-time
+             */
+            paid_at: string;
+        };
+        /**
+         * CirclePayIn
+         * @description A member pays an entry on the list by UPI.
+         */
+        CirclePayIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Amount Paise */
+            amount_paise?: number | null;
+        };
+        /** CirclePaymentOut */
+        CirclePaymentOut: {
+            /** Payer Name */
+            payer_name: string;
+            /** By Debtor */
+            by_debtor: boolean;
+            /** Amount Paise */
+            amount_paise: number;
+            /**
+             * Paid At
+             * Format: date-time
+             */
+            paid_at: string;
+        };
+        /** CircleSummaryOut */
+        CircleSummaryOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Members */
+            members: string[];
+            /** Open Paise */
+            open_paise: number;
+            /** Open Count */
+            open_count: number;
         };
         /** ClipOut */
         ClipOut: {
@@ -1894,6 +2225,42 @@ export interface components {
             query: string;
         };
         /**
+         * ListedOut
+         * @description One of the viewer's own entries, on a circle's list.
+         */
+        ListedOut: {
+            /** Entry Id */
+            entry_id: string;
+            /** Circle Id */
+            circle_id: string;
+            /** Circle Name */
+            circle_name: string;
+        };
+        /**
+         * MemberIn
+         * @description One more person for a circle, by mobile number.
+         */
+        MemberIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Phone */
+            phone: string;
+        };
+        /** MemberOut */
+        MemberOut: {
+            /** Person Id */
+            person_id: string;
+            /** Name */
+            name: string;
+            /** Me */
+            me: boolean;
+            /** Made It */
+            made_it: boolean;
+        };
+        /**
          * MemoryIn
          * @description A note the shopkeeper types on the customer's page.
          */
@@ -2026,6 +2393,29 @@ export interface components {
             /** Finished */
             finished: boolean;
         };
+        /** MyCirclesOut */
+        MyCirclesOut: {
+            /** Person Id */
+            person_id: string;
+            /**
+             * On Udhaar
+             * @enum {string}
+             */
+            on_udhaar: "circle" | "self";
+            /** Chosen */
+            chosen: boolean;
+            /**
+             * Default On Udhaar
+             * @enum {string}
+             */
+            default_on_udhaar: "circle" | "self";
+            /** Circles */
+            circles: components["schemas"]["CircleSummaryOut"][];
+            /** Notices */
+            notices: components["schemas"]["NoticeOut"][];
+            /** Listed */
+            listed: components["schemas"]["ListedOut"][];
+        };
         /** MyShopOut */
         MyShopOut: {
             shop: components["schemas"]["ShopOut"];
@@ -2072,6 +2462,40 @@ export interface components {
             display_name: string;
             /** Tag */
             tag?: string | null;
+        };
+        /** NoticeOut */
+        NoticeOut: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "added" | "shared" | "choose" | "kept" | "help" | "paid";
+            /** Body */
+            body: string;
+            /** Circle Id */
+            circle_id: string | null;
+            /** Entry Id */
+            entry_id: string | null;
+            /** Shop Id */
+            shop_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * OnUdhaarIn
+         * @description What should happen to their next udhaar.
+         */
+        OnUdhaarIn: {
+            /**
+             * On Udhaar
+             * @enum {string}
+             */
+            on_udhaar: "circle" | "self";
         };
         /** PaidOut */
         PaidOut: {
@@ -2368,6 +2792,22 @@ export interface components {
         SentOut: {
             /** Sent */
             sent: number;
+        };
+        /**
+         * ShareIn
+         * @description "Add to circle": one of their own open entries, onto this circle's list.
+         */
+        ShareIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
         };
         /**
          * ShopBookOut
@@ -4678,6 +5118,344 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReminderOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_circles_people__person_id__circles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyCirclesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_on_udhaar_people__person_id__circle_setting_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnUdhaarIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyCirclesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_circles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CircleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_circle_circles__circle_id__get: {
+        parameters: {
+            query: {
+                person_id: string;
+            };
+            header?: never;
+            path: {
+                circle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_member_circles__circle_id__members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leave_circles__circle_id__leave_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_circles__circle_id__share_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    take_back_circles__circle_id__entries__entry_id__take_back_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circle_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pay_circles__circle_id__entries__entry_id__pay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circle_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CirclePayIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CirclePaidOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    notice_done_circle_notices__notice_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

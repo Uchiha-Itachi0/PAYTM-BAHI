@@ -83,6 +83,15 @@ export const Person = (p: IconProps): React.ReactElement => (
   </Svg>
 );
 
+/** Two people: the family circle. */
+export const People = (p: IconProps): React.ReactElement => (
+  <Svg {...p}>
+    <circle cx="9" cy="8" r="3" />
+    <circle cx="16.5" cy="9.5" r="2.5" />
+    <path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M15 14.2c3 .1 6 1.6 6 4.3" />
+  </Svg>
+);
+
 export const Check = (p: IconProps): React.ReactElement => (
   <Svg {...p}>
     <path d="M5 12.5l4.5 4.5L19 7.5" />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { PaidView } from "@/components/customer/PaidView";
+import { UpiPin } from "@/components/customer/UpiPin";
 import { CustomerShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
 import { Dots, Notice } from "@/components/ui/Notice";
@@ -21,12 +22,8 @@ import { usePerson } from "@/lib/person";
  * is wrong) and he can pay less: the book takes it from his oldest entries first,
  * and the shop is told what is still open. It can't be more than he owes.
  *
- * The PIN step is the demo's stand-in for UPI's own PIN screen: any four digits
- * go through, and they never leave this screen. In Paytm, that screen belongs to
- * the bank and NPCI, and BAHI never sees it.
+ * The PIN step is UpiPin, shared with paying for someone in a family circle.
  */
-
-const PIN = 4;
 
 type Step = "amount" | "pin" | "paying";
 
@@ -40,7 +37,6 @@ export function PayScreen({ shopId, from }: { shopId: string; from: string }): R
   const rupees = typed ?? (most ? String(most / 100) : "");
   const paise = Number(rupees || "0") * 100;
   const [step, setStep] = useState<Step>("amount");
-  const [pin, setPin] = useState("");
   const [paid, setPaid] = useState<Paid | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -59,16 +55,7 @@ export function PayScreen({ shopId, from }: { shopId: string; from: string }): R
     } catch (e) {
       setProblem(e instanceof ApiError ? e.message : "The payment didn't go through.");
       setStep("amount");
-      setPin("");
     }
-  }
-
-  function key(k: string): void {
-    if (k === "⌫") return setPin((p) => p.slice(0, -1));
-    if (pin.length >= PIN) return;
-    const next = pin + k;
-    setPin(next);
-    if (next.length === PIN) setTimeout(() => void pay(), 250);
   }
 
   if (paid) return <PaidView paid={paid} back={back} backLabel={backLabel} />;
@@ -100,54 +87,12 @@ export function PayScreen({ shopId, from }: { shopId: string; from: string }): R
   if (step === "pin") {
     return (
       <CustomerShell heading={{ ...heading, title: "Enter UPI PIN" }}>
-        <Card>
-          <div className="text-center">
-            <p className="text-[12.5px] font-semibold text-sub">Paying {shop?.shop.name}</p>
-            <p className="mt-1 text-[28px] font-extrabold tracking-[-0.03em] tabular-nums">
-              {formatPaise(paise)}
-            </p>
-            <p className="mt-4 text-[12px] font-extrabold uppercase tracking-[0.08em] text-sub">
-              Enter {PIN}-digit UPI PIN
-            </p>
-            <div className="mt-3 flex justify-center gap-3" aria-label={`${pin.length} of ${PIN} digits`}>
-              {Array.from({ length: PIN }, (_, i) => (
-                <span
-                  key={i}
-                  className={`size-3.5 rounded-full ${i < pin.length ? "bg-navy" : "border-2 border-line"}`}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((k) =>
-              k ? (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => key(k)}
-                  className="rounded-[12px] bg-tile py-3.5 text-[20px] font-extrabold active:bg-hair"
-                >
-                  {k}
-                </button>
-              ) : (
-                <span key="blank" />
-              ),
-            )}
-          </div>
-        </Card>
-        <Notice>
-          Demo: any {PIN} digits work, and they never leave this screen. Never type your real
-          UPI PIN here.
-        </Notice>
-        <Pill
-          tone="outline"
-          onClick={() => {
-            setStep("amount");
-            setPin("");
-          }}
-        >
-          Back
-        </Pill>
+        <UpiPin
+          payee={shop?.shop.name ?? ""}
+          paise={paise}
+          onPaid={() => void pay()}
+          onBack={() => setStep("amount")}
+        />
       </CustomerShell>
     );
   }

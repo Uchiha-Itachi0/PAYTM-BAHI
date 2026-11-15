@@ -39,6 +39,9 @@ from data.directory import ACCOUNTS, REAL_NAMES
 from data.personas import CAST, CROWD, Open, Persona
 from data.rows import (
     AcknowledgmentRow,
+    CircleMemberRow,
+    CircleRow,
+    CircleShareRow,
     CustomerRow,
     EntryRow,
     MessageRow,
@@ -77,6 +80,10 @@ class Plan:
     repayments: list[RepaymentRow] = field(default_factory=list)
     threads: list[ThreadRow] = field(default_factory=list)
     messages: list[MessageRow] = field(default_factory=list)
+    #: Sharma's family circle: who is in it, and his udhaar on its list.
+    circles: list[CircleRow] = field(default_factory=list)
+    circle_members: list[CircleMemberRow] = field(default_factory=list)
+    circle_shares: list[CircleShareRow] = field(default_factory=list)
     #: Paytm's own records of everyone with a phone (schema paytm, not the book).
     accounts: dict[uuid.UUID, PaytmAccountRow] = field(default_factory=dict)
 
@@ -528,6 +535,45 @@ def sharma_elsewhere(b: Builder, sharma: uuid.UUID) -> None:
         )
 
 
+# ── Sharma's family circle ───────────────────────────────────────────────────
+
+
+def sharma_family(b: Builder) -> None:
+    """Rakesh made a circle with his wife Sunita and his son Rohan in September.
+    His agreed udhaar at Ramesh Kirana and at Salim's is on its list, so anyone in
+    it can pay; his ₹350 at Gupta's he has kept to himself, for "Add to circle" to
+    be tried live. Nobody has paid anything through it yet, so every balance in
+    the seed is unchanged."""
+    made = at(date(2026, 9, 20), 20, 15)
+    rakesh = uid("person", "sharma")
+    cid = uid("circle", "sharma-family")
+    b.plan.circles.append(CircleRow(cid, "Sharma family", rakesh, made))
+    for n, who in enumerate(("sharma", "sunita-sharma", "rohan-sharma")):
+        b.plan.circle_members.append(
+            CircleMemberRow(
+                uid("circle-member", "sharma-family", who),
+                cid,
+                uid("person", who),
+                rakesh,
+                made + timedelta(seconds=n),
+            )
+        )
+    paid = {r.entry_id for r in b.plan.repayments}
+    for shop in (HOME, "salim"):
+        mine = uid("customer", shop, "sharma")
+        for e in b.plan.entries:
+            if e.customer_id == mine and e.status == "confirmed" and e.id not in paid:
+                b.plan.circle_shares.append(
+                    CircleShareRow(
+                        uid("circle-share", str(e.id)),
+                        cid,
+                        e.id,
+                        rakesh,
+                        max(made, e.recorded_at) + timedelta(minutes=2),
+                    )
+                )
+
+
 # ── the whole world ──────────────────────────────────────────────────────────
 
 
@@ -550,6 +596,7 @@ def plan() -> Plan:
         if p.joined != "invited":
             history(b, HOME, p, ids[p.key], linked=p.joined == "linked")
     sharma_elsewhere(b, ids["sharma"])
+    sharma_family(b)
     b.all_read()
     # The directory's accounts are Paytm users too, in a book or not; their
     # numbers are the ones an invite is tried with.
@@ -568,6 +615,9 @@ TABLES = (
     "repayments",
     "threads",
     "messages",
+    "circles",
+    "circle_members",
+    "circle_shares",
 )
 
 

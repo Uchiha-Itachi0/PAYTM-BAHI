@@ -124,6 +124,16 @@ def accounts(con: Conn, person_ids: list[str]) -> dict[str, PaytmAccount]:
     return {a.person_id: a for a in rows}
 
 
+def by_phone(con: Conn, text: str) -> PaytmAccount | None:
+    """The Paytm account with this mobile number, if there is one. The number is
+    only used to find the account; nothing keeps it."""
+    number = mobile(text)
+    if number is None:
+        return None
+    with con.cursor(row_factory=class_row(PaytmAccount)) as cur:
+        return cur.execute(SELECT + " WHERE phone = %s", (number,)).fetchone()
+
+
 def sign_up(con: Conn, person_id: str, name: str, now: datetime) -> PaytmAccount:
     """The account for this phone, made on its first scan with the name it
     gave. Already there: unchanged, whatever name is given now."""

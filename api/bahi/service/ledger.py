@@ -23,6 +23,7 @@ from bahi.domain.limitation import expired
 from bahi.domain.money import rupees
 from bahi.domain.who import Ask, Person, Picked, who
 from bahi.domain.wording import acknowledgment
+from bahi.service import circle
 from bahi.service.errors import Conflict, Forbidden, NotFound
 from bahi.store import book as book_store
 from bahi.store import customers, entries, scans, shops, threads
@@ -108,6 +109,7 @@ def record(
             entries.acknowledge(con, e.id, wording.asked(amount_paise, e.shop_name), now)
             entries.set_status(con, e.id, move(e.status, "confirm"))
             e = entry(con, eid)
+            circle.on_agreed(con, e, now)
         else:
             # A different amount: an ordinary entry, for her own yes.
             scans.answer(con, sc.id, "changed", now)
@@ -459,7 +461,10 @@ def confirm(con: Conn, entry_id: str, person_id: UUID, now: datetime) -> EntryRe
     status = move(e.status, "confirm")
     entries.acknowledge(con, e.id, acknowledgment(e.amount_paise, e.shop_name), now)
     entries.set_status(con, e.id, status)
-    return entry(con, e.id)
+    agreed = entry(con, e.id)
+    # Their family circle, if they have one: where their setting sends it.
+    circle.on_agreed(con, agreed, now)
+    return agreed
 
 
 def dispute(

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Bank, Book, Mobile, Scan } from "@/components/icons";
+import { Bank, Book, Mobile, People, Scan } from "@/components/icons";
 import { CustomerShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
@@ -10,14 +10,15 @@ import { Row } from "@/components/ui/Row";
 import { StickyPill } from "@/components/ui/StickyPill";
 import { TileGrid } from "@/components/ui/TileGrid";
 import { api, usePoll } from "@/lib/api/client";
-import type { DemoPhone, MyUdhaar, PaytmAccount } from "@/lib/api/types";
+import type { DemoPhone, MyCircles, MyUdhaar, PaytmAccount } from "@/lib/api/types";
 import { forgetPerson, usePerson, becomePerson } from "@/lib/person";
 
 /**
  * The customer's side: the Paytm app home, with one new tile.
  *
  * Nobody downloads anything. Udhaar sits beside Scan & Pay and To Mobile in the
- * app already on his phone, which is the whole answer to cold start.
+ * app already on his phone, which is the whole answer to cold start. Family
+ * circle is beside it, with a badge for its notes.
  *
  * In Paytm the phone knows whose it is. In the demo it doesn't, so this screen
  * asks: be any customer with a phone in the book (Sharma owes three shops),
@@ -57,6 +58,8 @@ export function CustomerHome(): React.ReactElement {
   const mine = usePoll<MyUdhaar>(person ? `/people/${person.id}/udhaar` : null, 4000);
   const waiting =
     (mine.data?.invites.length ?? 0) + (mine.data?.shops.reduce((n, s) => n + s.unread, 0) ?? 0);
+  const circles = usePoll<MyCircles>(person ? `/people/${person.id}/circles` : null, 4000);
+  const notes = circles.data?.notices.length ?? 0;
 
   useEffect(() => {
     void api<DemoPhone[]>("/demo/phones").then(setPhones);
@@ -71,6 +74,12 @@ export function CustomerHome(): React.ReactElement {
             { label: "To Mobile", icon: <Mobile /> },
             { label: "To Bank", icon: <Bank /> },
             { label: "Udhaar", icon: <Book />, href: "/c/udhaar", badge: waiting || undefined },
+            {
+              label: "Family circle",
+              icon: <People />,
+              href: "/c/circle",
+              badge: notes || undefined,
+            },
           ]}
         />
       </Card>

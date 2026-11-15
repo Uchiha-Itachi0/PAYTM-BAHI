@@ -6,7 +6,8 @@ this file stands in for its lookup. Every number and UPI ID here is made up.
 
 Rukhsana is the seed's invitation (data/personas.py): she was invited by number
 yesterday and hasn't said yes. Kavita and Tushar are on Paytm and in nobody's
-book yet, so an invite can be tried live. Sharma is already in the book.
+book yet, so an invite can be tried live. Sharma is already in the book; Sunita
+and Rohan, his family, are in his family circle and in no shop's book.
 """
 
 from __future__ import annotations
@@ -34,6 +35,16 @@ ACCOUNTS: tuple[Account, ...] = (
     Account(str(uid("person", "tushar")), "Tushar Pawar", "9867044556", "tushar@pthdfc"),
     Account(
         str(uid("person", "sharma")), "Rakesh Sharma", "9819019019", "sharma19@ptsbi"
+    ),
+    # Sharma's family: his circle with them is seeded (docs/family-circle.md).
+    Account(
+        str(uid("person", "sunita-sharma")),
+        "Sunita Sharma",
+        "9819019020",
+        "sunita.sharma@ptsbi",
+    ),
+    Account(
+        str(uid("person", "rohan-sharma")), "Rohan Sharma", "9819019021", "rohan19@ptaxis"
     ),
 )
 

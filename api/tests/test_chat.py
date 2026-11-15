@@ -578,9 +578,10 @@ def test_a_scan_a_yes_and_a_message_are_heard_in_order(api: TestClient) -> None:
 def test_every_customer_with_a_phone_can_be_picked_once(api: TestClient) -> None:
     phones = api.get("/demo/phones").json()
     names = [p["name"] for p in phones]
-    # 57 linked and Rukhsana invited at the demo shop, and Kavita and Tushar in no
-    # book yet. Sharma is in three books and listed once.
-    assert len(phones) == 60 and len({p["person_id"] for p in phones}) == 60
+    # 57 linked and Rukhsana invited at the demo shop, and Kavita, Tushar and
+    # Sharma's family (Sunita, Rohan) in no book yet. Sharma is in three books and
+    # listed once.
+    assert len(phones) == 62 and len({p["person_id"] for p in phones}) == 62
     assert names.count("Sharma") == 1
     sharma = next(p for p in phones if p["name"] == "Sharma")
     assert (sharma["shops"], sharma["tag"]) == (3, "Room 19, B wing")

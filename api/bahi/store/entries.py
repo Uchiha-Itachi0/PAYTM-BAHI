@@ -131,11 +131,21 @@ def acknowledge(con: Conn, entry_id: str, wording: str, now: datetime) -> None:
     )
 
 
-def pay(con: Conn, entry_id: str, amount_paise: int, method: str, now: datetime) -> None:
+def pay(
+    con: Conn,
+    entry_id: str,
+    amount_paise: int,
+    method: str,
+    now: datetime,
+    *,
+    paid_by: str | None = None,
+) -> None:
+    """A payment against this entry. `paid_by` is a circle member paying it for
+    its customer; None when the customer paid, or it was cash."""
     con.execute(
-        "INSERT INTO repayments (entry_id, amount_paise, method, paid_at) "
-        "VALUES (%s, %s, %s, %s)",
-        (entry_id, amount_paise, method, now),
+        "INSERT INTO repayments (entry_id, amount_paise, method, paid_at, paid_by) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (entry_id, amount_paise, method, now, paid_by),
     )
 
 

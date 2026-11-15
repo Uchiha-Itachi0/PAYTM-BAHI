@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { AddToCircle } from "@/components/customer/AddToCircle";
+import { CircleNotices } from "@/components/customer/CircleNotices";
 import { Chat } from "@/components/icons";
 import { CustomerShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
@@ -10,7 +12,7 @@ import { Figure } from "@/components/ui/Figure";
 import { Dots, Notice } from "@/components/ui/Notice";
 import { Pill } from "@/components/ui/Pill";
 import { api, usePoll } from "@/lib/api/client";
-import type { MyShop, MyUdhaar, ThreadEntry } from "@/lib/api/types";
+import type { MyCircles, MyShop, MyUdhaar, ThreadEntry } from "@/lib/api/types";
 import { formatPaise } from "@/lib/money";
 import { usePerson } from "@/lib/person";
 import { fullDate, shortDate } from "@/lib/when";
@@ -21,10 +23,18 @@ import { fullDate, shortDate } from "@/lib/when";
  * Every figure is from the API. Pay opens the payment screen for that shop, with
  * what he owes there filled in; a disputed entry waits until it is agreed. An entry past the
  * limitation line is shown struck through: kept, and claiming nothing.
- * Invitations from shops wait at the top for his yes.
+ * Invitations from shops wait at the top for his yes, and his family circle's
+ * notes with them. An agreed entry he still owes can go to a circle ("Add to
+ * circle"), for anyone there to pay; one already on a list says which.
  */
 
-function EntryLine({ e }: { e: ThreadEntry }): React.ReactElement {
+/** What a line can do with his family circles: nothing, say where it is, or add it. */
+interface CircleLink {
+  listedIn?: string;
+  add?: React.ReactNode;
+}
+
+function EntryLine({ e, circle }: { e: ThreadEntry; circle?: CircleLink }): React.ReactElement {
   const paid = e.status === "settled";
   const title = e.expired
     ? "Expired"
@@ -56,6 +66,13 @@ function EntryLine({ e }: { e: ThreadEntry }): React.ReactElement {
           ) : null}
         </p>
         <p className="mt-0.5 text-[12px] font-medium text-sub">{sub}</p>
+        {circle?.listedIn ? (
+          <p className="mt-0.5 text-[12px] font-semibold text-cyan-text">
+            On {circle.listedIn}&apos;s list
+          </p>
+        ) : (
+          circle?.add
+        )}
       </div>
       <p
         className={`flex-none text-[15px] font-extrabold tabular-nums ${paid ? "text-paid" : e.expired || e.status === "corrected" ? "text-sub line-through" : ""}`}
@@ -69,7 +86,33 @@ function EntryLine({ e }: { e: ThreadEntry }): React.ReactElement {
 export function MyUdhaarScreen(): React.ReactElement {
   const person = usePerson();
   const mine = usePoll<MyUdhaar>(person ? `/people/${person.id}/udhaar` : null);
+  const circles = usePoll<MyCircles>(person ? `/people/${person.id}/circles` : null);
   const [picked, setPicked] = useState<string | null>(null);
+  const [circleProblem, setCircleProblem] = useState<string | null>(null);
+  const listed = new Map(circles.data?.listed.map((l) => [l.entry_id, l.circle_name]) ?? []);
+
+  function circleLink(e: ThreadEntry): CircleLink | undefined {
+    const c = circles.data;
+    if (!c || !person || !c.circles.length) return undefined;
+    const name = listed.get(e.id);
+    if (name) return { listedIn: name };
+    const open = e.status === "confirmed" && !e.expired && e.amount_paise > e.paid_paise;
+    if (!open) return undefined;
+    return {
+      add: (
+        <AddToCircle
+          compact
+          entryId={e.id}
+          personId={person.id}
+          circles={c.circles}
+          onDone={(problem) => {
+            setCircleProblem(problem);
+            circles.refresh();
+          }}
+        />
+      ),
+    };
+  }
 
   const heading = { title: "My udhaar", back: "/c" };
   const m = mine.data;
@@ -104,6 +147,10 @@ export function MyUdhaarScreen(): React.ReactElement {
         </Card>
       ) : (
         <>
+          {circleProblem ? <Notice tone="warn">{circleProblem}</Notice> : null}
+          {circles.data && person ? (
+            <CircleNotices mine={circles.data} personId={person.id} refresh={circles.refresh} />
+          ) : null}
           {m.invites.map((i) => (
             <Card key={i.shop.id} tight>
               <p className="text-[15px] font-extrabold tracking-[-0.02em]">
@@ -168,7 +215,7 @@ export function MyUdhaarScreen(): React.ReactElement {
                 </div>
               ) : null}
               {shop.entries.length ? (
-                shop.entries.map((e) => <EntryLine key={e.id} e={e} />)
+                shop.entries.map((e) => <EntryLine key={e.id} e={e} circle={circleLink(e)} />)
               ) : (
                 <p className="py-3 text-[12.5px] font-medium text-sub">Nothing here yet.</p>
               )}
