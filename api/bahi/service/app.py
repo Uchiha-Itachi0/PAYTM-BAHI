@@ -16,6 +16,7 @@ from bahi.memory import worker
 from bahi.service import errors
 from bahi.service.routes import (
     chat,
+    circle,
     customer,
     munshi,
     people,
@@ -47,3 +48,4 @@ app.include_router(munshi.router)
 app.include_router(chat.router)
 app.include_router(people.router)
 app.include_router(tonight.router)
+app.include_router(circle.router)

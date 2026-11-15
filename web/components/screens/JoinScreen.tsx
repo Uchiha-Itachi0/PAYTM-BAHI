@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { CircleNotices } from "@/components/customer/CircleNotices";
 import { Check } from "@/components/icons";
 import { CustomerShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
@@ -11,7 +12,7 @@ import { Pill } from "@/components/ui/Pill";
 import { Avatar } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { api, ApiError, usePoll } from "@/lib/api/client";
-import type { Entry, Joined, ScanState } from "@/lib/api/types";
+import type { Entry, Joined, MyCircles, ScanState } from "@/lib/api/types";
 import { formatPaise, inWords } from "@/lib/money";
 import { forgetPerson, newPerson, usePerson } from "@/lib/person";
 
@@ -143,6 +144,10 @@ export function JoinScreen({ shopId }: { shopId: string }): React.ReactElement {
   const agreed =
     state === "recorded" && entry?.status === "confirmed" && scan.data?.answer === "yes";
   const shown: Outcome | null = outcome ?? (agreed && entry ? { kind: "confirmed", entry } : null);
+  // Once it is agreed, his family circle's note about it: on the list, or which one.
+  const circles = usePoll<MyCircles>(
+    shown?.kind === "confirmed" && personId ? `/people/${personId}/circles` : null,
+  );
 
   async function answer(kind: "confirm" | "dispute"): Promise<void> {
     if (!entry || !person) return;
@@ -234,7 +239,18 @@ export function JoinScreen({ shopId }: { shopId: string }): React.ReactElement {
             </p>
           </div>
         </Card>
-      ) : state === "left" || state === "expired" || state === "declined" ? (
+      ) : null}
+      {shown && circles.data && personId ? (
+        <CircleNotices
+          mine={{
+            ...circles.data,
+            notices: circles.data.notices.filter((n) => n.entry_id === shown.entry.id),
+          }}
+          personId={personId}
+          refresh={circles.refresh}
+        />
+      ) : null}
+      {shown ? null : state === "left" || state === "expired" || state === "declined" ? (
         <Card>
           <p className="text-[15px] font-extrabold">
             {state === "declined" && asked

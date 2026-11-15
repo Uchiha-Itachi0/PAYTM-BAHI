@@ -3235,6 +3235,458 @@
           }
         }
       }
+    },
+    "/people/{person_id}/circles": {
+      "get": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "My Circles",
+        "description": "C1. Their circles, what happens to their next udhaar, and their notes.",
+        "operationId": "my_circles_people__person_id__circles_get",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyCirclesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/people/{person_id}/circle-setting": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Set On Udhaar",
+        "description": "C1. When I take udhaar: send it to my circle, or keep it to myself.",
+        "operationId": "set_on_udhaar_people__person_id__circle_setting_post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnUdhaarIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyCirclesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circles": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Create",
+        "description": "C2. A new circle, with the people behind these mobile numbers.",
+        "operationId": "create_circles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circles/{circle_id}": {
+      "get": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Get Circle",
+        "description": "C3. The circle: who is in it, and its list. Only for a member.",
+        "operationId": "get_circle_circles__circle_id__get",
+        "parameters": [
+          {
+            "name": "circle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Circle Id"
+            }
+          },
+          {
+            "name": "person_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circles/{circle_id}/leave": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Leave",
+        "description": "C3. They leave: their entries come off the list and stay theirs to pay.",
+        "operationId": "leave_circles__circle_id__leave_post",
+        "parameters": [
+          {
+            "name": "circle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Circle Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circles/{circle_id}/share": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Share",
+        "description": "C4. \"Add to circle\": one of their own open entries, onto this list.",
+        "operationId": "share_circles__circle_id__share_post",
+        "parameters": [
+          {
+            "name": "circle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Circle Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circles/{circle_id}/entries/{entry_id}/take-back": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Take Back",
+        "description": "C4. The debtor takes their entry off the list.",
+        "operationId": "take_back_circles__circle_id__entries__entry_id__take_back_post",
+        "parameters": [
+          {
+            "name": "circle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Circle Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circles/{circle_id}/entries/{entry_id}/pay": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Pay",
+        "description": "C5. A member pays an entry on the list by UPI, all or part. The money goes\nto the shop, against the debtor's entry; nobody owes the payer anything.",
+        "operationId": "pay_circles__circle_id__entries__entry_id__pay_post",
+        "parameters": [
+          {
+            "name": "circle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Circle Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CirclePayIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CirclePaidOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circle-notices/{notice_id}/done": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Notice Done",
+        "description": "A note read and put aside.",
+        "operationId": "notice_done_circle_notices__notice_id__done_post",
+        "parameters": [
+          {
+            "name": "notice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Notice Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3819,6 +4271,296 @@
         ],
         "title": "CheckOut",
         "description": "One check our code made on the reading."
+      },
+      "CircleEntryOut": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "title": "Entry Id"
+          },
+          "debtor_name": {
+            "type": "string",
+            "title": "Debtor Name"
+          },
+          "debtor_person_id": {
+            "type": "string",
+            "title": "Debtor Person Id"
+          },
+          "mine": {
+            "type": "boolean",
+            "title": "Mine"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "paid_paise": {
+            "type": "integer",
+            "title": "Paid Paise"
+          },
+          "left_paise": {
+            "type": "integer",
+            "title": "Left Paise"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          },
+          "shared_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Shared At"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "paid",
+              "closed"
+            ],
+            "title": "State"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/CirclePaymentOut"
+            },
+            "type": "array",
+            "title": "Payments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_id",
+          "debtor_name",
+          "debtor_person_id",
+          "mine",
+          "shop",
+          "amount_paise",
+          "paid_paise",
+          "left_paise",
+          "recorded_at",
+          "shared_at",
+          "state",
+          "payments"
+        ],
+        "title": "CircleEntryOut",
+        "description": "An entry on the list: the shop, the amount, the date. Never the item."
+      },
+      "CircleIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "phones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 11,
+            "minItems": 1,
+            "title": "Phones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "name",
+          "phones"
+        ],
+        "title": "CircleIn",
+        "description": "A new circle: its name, and the people in it by mobile number."
+      },
+      "CircleOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/MemberOut"
+            },
+            "type": "array",
+            "title": "Members"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/CircleEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "open_paise": {
+            "type": "integer",
+            "title": "Open Paise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "members",
+          "entries",
+          "open_paise"
+        ],
+        "title": "CircleOut"
+      },
+      "CirclePaidOut": {
+        "properties": {
+          "circle_id": {
+            "type": "string",
+            "title": "Circle Id"
+          },
+          "entry_id": {
+            "type": "string",
+            "title": "Entry Id"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/ShopOut"
+          },
+          "debtor_name": {
+            "type": "string",
+            "title": "Debtor Name"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "left_paise": {
+            "type": "integer",
+            "title": "Left Paise"
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Paid At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "circle_id",
+          "entry_id",
+          "shop",
+          "debtor_name",
+          "amount_paise",
+          "left_paise",
+          "paid_at"
+        ],
+        "title": "CirclePaidOut"
+      },
+      "CirclePayIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Paise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id"
+        ],
+        "title": "CirclePayIn",
+        "description": "A member pays an entry on the list by UPI."
+      },
+      "CirclePaymentOut": {
+        "properties": {
+          "payer_name": {
+            "type": "string",
+            "title": "Payer Name"
+          },
+          "by_debtor": {
+            "type": "boolean",
+            "title": "By Debtor"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "title": "Amount Paise"
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Paid At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payer_name",
+          "by_debtor",
+          "amount_paise",
+          "paid_at"
+        ],
+        "title": "CirclePaymentOut"
+      },
+      "CircleSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Members"
+          },
+          "open_paise": {
+            "type": "integer",
+            "title": "Open Paise"
+          },
+          "open_count": {
+            "type": "integer",
+            "title": "Open Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "members",
+          "open_paise",
+          "open_count"
+        ],
+        "title": "CircleSummaryOut"
       },
       "ClipOut": {
         "properties": {
@@ -4914,6 +5656,58 @@
         "title": "LinkIn",
         "description": "His mobile number or UPI ID, for someone kept by name. Never stored."
       },
+      "ListedOut": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "title": "Entry Id"
+          },
+          "circle_id": {
+            "type": "string",
+            "title": "Circle Id"
+          },
+          "circle_name": {
+            "type": "string",
+            "title": "Circle Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_id",
+          "circle_id",
+          "circle_name"
+        ],
+        "title": "ListedOut",
+        "description": "One of the viewer's own entries, on a circle's list."
+      },
+      "MemberOut": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "title": "Person Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "me": {
+            "type": "boolean",
+            "title": "Me"
+          },
+          "made_it": {
+            "type": "boolean",
+            "title": "Made It"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "name",
+          "me",
+          "made_it"
+        ],
+        "title": "MemberOut"
+      },
       "MemoryIn": {
         "properties": {
           "body": {
@@ -5269,6 +6063,66 @@
         ],
         "title": "MunshiOut"
       },
+      "MyCirclesOut": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "title": "Person Id"
+          },
+          "on_udhaar": {
+            "type": "string",
+            "enum": [
+              "circle",
+              "self"
+            ],
+            "title": "On Udhaar"
+          },
+          "chosen": {
+            "type": "boolean",
+            "title": "Chosen"
+          },
+          "default_on_udhaar": {
+            "type": "string",
+            "enum": [
+              "circle",
+              "self"
+            ],
+            "title": "Default On Udhaar"
+          },
+          "circles": {
+            "items": {
+              "$ref": "#/components/schemas/CircleSummaryOut"
+            },
+            "type": "array",
+            "title": "Circles"
+          },
+          "notices": {
+            "items": {
+              "$ref": "#/components/schemas/NoticeOut"
+            },
+            "type": "array",
+            "title": "Notices"
+          },
+          "listed": {
+            "items": {
+              "$ref": "#/components/schemas/ListedOut"
+            },
+            "type": "array",
+            "title": "Listed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "on_udhaar",
+          "chosen",
+          "default_on_udhaar",
+          "circles",
+          "notices",
+          "listed"
+        ],
+        "title": "MyCirclesOut"
+      },
       "MyShopOut": {
         "properties": {
           "shop": {
@@ -5407,6 +6261,97 @@
           "display_name"
         ],
         "title": "NameOnlyIn"
+      },
+      "NoticeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "added",
+              "shared",
+              "choose",
+              "kept",
+              "help",
+              "paid"
+            ],
+            "title": "Kind"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "circle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Circle Id"
+          },
+          "entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Id"
+          },
+          "shop_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "body",
+          "circle_id",
+          "entry_id",
+          "shop_id",
+          "created_at"
+        ],
+        "title": "NoticeOut"
+      },
+      "OnUdhaarIn": {
+        "properties": {
+          "on_udhaar": {
+            "type": "string",
+            "enum": [
+              "circle",
+              "self"
+            ],
+            "title": "On Udhaar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "on_udhaar"
+        ],
+        "title": "OnUdhaarIn",
+        "description": "What should happen to their next udhaar."
       },
       "PaidOut": {
         "properties": {
@@ -6251,6 +7196,27 @@
           "sent"
         ],
         "title": "SentOut"
+      },
+      "ShareIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "entry_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "entry_id"
+        ],
+        "title": "ShareIn",
+        "description": "\"Add to circle\": one of their own open entries, onto this circle's list."
       },
       "ShopBookOut": {
         "properties": {

@@ -98,6 +98,12 @@ The main flows:
 - **The customer's own book.** What he owes across every shop, each entry, and Pay
   by UPI, all or part. His phone shows his Paytm account: the name on it, its UPI
   ID and its number.
+- **Family circle.** One person makes a circle from phone numbers; anyone in it
+  can pay udhaar on its list, by UPI, straight to the shop. A new udhaar goes to
+  the circle by default (one setting changes it; in several circles, **Add to
+  circle** asks which). The person who said yes stays the debtor, and someone who
+  leaves takes their bills off the list. The shop never sees the circle. See
+  [docs/family-circle.md](docs/family-circle.md).
 - **Tonight.** Every night, plain code decides who gets a reminder tomorrow, and
   names the reason for everyone it leaves alone. On the seed that is 4 people out
   of 38 who owe. The shopkeeper can rewrite a reminder, move its hour, stop it, or
@@ -479,7 +485,7 @@ deliberately missing, is written at the top of each table.
 | `customers` | a person *at one shop*: linked to a Paytm account, invited, or kept by name only |
 | `entries` | one udhaar; the amount never changes after it is written. Recorded, confirmed, disputed (not mine, or wrong amount), corrected, removed or settled |
 | `acknowledgments` | the customer's "Yes, I owe ₹200", at most one per entry |
-| `repayments` | a payment against a named entry |
+| `repayments` | a payment against a named entry; `paid_by` names a family-circle member who paid it |
 | `threads` | one conversation per shopkeeper and customer |
 | `messages` | one bubble; no amount column |
 | `scans` | someone at the counter, waiting for three minutes; with what they asked for, if they did, and the shop's answer |
@@ -487,6 +493,7 @@ deliberately missing, is written at the top of each table.
 | `conversations`, `turns`, `drafts` | the munshi's conversations, every step, and its cards |
 | `memories` | a note, promise, nickname or remark, and the day to wait until |
 | `paytm.accounts` | the simulated Paytm account: name, UPI ID and number, in its own schema |
+| `circles`, `circle_members`, `circle_settings`, `circle_shares`, `circle_notices` | a family circle, who is in it, each person's setting, the bills on its list, and its notes to each member ([docs/family-circle.md](docs/family-circle.md)) |
 
 What the schema enforces:
 
@@ -513,6 +520,7 @@ FastAPI, documented at `/docs` when it runs. The schema is exported to
 | Recording | `POST /shops/{shop}/entries`, `/entries/{id}/correct`, `/entries/{id}/remove`, `/voice`, `/heard`, `/answer`, `/answer/voice` |
 | Customer | `POST /join/{shop}`, `/scans/{id}/leave`, `/entries/{id}/confirm`, `/entries/{id}/dispute`; `GET /people/{person}/udhaar`, `/people/{person}/account` |
 | Paying | `POST /shops/{shop}/pay` |
+| Family circle | `POST /circles`; `GET /circles/{id}`, `/people/{person}/circles`; `POST /circles/{id}/leave`, `/share`, `/entries/{id}/pay`, `/entries/{id}/take-back`, `/people/{person}/circle-setting`, `/circle-notices/{id}/done` |
 | People | `POST /shops/{shop}/customers`, `/customers/invite`, `/customers/{id}/invite`, `/invite/accept`, `/invite/decline` |
 | Chat | `GET/POST /shops/{shop}/customers/{id}/thread`, `/thread/suggest`, `/thread/read`; `GET /shops/{shop}/inbox`; the customer's side under `/people/{person}/shops/{shop}/thread` |
 | Munshi | `POST /shops/{shop}/munshi`, `/munshi/voice`, `/munshi/{conversation}/cards/{draft}/yes`, `/no`, `/edit` |
@@ -535,7 +543,7 @@ can colour a customer as a defaulter.
 | `/m/messages`, `/m/chat/{customer}`: chat | `/c/pay/{shop}`: Pay, Proceed securely, UPI PIN |
 | `/m/customers`, `/m/customers/{id}`, `/m/customers/new` | |
 | `/m/tonight`: tomorrow's reminders, edit, stop or pause, and everyone held | |
-| `/m/assistant`: Paytm Assistant, the munshi on a page of its own, to ask anything | |
+| `/m/assistant`: Paytm Assistant, the munshi on a page of its own, to ask anything | `/c/circle`, `/c/circle/new`, `/c/circle/{id}`: family circle, its list, Pay for them |
 
 Both sides poll every two seconds, so the shopkeeper's laptop and the customer's
 phone move together. Annotated screens and the deck are in `docs/`.
@@ -665,7 +673,7 @@ or have something visit `/health` every ten minutes.
 api/
   migrations/     the schema, as plain numbered SQL
   bahi/domain/    pure rules: money, rhythm, limitation, lifecycle, parse, sound,
-                  who, find, pattern, tonight. Standard library only.
+                  who, find, pattern, tonight, circle. Standard library only.
   bahi/store/     the only code that speaks SQL. Rows in, dataclasses out.
   bahi/service/   FastAPI app, routes, and the ledger (one function per action)
   bahi/munshi/    the agent: loop, prompt, tools, reminder and reply writer, eval

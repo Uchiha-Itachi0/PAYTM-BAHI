@@ -72,3 +72,51 @@ def reminder(customer_name: str, shop_name: str, balance_paise: int) -> str:
         f"{customer_name}, {shop_name} par {rupees(balance_paise)} ka udhaar hai. "
         "Koi dikkat ho to bata dena, jaldi nahi hai."
     )
+
+
+# ── what BAHI tells a member of a family circle ──────────────────────────────
+#
+# A note on the member's own phone, never a line in a shop's thread: the shop
+# does not see the circle. A bill, never a debt to the family, and never the
+# item: the note on an entry can carry anything.
+
+
+def circle_added(by_name: str, circle_name: str) -> str:
+    return (
+        f"{by_name} added you to {circle_name}. Anyone in it can pay udhaar on its "
+        "list. You are never responsible for anyone else's."
+    )
+
+
+def circle_shared(shop_name: str, amount_paise: int, circle_name: str) -> str:
+    return (
+        f"Your udhaar of {rupees(amount_paise)} at {shop_name} is on {circle_name}'s "
+        "list. Anyone there can pay it."
+    )
+
+
+def circle_choose(shop_name: str, amount_paise: int) -> str:
+    return (
+        f"Your udhaar of {rupees(amount_paise)} at {shop_name}. "
+        "Which circle should it go to?"
+    )
+
+
+def circle_kept(shop_name: str, amount_paise: int) -> str:
+    return (
+        f"Your udhaar of {rupees(amount_paise)} at {shop_name} stays with you. "
+        "Pay it yourself, or add it to a circle."
+    )
+
+
+def circle_help(
+    debtor_name: str, shop_name: str, amount_paise: int, circle_name: str
+) -> str:
+    return (
+        f"{debtor_name} has a bill of {rupees(amount_paise)} at {shop_name}, "
+        f"on {circle_name}'s list. Pay it for them?"
+    )
+
+
+def circle_paid(payer_name: str, amount_paise: int, shop_name: str) -> str:
+    return f"{payer_name} paid {rupees(amount_paise)} of your udhaar at {shop_name}."
