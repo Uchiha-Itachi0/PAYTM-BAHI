@@ -16,6 +16,7 @@ from bahi.service.circle_models import (
     CircleOut,
     CirclePaidOut,
     CirclePayIn,
+    MemberIn,
     MyCirclesOut,
     OnUdhaarIn,
     ShareIn,
@@ -56,6 +57,15 @@ def get_circle(circle_id: str, person_id: str, request: Request, con: Con) -> Re
     """C3. The circle: who is in it, and its list. Only for a member."""
     c = circle.member_of(con, circle_id, person_id)
     return etagged(request, circle_views.circle_out(con, c, person_id, clock.today()))
+
+
+@router.post("/circles/{circle_id}/members")
+def add_member(circle_id: str, body: MemberIn, con: Con) -> CircleOut:
+    """C3. Anyone in the circle adds one more person, by mobile number."""
+    now = clock.now()
+    pid = str(body.person_id)
+    c = circle.add_member(con, circle_id, pid, body.phone, now)
+    return circle_views.circle_out(con, c, pid, now.date())
 
 
 @router.post("/circles/{circle_id}/leave", status_code=204)

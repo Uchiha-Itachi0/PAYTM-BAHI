@@ -3426,6 +3426,59 @@
         }
       }
     },
+    "/circles/{circle_id}/members": {
+      "post": {
+        "tags": [
+          "circle"
+        ],
+        "summary": "Add Member",
+        "description": "C3. Anyone in the circle adds one more person, by mobile number.",
+        "operationId": "add_member_circles__circle_id__members_post",
+        "parameters": [
+          {
+            "name": "circle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Circle Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/circles/{circle_id}/leave": {
       "post": {
         "tags": [
@@ -5679,6 +5732,28 @@
         ],
         "title": "ListedOut",
         "description": "One of the viewer's own entries, on a circle's list."
+      },
+      "MemberIn": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 15,
+            "minLength": 1,
+            "title": "Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "phone"
+        ],
+        "title": "MemberIn",
+        "description": "One more person for a circle, by mobile number."
       },
       "MemberOut": {
         "properties": {

@@ -1349,6 +1349,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/circles/{circle_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Member
+         * @description C3. Anyone in the circle adds one more person, by mobile number.
+         */
+        post: operations["add_member_circles__circle_id__members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/circles/{circle_id}/leave": {
         parameters: {
             query?: never;
@@ -2215,6 +2235,19 @@ export interface components {
             circle_id: string;
             /** Circle Name */
             circle_name: string;
+        };
+        /**
+         * MemberIn
+         * @description One more person for a circle, by mobile number.
+         */
+        MemberIn: {
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Phone */
+            phone: string;
         };
         /** MemberOut */
         MemberOut: {
@@ -5208,6 +5241,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_member_circles__circle_id__members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

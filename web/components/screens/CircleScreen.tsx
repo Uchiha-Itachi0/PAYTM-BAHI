@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { CustomerShell } from "@/components/shell/Shell";
 import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 import { Figure } from "@/components/ui/Figure";
 import { Dots, Notice } from "@/components/ui/Notice";
 import { Pill } from "@/components/ui/Pill";
@@ -21,7 +22,8 @@ import { shortDate } from "@/lib/when";
  * Each bill on the list shows the shop, the amount and the date, and who has paid
  * what; never the item. Anyone in the circle can pay an open one. Its owner can
  * take it back off the list. Leaving takes all of his bills off the list at once:
- * they stay his, and from then on only he can pay them.
+ * they stay his, and from then on only he can pay them. Anyone in it can add one
+ * more person by mobile number, by the same rules as making the circle.
  */
 
 function Bill({
@@ -66,6 +68,78 @@ function Bill({
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** The most people one circle holds: the API's MOST_MEMBERS, which also refuses more. */
+const MOST_MEMBERS = 12;
+
+interface AddMemberProps {
+  circleId: string;
+  personId: string;
+  onAdded: () => void;
+}
+
+/** One more person, by mobile number. The number only finds the Paytm account. */
+function AddMember({ circleId, personId, onAdded }: AddMemberProps): React.ReactElement {
+  const [open, setOpen] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  async function add(): Promise<void> {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await api<CircleView>(`/circles/${circleId}/members`, {
+        person_id: personId,
+        phone: phone.trim(),
+      });
+      setPhone("");
+      setOpen(false);
+      onAdded();
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : "That didn't go through.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-2 text-[13px] font-extrabold text-cyan-text"
+      >
+        + Add member
+      </button>
+    );
+  }
+  return (
+    <div className="mt-2 flex flex-col gap-2.5">
+      {problem ? <Notice tone="warn">{problem}</Notice> : null}
+      <Field
+        label="Mobile number"
+        value={phone}
+        onChange={setPhone}
+        placeholder="10-digit mobile number"
+        inputMode="tel"
+        maxLength={15}
+        autoFocus
+      />
+      <p className="text-[11.5px] font-medium leading-normal text-sub">
+        The number must be on Paytm; it only finds the account and is not kept.
+      </p>
+      <div className="flex gap-2 [&>*]:flex-1">
+        <Pill onClick={() => void add()} disabled={!phone.trim() || busy}>
+          Add
+        </Pill>
+        <Pill tone="outline" onClick={() => setOpen(false)}>
+          Cancel
+        </Pill>
+      </div>
     </div>
   );
 }
@@ -156,6 +230,9 @@ export function CircleScreen({ circleId }: { circleId: string }): React.ReactEle
                 ) : null}
               </div>
             ))}
+            {person && c.members.length < MOST_MEMBERS ? (
+              <AddMember circleId={c.id} personId={person.id} onAdded={circle.refresh} />
+            ) : null}
           </Card>
 
           {leaving ? (

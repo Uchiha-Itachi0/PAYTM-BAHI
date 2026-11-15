@@ -159,6 +159,64 @@ def test_a_number_with_no_paytm_account_is_refused(api: TestClient) -> None:
     assert r.status_code == 409
 
 
+def add(api: TestClient, by: str, phone: str, circle_id: str = FAMILY) -> Any:
+    body = {"person_id": by, "phone": phone}
+    return api.post(f"/circles/{circle_id}/members", json=body)
+
+
+def test_a_member_adds_someone_by_their_mobile_number(api: TestClient) -> None:
+    r = add(api, SUNITA, PHONE[KAVITA])
+    assert r.status_code == 200, r.text
+    assert [m["name"] for m in r.json()["members"]][-1] == "Kavita Rao"
+    # She sees the circle and its list now, and is told who added her.
+    assert [c["name"] for c in mine(api, KAVITA)["circles"]] == ["Sharma family"]
+    assert circle(api, FAMILY, KAVITA)["entries"]
+    added = [n for n in mine(api, KAVITA)["notices"] if n["kind"] == "added"]
+    assert added and "Sunita Sharma added you to Sharma family" in added[0]["body"]
+
+
+def test_someone_already_in_the_circle_is_not_added_twice(api: TestClient) -> None:
+    r = add(api, SUNITA, PHONE[ROHAN])
+    assert r.status_code == 409
+    assert "already in" in r.json()["detail"]
+    assert len(circle(api, FAMILY, SUNITA)["members"]) == 3
+
+
+def test_adding_a_number_with_no_paytm_account_is_refused(api: TestClient) -> None:
+    assert add(api, SUNITA, "9000000001").status_code == 409
+
+
+def test_only_a_member_can_add_someone(api: TestClient) -> None:
+    assert add(api, KAVITA, PHONE[KAVITA]).status_code == 403
+
+
+def test_someone_who_left_can_be_added_back(api: TestClient) -> None:
+    r = api.post(f"/circles/{FAMILY}/leave", json={"person_id": ROHAN})
+    assert r.status_code == 204
+    assert add(api, SUNITA, PHONE[ROHAN]).status_code == 200
+    assert [c["name"] for c in mine(api, ROHAN)["circles"]] == ["Sharma family"]
+
+
+def test_a_new_member_s_udhaar_follows_the_default_setting(api: TestClient) -> None:
+    assert add(api, RAKESH, PHONE[KAVITA]).status_code == 200
+    m = mine(api, KAVITA)
+    assert (m["on_udhaar"], m["chosen"]) == (rules.DEFAULT_ON_UDHAAR, False)
+
+
+def test_a_circle_holds_at_most_its_limit(api: TestClient, tx: db.Conn) -> None:
+    rows = tx.execute(
+        "SELECT phone FROM paytm.accounts WHERE person_id <> ALL(%s::uuid[]) "
+        "ORDER BY phone LIMIT %s",
+        ([RAKESH, SUNITA, ROHAN], rules.MOST_MEMBERS - 2),
+    ).fetchall()
+    phones = [str(r[0]) for r in rows]
+    for phone in phones[:-1]:
+        assert add(api, RAKESH, phone).status_code == 200, phone
+    assert len(circle(api, FAMILY, RAKESH)["members"]) == rules.MOST_MEMBERS
+    r = add(api, RAKESH, phones[-1])
+    assert r.status_code == 409 and "at most" in r.json()["detail"]
+
+
 def test_by_default_a_new_udhaar_goes_to_the_one_circle(api: TestClient) -> None:
     eid = agreed(api)
     on = listed(api, FAMILY)

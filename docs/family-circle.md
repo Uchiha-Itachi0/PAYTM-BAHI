@@ -15,6 +15,13 @@ choices are marked here so they are easy to find and change.
   Each number must belong to a Paytm account (`paytm.by_phone`). The number only
   finds the account and is never stored. The maker is in the circle too, and
   everyone added gets a note on their phone. One person can be in many circles.
+- **Add member.** Anyone in a circle can add one more person from the circle
+  screen (`POST /circles/{c}/members`, by mobile number). The rules are the same
+  as when making it: the number must belong to a Paytm account and is not kept,
+  nobody is in the circle twice, and a circle holds at most `MOST_MEMBERS`. The
+  new member gets the same "added" note. Their own setting, or the default,
+  decides where their next udhaar goes; nothing they already owe is put on the
+  list for them. Someone who left can be added back (a new membership row).
 - **When I take udhaar.** Each person has a setting: *Send to my circle* or *Keep
   it to myself*. If they have never chosen, `DEFAULT_ON_UDHAAR` in
   `api/bahi/domain/circle.py` applies. It is set to `"circle"` because the
@@ -72,13 +79,14 @@ choices are marked here so they are easy to find and change.
 ## API
 
 `GET /people/{p}/circles` · `POST /people/{p}/circle-setting` · `POST /circles` ·
-`GET /circles/{c}?person_id=` · `POST /circles/{c}/leave` · `POST /circles/{c}/share` ·
+`GET /circles/{c}?person_id=` · `POST /circles/{c}/members` · `POST /circles/{c}/leave` · `POST /circles/{c}/share` ·
 `POST /circles/{c}/entries/{e}/take-back` · `POST /circles/{c}/entries/{e}/pay` ·
 `POST /circle-notices/{n}/done`
 
 ## Left for later, on purpose
 
-- **Consent at joining.** Members are added by the maker and go straight in.
+- **Consent at joining.** Members are added by the maker (or, later, by any
+  member) and go straight in.
   The research's design has each person accept from their own phone and pick
   their setting with nothing pre-selected (DPDP s.6). That would mean a
   `joined_at` set only by the member's own accept, like `customers.linked_at`.
@@ -88,7 +96,7 @@ choices are marked here so they are easy to find and change.
 - **Minors.** No age check. The research suggests no under-18 members at launch,
   with Paytm Pocket Money as the right tool for parents.
 - **Limits.** No cooling period after joining and no product cap on circles per
-  person. `MOST_MEMBERS = 12` only limits what one request can add.
+  person. `MOST_MEMBERS = 12` bounds one circle's size, at making and when adding.
 - **Removing members and "Not my family".** Only leaving is supported. The maker
   cannot remove anyone yet.
 - **Limitation Act s.19.** A family member's part payment could be argued to be

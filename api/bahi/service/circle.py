@@ -81,11 +81,9 @@ def create(
         raise Conflict("scan a shop's udhaar QR first: that makes your Paytm account")
     people: list[str] = []
     for phone in phones:
-        a = paytm.by_phone(con, phone)
-        if a is None:
-            raise Conflict(f"no Paytm account has the number {phone.strip()}")
-        if a.person_id != person_id and a.person_id not in people:
-            people.append(a.person_id)
+        found = _person_by_phone(con, phone)
+        if found != person_id and found not in people:
+            people.append(found)
     if not people:
         raise Conflict("add at least one other person by their mobile number")
     if len(people) + 1 > rules.MOST_MEMBERS:
@@ -103,6 +101,39 @@ def create(
     made = circles.get(con, circle_id)
     assert made is not None
     return made
+
+
+def add_member(
+    con: Conn, circle_id: str, person_id: str, phone: str, now: datetime
+) -> Circle:
+    """Anyone in the circle adds one more person, by their mobile number.
+
+    The same rules as making it: the number must find a Paytm account and is not
+    kept, nobody is in it twice, and it holds at most MOST_MEMBERS. The new member
+    is told on their phone. Their own setting (or the default) decides where their
+    next udhaar goes; nothing they already owe is put on the list for them.
+    """
+    c = member_of(con, circle_id, person_id)
+    found = _person_by_phone(con, phone)
+    if circles.is_member(con, circle_id, found):
+        who = names(con, [found])[found]
+        raise Conflict(f"{who} is already in {c.name}")
+    if len(circles.members(con, circle_id)) + 1 > rules.MOST_MEMBERS:
+        raise Conflict(f"a circle holds at most {rules.MOST_MEMBERS} people")
+    circles.add_member(con, circle_id, found, person_id, now)
+    by = names(con, [person_id])[person_id]
+    circles.notify(
+        con, found, "added", wording.circle_added(by, c.name), now, circle_id=circle_id
+    )
+    return c
+
+
+def _person_by_phone(con: Conn, phone: str) -> str:
+    """The person behind a mobile number's Paytm account. The number is not kept."""
+    a = paytm.by_phone(con, phone)
+    if a is None:
+        raise Conflict(f"no Paytm account has the number {phone.strip()}")
+    return a.person_id
 
 
 def set_on_udhaar(con: Conn, person_id: str, on_udhaar: str, now: datetime) -> None:

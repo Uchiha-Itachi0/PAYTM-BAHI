@@ -23,6 +23,13 @@ class CircleIn(BaseModel):
     phones: list[str] = Field(min_length=1, max_length=MOST_MEMBERS - 1)
 
 
+class MemberIn(BaseModel):
+    """One more person for a circle, by mobile number."""
+
+    person_id: UUID
+    phone: str = Field(min_length=1, max_length=15)
+
+
 class OnUdhaarIn(BaseModel):
     """What should happen to their next udhaar."""
 
